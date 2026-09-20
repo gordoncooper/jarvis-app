@@ -25,9 +25,7 @@ varying vec3 vNormal;
 varying vec3 vWorld;
 
 float hash(vec3 p) {
-  p = fract(p * 0.3183099 + vec3(0.11, 0.17, 0.23));
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
 }
 
 float noise(vec3 x) {
@@ -45,36 +43,37 @@ float noise(vec3 x) {
 
 float fbm(vec3 p) {
   float a = 0.0;
-  float w = 0.55;
-  for (int i = 0; i < 5; i++) {
+  float w = 0.5;
+  for (int i = 0; i < 6; i++) {
     a += w * noise(p);
-    p = p * 2.07 + vec3(0.17, 0.09, 0.31);
-    w *= 0.52;
+    p = p * 2.13;
+    w *= 0.5;
   }
   return a;
 }
 
 void main() {
   vec3 n = normalize(vPos);
-  vec3 light = normalize(vec3(0.55, 0.28, 0.78));
+  vec3 light = normalize(vec3(0.62, 0.22, 0.72));
   float ndotl = clamp(dot(n, light), 0.0, 1.0);
-  float night = 1.0 - smoothstep(0.0, 0.32, ndotl);
+  float night = 1.0 - smoothstep(0.0, 0.28, ndotl);
 
-  float continents = fbm(n * 2.35 + vec3(0.4, 0.1, -0.2));
-  float land = smoothstep(0.44, 0.58, continents);
-  float poles = smoothstep(0.72, 0.88, abs(n.y));
-  float coast = smoothstep(0.0, 0.08, land) * (1.0 - smoothstep(0.08, 0.2, land));
+  vec3 warped = n + 0.18 * vec3(noise(n * 1.7), noise(n * 1.7 + 4.1), noise(n * 1.7 + 8.3));
+  float continents = fbm(warped * 2.05 + vec3(0.31, -0.12, 0.44));
+  float land = smoothstep(0.50, 0.58, continents);
+  float poles = smoothstep(0.74, 0.9, abs(n.y));
+  float coast = smoothstep(0.0, 0.12, land) * (1.0 - smoothstep(0.12, 0.35, land));
 
-  vec3 ocean = vec3(0.015, 0.035, 0.045);
-  vec3 deep = vec3(0.008, 0.016, 0.022);
-  vec3 ground = vec3(0.07, 0.1, 0.11);
-  vec3 ice = vec3(0.42, 0.5, 0.55);
-  vec3 col = mix(mix(deep, ocean, 0.55 + 0.45 * ndotl), ground, land);
-  col = mix(col, ice, poles * 0.85);
-  col += uAccent * coast * 0.18 * uLive;
+  vec3 ocean = vec3(0.012, 0.04, 0.05);
+  vec3 deep = vec3(0.006, 0.014, 0.02);
+  vec3 ground = vec3(0.05, 0.09, 0.1);
+  vec3 ice = vec3(0.38, 0.46, 0.5);
+  vec3 col = mix(mix(deep, ocean, 0.4 + 0.6 * ndotl), ground, land);
+  col = mix(col, ice, poles * (0.55 + 0.45 * land));
+  col += uAccent * coast * 0.22 * uLive;
 
-  float cities = step(0.93, hash(floor(n * 92.0))) * land * night;
-  col += uAccent * cities * (0.55 + 0.45 * uLive);
+  float cities = step(0.987, hash(floor(n * 180.0))) * land * night;
+  col += uAccent * cities * (0.7 + 0.3 * uLive);
 
   float lon = atan(n.z, n.x);
   float scanLine = abs(fract(lon / 6.2831853 + uTime * 0.12) - 0.5);
