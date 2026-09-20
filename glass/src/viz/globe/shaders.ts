@@ -43,7 +43,8 @@ void main() {
 
   vec3 dayC = texture2D(tDay, vUv).rgb;
   vec3 lights = texture2D(tNight, vUv).rgb;
-  vec3 nightC = dayC * 0.09 + lights * mix(vec3(1.15), uAccent, 0.4) * 2.6;
+  lights *= lights * 3.4;
+  vec3 nightC = dayC * 0.11 + lights * mix(vec3(1.1), uAccent, 0.38);
 
   vec3 col = mix(nightC, dayC * (0.28 + 0.72 * max(ndl, 0.0)), dayF);
 
@@ -127,7 +128,7 @@ void main() {
   vec3 view = normalize(cameraPosition - vWorld);
   float ndl = max(dot(normalize(vNormal), normalize(vec3(0.68, 0.18, 0.52))), 0.0);
   vec3 col = mix(vec3(0.75, 0.82, 0.88), uAccent, 0.08 * uLive);
-  float a = c * (0.22 + 0.28 * ndl);
+  float a = c * (0.1 + 0.16 * ndl);
   float fres = pow(1.0 - abs(dot(view, normalize(vNormal))), 3.0);
   a *= 1.0 - fres * 0.35;
   gl_FragColor = vec4(col, a);
