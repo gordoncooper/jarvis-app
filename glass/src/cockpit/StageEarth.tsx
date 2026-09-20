@@ -13,7 +13,7 @@ import {
 const R = 1.6;
 
 /** Americas-facing start: CONUS under the camera (Blue Marble UV, +Y west). */
-const USA_Y = 4.85;
+const USA_Y = 5.87;
 const USA_X = 0.28;
 
 function useMaps() {
