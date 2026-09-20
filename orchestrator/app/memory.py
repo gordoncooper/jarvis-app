@@ -119,11 +119,13 @@ _LABISH = re.compile(
 
 
 def parse_memory_candidate(text: str) -> str | None:
-    """Heuristic preference/identity fact without 'remember that…'."""
+    """Heuristic preference/identity fact without 'remember that…'.
+
+    Lab/metrics words are allowed here (e.g. "I prefer GPU temps in Fahrenheit")
+    so Hands does not steal the turn; LLM extract still uses labish gating.
+    """
     t = " ".join((text or "").strip().split())
     if not t or not _CANDIDATE.match(t):
-        return None
-    if _LABISH.search(t):
         return None
     # Strip leading filler for a cleaner stored line.
     fact = re.sub(
@@ -133,6 +135,17 @@ def parse_memory_candidate(text: str) -> str | None:
         flags=re.I,
     ).strip()
     return _normalize_fact(fact) or None
+
+
+def gpu_temp_unit(facts: list[str]) -> str:
+    """Newest matching preference wins. Default Celsius (Prometheus native)."""
+    for f in facts:
+        low = (f or "").lower()
+        if "fahrenheit" in low or "farenheit" in low:
+            return "F"
+        if "celsius" in low:
+            return "C"
+    return "C"
 
 
 def eligible_for_llm_extract(text: str) -> bool:
@@ -264,10 +277,10 @@ class PromotedMemory:
             )
         return fid
 
-    def forget(self, query: str) -> int:
-        """Tombstone active facts matching query (substring or token overlap)."""
+    def forget(self, query: str) -> list[str]:
+        """Tombstone active facts matching query; return removed texts."""
         now = time.time()
-        count = 0
+        removed: list[str] = []
         with self._lock, self._connect() as conn:
             rows = conn.execute(
                 "SELECT id, text FROM facts WHERE tombstoned_at IS NULL"
@@ -284,5 +297,5 @@ class PromotedMemory:
                     "VALUES (?, ?, ?, ?, ?)",
                     (str(uuid.uuid4()), now, "forget", row["id"], row["text"]),
                 )
-                count += 1
-        return count
+                removed.append(str(row["text"]))
+        return removed

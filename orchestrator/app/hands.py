@@ -24,7 +24,14 @@ CATALOG: dict[str, dict[str, str]] = {
     "apps.restart_deploy": {"class": "confirm", "desc": "Patch Deployment restartedAt to bounce pods."},
 }
 
-ALLOW_NS = frozenset({"apps", "inference", "agents", "monitoring"})
+# Speech aliases → real Deployment / short name keys in SHORT_NAMES.
+_NAME_ALIASES: dict[str, str] = {
+    "orchestrator": "jarvis-orchestrator",
+    "glass": "jarvis-glass",
+    "home": "jarvis-home",
+    "webui": "open-webui",
+    "chat": "open-webui",
+}
 
 # Bare short name → (namespace, resource kind for default verb).
 SHORT_NAMES: dict[str, tuple[str, str]] = {
@@ -62,7 +69,10 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
             r"\b("
             r"(restart|bounce|recycle)\s+(the\s+)?(deploy(ment)?|deploy)\b|"
             r"(restart|bounce)\s+(the\s+)?[\w-]+\s+deploy(ment)?\b|"
-            r"deploy(ment)?\s+(restart|bounce|recycle)\b"
+            r"deploy(ment)?\s+(restart|bounce|recycle)\b|"
+            r"(restart|bounce|recycle)\s+(the\s+)?"
+            r"(jarvis-)?(orchestrator|glass|home|open-?webui|openclaw|"
+            r"ollama|litellm|piper|whisper|prometheus|grafana)\b"
             r")",
             re.I,
         ),
@@ -112,6 +122,8 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
             r"(is|how'?s?|how\s+is)\s+the\s+(lab|cluster|rack)\b|"
             r"(lab|cluster|rack)\s+(up|healthy|ok|okay|status)|"
             r"pod\s+status|crashing\s+pods?|"
+            r"(list|show|get)\s+(the\s+)?pods?\b|"
+            r"pods?\s+in\s+(the\s+)?(lab|cluster|rack|apps)\b|"
             r"status\s+of\s+the\s+(lab|cluster|rack)"
             r")\b",
             re.I,
@@ -128,7 +140,9 @@ class VerbHit:
 
 
 def match_verb(text: str) -> VerbHit | None:
+    # Normalize curly/smart apostrophes from STT / paste ("how's" vs "how’s").
     t = " ".join((text or "").strip().split())
+    t = t.replace("\u2019", "'").replace("\u2018", "'")
     if not t:
         return None
     for name, pat in _RULES:
@@ -146,13 +160,18 @@ def match_verb(text: str) -> VerbHit | None:
 def parse_confirm_args(verb: str, text: str) -> tuple[dict[str, str] | None, str | None]:
     """Extract namespace/name from speech. Returns (args, error)."""
     t = " ".join((text or "").strip().split())
+    t = t.replace("\u2019", "'").replace("\u2018", "'")
     # Explicit ns/name
     m = re.search(r"\b([a-z0-9-]+)/([a-z0-9]([-a-z0-9]*[a-z0-9])?)\b", t, re.I)
     if m and m.group(1).lower() in ALLOW_NS:
         return {"namespace": m.group(1).lower(), "name": m.group(2).lower()}, None
 
-    # Known short names
+    # Known short names + speech aliases
     low = t.lower()
+    for alias, real in sorted(_NAME_ALIASES.items(), key=lambda x: -len(x[0])):
+        if re.search(rf"\b{re.escape(alias)}\b", low):
+            ns, _ = SHORT_NAMES[real]
+            return {"namespace": ns, "name": real}, None
     for short, (ns, _kind) in sorted(SHORT_NAMES.items(), key=lambda x: -len(x[0])):
         if re.search(rf"\b{re.escape(short)}\b", low):
             return {"namespace": ns, "name": short}, None
@@ -167,6 +186,10 @@ def parse_confirm_args(verb: str, text: str) -> tuple[dict[str, str] | None, str
         if name in SHORT_NAMES:
             ns, _ = SHORT_NAMES[name]
             return {"namespace": ns, "name": name}, None
+        if name in _NAME_ALIASES:
+            real = _NAME_ALIASES[name]
+            ns, _ = SHORT_NAMES[real]
+            return {"namespace": ns, "name": real}, None
         return None, f"I need a namespace for `{name}` (apps|inference|agents|monitoring)."
 
     return None, (
@@ -242,30 +265,46 @@ async def propose_confirm(name: str, args: dict[str, str]) -> dict[str, Any]:
     }
 
 
-def format_verb_reply(name: str, body: dict[str, Any]) -> str:
+def format_verb_reply(
+    name: str,
+    body: dict[str, Any],
+    *,
+    temp_unit: str = "C",
+) -> str:
     """Prefer shim `text` (already prose). Fall back to structured `data`."""
     text = (body.get("text") or "").strip()
+    data = body.get("data") or {}
+
+    if name == "cluster.gpus":
+        # Always format locally so promoted °F/°C preference applies (D-0024).
+        bits = []
+        for g in data.get("gpus") or []:
+            part = str(g.get("node") or "?")
+            if g.get("temp_c") is not None:
+                c = float(g["temp_c"])
+                if (temp_unit or "C").upper().startswith("F"):
+                    part += f" {int(round(c * 9 / 5 + 32))}°F"
+                else:
+                    part += f" {int(c)}°C"
+            if g.get("mem_used_bytes") is not None:
+                mb = float(g["mem_used_bytes"]) / (1024**3)
+                part += f", {mb:.1f} GiB used"
+            bits.append(part)
+        if bits:
+            return "GPU status: " + "; ".join(bits) + "."
+        if text:
+            return text
+        return "No GPU samples."
+
     if text:
         return text
 
-    data = body.get("data") or {}
     if name == "cluster.health":
         nodes = data.get("nodes") or []
         ready = sum(1 for n in nodes if n.get("ready"))
         total = len(nodes)
         pod = data.get("pod_summary") or ""
         return f"{ready}/{total} nodes Ready. {pod}".strip()
-    if name == "cluster.gpus":
-        bits = []
-        for g in data.get("gpus") or []:
-            part = str(g.get("node") or "?")
-            if g.get("temp_c") is not None:
-                part += f" {int(g['temp_c'])}°C"
-            if g.get("mem_used_bytes") is not None:
-                mb = float(g["mem_used_bytes"]) / (1024**3)
-                part += f", {mb:.1f} GiB used"
-            bits.append(part)
-        return "GPU status: " + "; ".join(bits) + "." if bits else "No GPU samples."
     if name == "lab.map":
         lines = ["Lab surfaces:"]
         for s in data.get("surfaces") or []:

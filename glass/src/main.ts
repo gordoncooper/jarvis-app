@@ -167,7 +167,7 @@ async function main(): Promise<void> {
         assistant.textContent = (assistant.textContent ?? "") + t;
       },
       onDone: (reply, _transcript, confirm) => {
-        if (reply && !assistant.textContent) assistant.textContent = reply;
+        if (reply) assistant.textContent = reply;
         busy = false;
         send.disabled = false;
         mic.disabled = false;
@@ -256,7 +256,7 @@ async function main(): Promise<void> {
       },
       onDone: (reply, transcript, confirm) => {
         if (transcript) userMsg.textContent = transcript;
-        if (reply && !assistant.textContent) assistant.textContent = reply;
+        if (reply) assistant.textContent = reply;
         busy = false;
         send.disabled = false;
         mic.disabled = false;

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from collections.abc import AsyncIterator
 from typing import Any
@@ -19,6 +20,7 @@ from .memory import (
     PromotedMemory,
     eligible_for_llm_extract,
     fact_already_known,
+    gpu_temp_unit,
     new_memory_pending,
     parse_memory_candidate,
     parse_memory_intent,
@@ -43,7 +45,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.12-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.13-dev")
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
@@ -97,12 +99,15 @@ def system_prompt() -> str:
         "You have no tools in this turn. Do not invent live cluster numbers; "
         "say you do not know if not in the briefing or promoted memory. "
         "Cluster health, GPU metrics, and the lab map are handled as declared "
-        "verbs before this talker runs — do not pretend you queried them."
+        "verbs before this talker runs — do not pretend you queried them. "
+        "Never say you will remember or have remembered a fact — the "
+        "orchestrator owns confirm and storage. Never invent dialogue turns "
+        "like '### User:' or '### Assistant:'."
     )
     return "\n\n".join(parts)
 
 
-def _memory_reply(kind: str, fact: str, forgotten: int = 0) -> str:
+def _memory_reply(kind: str, fact: str, forgotten: list[str] | None = None) -> str:
     if kind == "remember":
         if not fact:
             return (
@@ -111,10 +116,39 @@ def _memory_reply(kind: str, fact: str, forgotten: int = 0) -> str:
             )
         return f"Noted. I will remember: {fact}"
     if kind == "forget":
-        if forgotten:
-            return f"Forgotten ({forgotten})."
-        return "I found nothing matching that to forget."
+        removed = forgotten or []
+        if not removed:
+            return "I found nothing matching that to forget."
+        if len(removed) == 1:
+            return f"Forgotten: {removed[0]}"
+        preview = "; ".join(removed[:3])
+        extra = f" (+{len(removed) - 3} more)" if len(removed) > 3 else ""
+        return f"Forgotten {len(removed)} facts: {preview}{extra}"
     return ""
+
+
+_FORGED_TURN = re.compile(r"^\s*#{0,3}\s*(User|Assistant)\s*:", re.I)
+_PREMATURE_REMEMBER = re.compile(
+    r"\b(I(?:['’]ll| will) remember|I have remembered|Shall I remember)\b",
+    re.I,
+)
+
+
+def _scrub_for_memory_confirm(reply: str) -> str:
+    """Drop talker claims of memory / forged transcript before confirm ask."""
+    lines: list[str] = []
+    for line in (reply or "").splitlines():
+        if _FORGED_TURN.match(line):
+            continue
+        if _PREMATURE_REMEMBER.search(line):
+            continue
+        lines.append(line)
+    out = "\n".join(lines).strip()
+    return out or "Understood."
+
+
+def _temp_unit() -> str:
+    return gpu_temp_unit(mem().active_facts(40))
 
 
 @app.get("/readyz")
@@ -141,7 +175,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.12-dev",
+        "version": "0.6.13-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -315,7 +349,9 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                     args=pending.get("args") or {},
                     confirmed=True,
                 )
-                reply = format_verb_reply(pending["verb"], body)
+                reply = format_verb_reply(
+                    pending["verb"], body, temp_unit=_temp_unit()
+                )
                 audit_verb(
                     settings.memory_db_path,
                     verb=pending["verb"],
@@ -369,17 +405,21 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
 
     intent = parse_memory_intent(text)
     if intent.kind in ("remember", "forget"):
-        forgotten = 0
+        forgotten: list[str] = []
         if intent.kind == "remember":
             if intent.fact:
                 mem().remember(intent.fact, source_turn=sess.id)
             reply = _memory_reply("remember", intent.fact)
         else:
-            forgotten = mem().forget(intent.fact) if intent.fact else 0
+            forgotten = mem().forget(intent.fact) if intent.fact else []
             reply = _memory_reply("forget", intent.fact, forgotten=forgotten)
         return _reply(reply, extra={"memory": intent.kind})
 
-    hit = match_verb(text)
+    # Preference/identity heuristics before Hands so "I prefer GPU temps in F"
+    # is confirm-gated memory, not a live metrics verb.
+    soft_candidate = parse_memory_candidate(text)
+
+    hit = None if soft_candidate else match_verb(text)
     if hit is not None:
         if hit.klass == "confirm":
             if not hit.args:
@@ -413,7 +453,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
 
         try:
             body = await execute_verb(hit.name)
-            reply = format_verb_reply(hit.name, body)
+            reply = format_verb_reply(hit.name, body, temp_unit=_temp_unit())
             audit_verb(
                 settings.memory_db_path,
                 verb=hit.name,
@@ -442,7 +482,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
 
     async def _maybe_memory_confirm(reply: str) -> tuple[str, dict[str, Any] | None]:
         """Append memory confirm ask after talker reply (heuristic, then LLM)."""
-        candidate = parse_memory_candidate(text)
+        candidate = soft_candidate or parse_memory_candidate(text)
         if not candidate and eligible_for_llm_extract(text):
             candidate = await extract_memory_fact(text)
         if not candidate:
@@ -452,7 +492,8 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         pending_obj = new_memory_pending(candidate)
         store.set_pending(sess.id, pending_obj)
         ask = f"Shall I remember: {candidate}? Say yes or cancel."
-        combined = (reply.rstrip() + "\n\n" + ask) if reply else ask
+        cleaned = _scrub_for_memory_confirm(reply)
+        combined = (cleaned.rstrip() + "\n\n" + ask) if cleaned else ask
         confirm = {
             "id": pending_obj["id"],
             "kind": "memory",
@@ -483,15 +524,9 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             reply = "".join(chunks).strip()
             base = reply
             reply, confirm = await _maybe_memory_confirm(reply)
-            if confirm and reply != base:
-                yield _sse(
-                    "token",
-                    {
-                        "text": reply[len(base) :]
-                        if reply.startswith(base)
-                        else "\n\n" + reply
-                    },
-                )
+            if confirm and reply != base and reply.startswith(base):
+                # Scrubbed replies are applied via done.reply_text (glass).
+                yield _sse("token", {"text": reply[len(base) :]})
             if reply:
                 store.append(sess.id, "assistant", reply)
             done: dict[str, Any] = {
