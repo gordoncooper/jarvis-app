@@ -1,0 +1,14 @@
+{
+  "name": "jarvis-glass",
+  "private": true,
+  "version": "0.6.0-dev",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "typescript": "5.7.3"
+  }
+}

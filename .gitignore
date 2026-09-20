@@ -15,10 +15,13 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+orchestrator/.venv/
 
 # Node / TS build
 node_modules/
 dist/
+glass/dist/
+glass/node_modules/
 *.tsbuildinfo
 
 # OS / editor
