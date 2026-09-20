@@ -22,8 +22,11 @@ A dated decision outranks any prose here or there.
 
 - Edit and `git push` from bastion `~/jarvis-app` to **GitHub** `jarvis-app`
 - Flux never watches this repo. Deploy via YAML in `~/cluster` → Gitea
-- Two runtime Deployments: **glass** and **orchestrator** (D-0012). Themes are
-  look-and-feel only; the orchestrator stays theme-agnostic (D-0020)
+- Two runtime Deployments: **jarvis-glass** and **jarvis-orchestrator** in
+  namespace `apps` (D-0021). Themes are look-and-feel only; the orchestrator
+  stays theme-agnostic (D-0020)
+- Source `VERSION` in this repo for product image pins; never retag. Next build
+  cut is **v0.6.0** (D-0021)
 - Glass talks only to the orchestrator — no direct product wiring to LiteLLM,
   Open WebUI, or OpenClaw (D-0012)
 - No Vite / App Builder greenfield. TS compiles to static assets (D-0020)

@@ -1,0 +1,11 @@
+# Product pins for jarvis-app. Scripts should source this file.
+# Git tag and image tags are INDEPENDENT. Never retag an old git tag.
+#
+# v0.5.2 = planning freeze / bootstrap.
+# Next implementation cut = v0.6.0 (create when slice 1 ships — D-0021).
+
+GIT_TAG=v0.5.2
+
+IMAGE_GLASS=docker.io/library/jarvis-glass
+IMAGE_ORCHESTRATOR=docker.io/library/jarvis-orchestrator
+# Set IMAGE_*_TAG when the first images are built (v0.6.0 cut).
