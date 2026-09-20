@@ -2,18 +2,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ConfirmPayload,
   type HealthPayload,
+  type PulsePayload,
   fetchHealth,
+  fetchPulse,
   fetchSession,
   fetchTtsObjectUrl,
   streamAudioTurn,
   streamTurn,
 } from "../api.js";
-import { Shell, type Slide } from "./Shell.js";
+import { Deck, type Slide } from "./deck/Deck.js";
 import { Cmd } from "./displays/Cmd.js";
+import { Earth } from "./displays/Earth.js";
 import { Login } from "./displays/Login.js";
 import { Noc } from "./displays/Noc.js";
-import { Stage } from "./displays/Stage.js";
 import { type ChatMsg } from "./mock.js";
+import { parseBriefing, type SessionBriefing } from "./state/session.js";
+import { type EarthToast } from "./state/pulse.js";
 
 const SESSION_KEY = "jarvis.session_id";
 
@@ -25,6 +29,7 @@ export function App() {
   const [slide, setSlide] = useState<Slide>(0);
   const [greeting, setGreeting] = useState("…");
   const [blurb, setBlurb] = useState("");
+  const [briefing, setBriefing] = useState<SessionBriefing | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [unreachable, setUnreachable] = useState(false);
@@ -32,6 +37,8 @@ export function App() {
   const [recording, setRecording] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [micDenied, setMicDenied] = useState(false);
+  const [pulse, setPulse] = useState<PulsePayload | null>(null);
+  const [toast, setToast] = useState<EarthToast | null>(null);
 
   const sessionId = useRef<string | null>(localStorage.getItem(SESSION_KEY));
   const busyRef = useRef(false);
@@ -72,14 +79,27 @@ export function App() {
 
   useEffect(() => {
     let alive = true;
-    void (async () => {
-      try {
-        const session = await fetchSession(sessionId.current);
-        if (!alive) return;
-        sessionId.current = session.session_id;
-        localStorage.setItem(SESSION_KEY, session.session_id);
-        setGreeting(session.greeting);
-        setBlurb(session.briefing_blurb);
+    const poll = async () => {
+      const next = await fetchPulse();
+      if (alive) setPulse(next);
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), 2000);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  const loadSession = useCallback(async () => {
+    try {
+      const session = await fetchSession(sessionId.current);
+      sessionId.current = session.session_id;
+      localStorage.setItem(SESSION_KEY, session.session_id);
+      setGreeting(session.greeting);
+      setBlurb(session.briefing_blurb);
+      setBriefing(parseBriefing(session.briefing));
+      if (!busyRef.current) {
         const restored: ChatMsg[] = [];
         for (const m of session.messages) {
           if (m.role === "user" || m.role === "assistant") {
@@ -87,18 +107,24 @@ export function App() {
           }
         }
         setMessages(restored);
-        if (session.confirm) setConfirm(session.confirm);
-      } catch {
-        if (alive) {
-          setGreeting("Good evening.");
-          setBlurb("Session unavailable.");
-        }
+        setConfirm(session.confirm ?? null);
       }
+    } catch {
+      setGreeting("Good evening.");
+      setBlurb("Session unavailable.");
+    }
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      if (!alive) return;
+      await loadSession();
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [loadSession]);
 
   const speak = useCallback(async (text: string) => {
     if (!ttsOkRef.current || !text.trim()) return;
@@ -128,6 +154,7 @@ export function App() {
       busyRef.current = true;
       setBusy(true);
       setConfirm(null);
+      setToast({ user: text, asst: "" });
       const userId = nextId();
       const asstId = nextId();
       setMessages((prev) => [
@@ -142,12 +169,14 @@ export function App() {
           localStorage.setItem(SESSION_KEY, id);
         },
         onToken: (t) => {
+          setToast((prev) => (prev ? { ...prev, asst: prev.asst + t } : prev));
           setMessages((prev) =>
             prev.map((m) => (m.id === asstId ? { ...m, content: m.content + t } : m)),
           );
         },
         onDone: (reply, _transcript, nextConfirm) => {
           if (reply) {
+            setToast((prev) => (prev ? { ...prev, asst: reply } : prev));
             setMessages((prev) =>
               prev.map((m) => (m.id === asstId ? { ...m, content: reply } : m)),
             );
@@ -158,6 +187,7 @@ export function App() {
           void speak(reply);
         },
         onError: (message) => {
+          setToast((prev) => (prev ? { ...prev, asst: `Error: ${message}` } : prev));
           setMessages((prev) =>
             prev.map((m) =>
               m.id === asstId ? { ...m, content: `Error: ${message}` } : m,
@@ -205,6 +235,7 @@ export function App() {
     busyRef.current = true;
     setBusy(true);
     setConfirm(null);
+    setToast({ user: "…", asst: "" });
     const userId = nextId();
     const asstId = nextId();
     setMessages((prev) => [
@@ -218,23 +249,27 @@ export function App() {
         sessionId.current = id;
         localStorage.setItem(SESSION_KEY, id);
         if (transcript) {
+          setToast((prev) => (prev ? { ...prev, user: transcript } : { user: transcript, asst: "" }));
           setMessages((prev) =>
             prev.map((m) => (m.id === userId ? { ...m, content: transcript } : m)),
           );
         }
       },
       onToken: (t) => {
+        setToast((prev) => (prev ? { ...prev, asst: prev.asst + t } : prev));
         setMessages((prev) =>
           prev.map((m) => (m.id === asstId ? { ...m, content: m.content + t } : m)),
         );
       },
       onDone: (reply, transcript, nextConfirm) => {
         if (transcript) {
+          setToast((prev) => (prev ? { ...prev, user: transcript } : { user: transcript, asst: reply }));
           setMessages((prev) =>
             prev.map((m) => (m.id === userId ? { ...m, content: transcript } : m)),
           );
         }
         if (reply) {
+          setToast((prev) => (prev ? { ...prev, asst: reply } : prev));
           setMessages((prev) =>
             prev.map((m) => (m.id === asstId ? { ...m, content: reply } : m)),
           );
@@ -245,6 +280,7 @@ export function App() {
         void speak(reply);
       },
       onError: (message) => {
+        setToast((prev) => (prev ? { ...prev, asst: `Error: ${message}` } : prev));
         setMessages((prev) =>
           prev.map((m) =>
             m.id === asstId ? { ...m, content: `Error: ${message}` } : m,
@@ -256,10 +292,6 @@ export function App() {
     });
   }, [speak]);
 
-  const go = useCallback((target: "stage" | "cmd" | "noc") => {
-    setSlide(target === "stage" ? 1 : target === "cmd" ? 2 : 3);
-  }, []);
-
   const turnProps = {
     busy,
     recording,
@@ -270,33 +302,34 @@ export function App() {
   };
 
   return (
-    <Shell index={slide} onIndex={setSlide}>
+    <Deck index={slide} onIndex={setSlide}>
       <Login onEnter={() => setSlide(1)} />
-      <Stage
+      <Earth
         health={health}
         unreachable={unreachable}
-        messages={messages}
+        pulse={pulse}
+        toast={toast}
         confirm={confirm}
-        talkerOk={talkerOk}
-        handsOk={handsOk}
-        ttsOk={ttsOk}
-        onConfirm={() => void runText("yes")}
-        onCancel={() => void runText("cancel")}
+        active={slide === 1}
         {...turnProps}
       />
       <Cmd
         greeting={greeting}
         blurb={blurb}
+        briefing={briefing}
         messages={messages}
         confirm={confirm}
         live={live}
         memoryFacts={health?.memory_facts ?? 0}
-        onNav={go}
+        onRefetchSession={() => {
+          setSlide(2);
+          void loadSession();
+        }}
         onConfirm={() => void runText("yes")}
         onCancel={() => void runText("cancel")}
         {...turnProps}
       />
-      <Noc live={live} {...turnProps} />
-    </Shell>
+      <Noc live={live} pulse={pulse} confirm={confirm} {...turnProps} />
+    </Deck>
   );
 }

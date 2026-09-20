@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,7 +20,15 @@ if (!existsSync(css)) {
 
 mkdirSync(outdir, { recursive: true });
 cpSync(join(root, "public", "index.html"), join(outdir, "index.html"));
-cpSync(css, join(outdir, "theme.css"));
+const tokens = join(root, "src", "cockpit", "tokens.css");
+if (theme === "cockpit" && existsSync(tokens)) {
+  writeFileSync(
+    join(outdir, "theme.css"),
+    `${readFileSync(tokens, "utf8")}\n${readFileSync(css, "utf8")}`,
+  );
+} else {
+  cpSync(css, join(outdir, "theme.css"));
+}
 
 const extraStatic = join(packDir, "static");
 if (existsSync(extraStatic)) {

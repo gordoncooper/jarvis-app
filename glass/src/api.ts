@@ -1,8 +1,11 @@
+import type { SessionBriefing } from "./cockpit/state/session.js";
+
 export type SessionPayload = {
   session_id: string;
   messages: Array<{ role: string; content: string }>;
   greeting: string;
   briefing_blurb: string;
+  briefing?: SessionBriefing | Record<string, unknown>;
   confirm?: ConfirmPayload;
 };
 
@@ -23,6 +26,63 @@ export async function fetchHealth(): Promise<HealthPayload> {
   const r = await fetch("/health", { headers: jsonHeaders });
   if (!r.ok) throw new Error(`health ${r.status}`);
   return r.json() as Promise<HealthPayload>;
+}
+
+export type PulseNode = {
+  id: string;
+  role?: string | null;
+  ip?: string | null;
+  cpu?: number | null;
+  ram?: number | null;
+  disk?: number | null;
+  load?: number | null;
+  temp_c?: number | null;
+  ready?: boolean | null;
+};
+
+export type PulseRings = {
+  cpu?: number | null;
+  mem?: number | null;
+  net?: number | null;
+  io?: number | null;
+};
+
+export type PulseEnv = {
+  air_c?: number | null;
+  hum?: number | null;
+  pwr?: number | null;
+};
+
+export type PulseEvent = {
+  ts?: string | null;
+  src?: string | null;
+  msg?: string | null;
+};
+
+export type PulsePayload = {
+  lan?: string | null;
+  k3s?: string | null;
+  utc?: string | null;
+  uptime?: string | null;
+  nodes?: PulseNode[] | null;
+  rings?: PulseRings | null;
+  env?: PulseEnv | null;
+  events?: PulseEvent[] | null;
+  talker?: boolean | null;
+  hands?: boolean | null;
+  stt?: boolean | null;
+  tts?: boolean | null;
+};
+
+/** Missing route or transport → null. Never synthesize cluster numbers. */
+export async function fetchPulse(): Promise<PulsePayload | null> {
+  try {
+    const r = await fetch("/v1/pulse", { headers: jsonHeaders });
+    if (!r.ok) return null;
+    return (await r.json()) as PulsePayload;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchSession(sessionId: string | null): Promise<SessionPayload> {

@@ -1,3 +1,1 @@
-from app.main import app
-
-__all__ = ["app"]
+"""Product orchestrator (D-0020)."""

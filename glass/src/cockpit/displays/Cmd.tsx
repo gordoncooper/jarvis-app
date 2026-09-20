@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ConfirmPayload } from "../../api.js";
 import { CmdBar } from "../chrome/CmdBar.js";
+import { ConfirmCard } from "../chrome/ConfirmCard.js";
 import {
   HexMark,
   IconBox,
@@ -15,11 +16,13 @@ import {
   IconPulse,
   LiveDot,
 } from "../chrome/Marks.js";
-import { type ChatMsg, MOCK, dayOfYear } from "../mock.js";
+import { type ChatMsg, dayOfYear } from "../mock.js";
+import { capCopy, parseBriefing, type SessionBriefing } from "../state/session.js";
 
 type Props = {
   greeting: string;
   blurb: string;
+  briefing?: SessionBriefing | Record<string, unknown> | null;
   messages: ChatMsg[];
   confirm: ConfirmPayload | null;
   busy: boolean;
@@ -27,7 +30,7 @@ type Props = {
   sttOk: boolean;
   live: boolean;
   memoryFacts: number;
-  onNav: (target: "stage" | "cmd" | "noc") => void;
+  onRefetchSession: () => void | Promise<void>;
   onSubmit: (text: string) => void;
   onPttStart: () => void;
   onPttStop: () => void;
@@ -35,16 +38,29 @@ type Props = {
   onCancel: () => void;
 };
 
-const TL_ICON: Record<string, typeof IconInbox> = {
+const WEATHER_STUB = { now: "16°C, overcast", wind: "NW wind 8 km/h" };
+
+const KIND_ICON: Record<string, typeof IconInbox> = {
+  inbound: IconInbox,
   inbox: IconInbox,
+  mail: IconInbox,
+  schedule: IconClock,
+  calendar: IconClock,
+  agenda: IconClock,
   clock: IconClock,
+  pulse: IconGear,
+  cluster: IconGear,
+  system: IconGear,
   gear: IconGear,
+  memory: IconChip,
+  mem: IconChip,
   chip: IconChip,
 };
 
 export function Cmd({
   greeting,
   blurb,
+  briefing,
   messages,
   confirm,
   busy,
@@ -52,7 +68,7 @@ export function Cmd({
   sttOk,
   live,
   memoryFacts,
-  onNav,
+  onRefetchSession,
   onSubmit,
   onPttStart,
   onPttStop,
@@ -60,7 +76,12 @@ export function Cmd({
   onCancel,
 }: Props) {
   const [now, setNow] = useState(() => new Date());
+  const [mode, setMode] = useState<"brief" | "ask" | "apply">("brief");
+  const [collapsed, setCollapsed] = useState(false);
+  const [wantFocus, setWantFocus] = useState<"ask" | "apply" | null>(null);
   const thread = useRef<HTMLDivElement>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const channelInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);
@@ -70,7 +91,32 @@ export function Cmd({
   useEffect(() => {
     const el = thread.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [messages, confirm, busy]);
+
+  useEffect(() => {
+    if (!wantFocus) return;
+    if (wantFocus === "apply" && confirm) {
+      confirmRef.current?.scrollIntoView({ block: "nearest" });
+    } else {
+      channelInput.current?.focus();
+    }
+    setWantFocus(null);
+  }, [wantFocus, confirm, collapsed]);
+
+  const structured = useMemo(() => parseBriefing(briefing), [briefing]);
+  const overnight = structured?.overnight ? capCopy(structured.overnight, 280) : null;
+  const lab = structured?.lab ? capCopy(structured.lab, 280) : null;
+  const focus = structured?.focus ? capCopy(structured.focus, 220) : null;
+  const labName = structured?.lab_name ? capCopy(structured.lab_name, 48) : "OPERATOR WORKSPACE";
+  const agenda = structured?.agenda ?? [];
+  const today = structured?.today ?? [];
+  const greetingCopy = capCopy(greeting, 160);
+  const blurbCopy = capCopy(blurb, 420);
+
+  const inboxCount = today.filter((row) => /in|mail|msg/i.test(row.kind)).length;
+  const calendarLabel =
+    agenda[0]?.label ?? today.find((row) => /cal|meet|agenda|schedule/i.test(row.kind))?.label ?? null;
+  const applyCount = confirm ? 1 : 0;
 
   const local = now.toLocaleTimeString("en-GB", { hour12: false });
   const dateStr = now.toLocaleDateString("en-US", {
@@ -84,11 +130,28 @@ export function Cmd({
     day: "numeric",
   });
 
+  function onBrief() {
+    setMode("brief");
+    void onRefetchSession();
+  }
+
+  function onAsk() {
+    setMode("ask");
+    setCollapsed(false);
+    setWantFocus("ask");
+  }
+
+  function onApply() {
+    setMode("apply");
+    setCollapsed(false);
+    setWantFocus("apply");
+  }
+
   return (
     <div className="ck-cmd">
       <header className="ck-cmd-top">
         <div className="ck-stage-brand">
-          <HexMark size={22} variant="j" />
+          <HexMark size={22} />
           <span className="ck-brand">JARVIS</span>
           <span className="ck-live-pill ck-pulse">
             <LiveDot on={live} /> LIVE
@@ -110,8 +173,8 @@ export function Cmd({
               <IconCloud size={18} />
             </span>
             <div>
-              <strong>{MOCK.weather}</strong>
-              <span>{MOCK.wind}</span>
+              <strong>{WEATHER_STUB.now}</strong>
+              <span>{WEATHER_STUB.wind}</span>
             </div>
           </div>
           <span className="ck-vdiv" />
@@ -126,26 +189,26 @@ export function Cmd({
           </div>
         </div>
         <nav className="ck-cmd-nav">
-          <button type="button" className="is-active" onClick={() => onNav("cmd")}>
+          <button type="button" className={mode === "brief" ? "is-active" : ""} onClick={onBrief}>
             BRIEF
           </button>
           <span>|</span>
-          <button type="button" onClick={() => onNav("stage")}>
+          <button type="button" className={mode === "ask" ? "is-active" : ""} onClick={onAsk}>
             ASK
           </button>
           <span>|</span>
-          <button type="button" onClick={() => onNav("noc")}>
+          <button type="button" className={mode === "apply" ? "is-active" : ""} onClick={onApply}>
             APPLY
           </button>
         </nav>
       </header>
 
       <div className="ck-cmd-body">
-        <section className="ck-panel ck-dossier ck-pulse-border">
+        <section className="ck-panel ck-dossier">
           <h2>DOSSIER</h2>
           <div className="ck-lab">
             <div className="ck-lab-title">
-              LAB: {MOCK.lab} <LiveDot on />
+              LAB: {labName} <LiveDot on={live} />
             </div>
             <p>Operator Workspace · Personal Command Context</p>
           </div>
@@ -153,25 +216,47 @@ export function Cmd({
             <IconCal size={12} /> TODAY
           </h3>
           <ul className="ck-timeline">
-            {MOCK.timeline.map((row) => {
-              const Ico = TL_ICON[row.icon] ?? IconDoc;
+            {today.map((row, i) => {
+              const Ico = KIND_ICON[row.kind.toLowerCase()] ?? IconDoc;
               return (
-                <li key={row.t}>
-                  <span className="ck-tl-time">{row.t}</span>
+                <li key={`${row.t}-${i}`}>
+                  <span className="ck-tl-time">{row.t || "—"}</span>
                   <span className="ck-tl-ico">
                     <Ico />
                   </span>
                   <div>
-                    <strong>{row.title}</strong>
-                    <p>
-                      {row.title === "MEMORY / CONTEXT"
-                        ? `${memoryFacts} active facts · context retained`
-                        : row.body}
-                    </p>
+                    <strong>{row.label}</strong>
+                    <p>{row.kind}</p>
                   </div>
                 </li>
               );
             })}
+            {memoryFacts > 0 ? (
+              <li>
+                <span className="ck-tl-time">MEM</span>
+                <span className="ck-tl-ico">
+                  <IconChip />
+                </span>
+                <div>
+                  <strong>MEMORY / CONTEXT</strong>
+                  <p>
+                    {memoryFacts} remembered {memoryFacts === 1 ? "fact" : "facts"}
+                  </p>
+                </div>
+              </li>
+            ) : null}
+            {today.length === 0 && memoryFacts === 0 ? (
+              <li>
+                <span className="ck-tl-time">—</span>
+                <span className="ck-tl-ico">
+                  <IconDoc />
+                </span>
+                <div>
+                  <strong>Today</strong>
+                  <p>No structured today rows</p>
+                </div>
+              </li>
+            ) : null}
           </ul>
         </section>
 
@@ -181,30 +266,44 @@ export function Cmd({
               <IconDoc size={16} /> AM BRIEFING
             </h2>
             <span>
-              Updated {local.slice(0, 5)} · Auto-refresh ON <LiveDot on />
+              Updated {local.slice(0, 5)} · Auto-refresh ON <LiveDot on={live} />
             </span>
           </header>
-          <p className="ck-greeting">{greeting}</p>
-          {blurb ? <p className="ck-blurb">{blurb}</p> : null}
-          <h3 className="ck-sec-teal">OVERNIGHT · 00:00 – 07:00</h3>
-          <p>
-            Quiet window. 2 jobs completed, 1 failure on node v1-7. Spectrograph
-            calibration drift +0.7 nm overnight.
-          </p>
-          <p className="ck-delta">Δ +2 new preprints in arXiv cs.LG · vectorlight-adjacent</p>
-          <h3>LAB · SYSTEMS & SIGNALS</h3>
-          <ul className="ck-brief-list">
-            <li>GPU cluster load: 78% · 4 jobs queued · 2 pending.</li>
-            <li>Storage pool at 62% · +1.3 TB since yesterday.</li>
-            <li className="ck-delta">Δ Network ingress +18% over 7-day baseline</li>
-            <li>All instruments online. No active alerts.</li>
-          </ul>
-          <footer className="ck-focus">
-            <strong>
-              <IconPulse size={14} /> BRIEFING FOCUS
-            </strong>
-            <p>Advance vectorlight calibration stability and clear training queue.</p>
-          </footer>
+          <p className="ck-greeting">{greetingCopy}</p>
+          {!overnight && !lab && !agenda.length && blurbCopy ? <p className="ck-blurb">{blurbCopy}</p> : null}
+          {overnight ? (
+            <>
+              <h3 className="ck-sec-teal">OVERNIGHT</h3>
+              <p>{overnight}</p>
+            </>
+          ) : null}
+          {lab ? (
+            <>
+              <h3>LAB</h3>
+              <p>{lab}</p>
+            </>
+          ) : null}
+          {agenda.length ? (
+            <>
+              <h3>AGENDA</h3>
+              <ul className="ck-brief-list">
+                {agenda.map((row, i) => (
+                  <li key={`${row.t}-${i}`}>
+                    {row.t ? `${row.t} · ` : ""}
+                    {row.label}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {focus ? (
+            <footer className="ck-focus">
+              <strong>
+                <IconPulse size={14} /> BRIEFING FOCUS
+              </strong>
+              <p>{focus}</p>
+            </footer>
+          ) : null}
         </section>
 
         <section className="ck-panel ck-channel">
@@ -212,48 +311,49 @@ export function Cmd({
             <h2>
               CHANNEL · OPERATOR CONVO <LiveDot on={live} />
             </h2>
-            <button type="button" className="ck-collapse" aria-label="Collapse">
-              ≪
+            <button
+              type="button"
+              className="ck-collapse"
+              aria-label={collapsed ? "Expand channel" : "Collapse channel"}
+              onClick={() => setCollapsed((v) => !v)}
+            >
+              {collapsed ? "≫" : "≪"}
             </button>
           </header>
-          <div className="ck-thread" ref={thread}>
-            {messages.length === 0 ? (
-              <p className="ck-thread-empty">Awaiting operator input…</p>
-            ) : null}
-            {messages.map((m) => (
-              <div key={m.id} className={`ck-bubble ${m.role}`}>
-                <span className="ck-bubble-meta">
-                  {m.role === "user" ? "OPERATOR" : "JARVIS"}
-                </span>
-                <div className="ck-bubble-body">
-                  <p>{m.content || "…"}</p>
-                </div>
+          {collapsed ? null : (
+            <>
+              <div className="ck-thread" ref={thread}>
+                {messages.length === 0 ? (
+                  <p className="ck-thread-empty">Awaiting operator input…</p>
+                ) : null}
+                {messages.map((m) => (
+                  <div key={m.id} className={`ck-bubble ${m.role}`}>
+                    <span className="ck-bubble-meta">{m.role === "user" ? "OPERATOR" : "JARVIS"}</span>
+                    <div className="ck-bubble-body">
+                      <p>{m.content || "…"}</p>
+                    </div>
+                  </div>
+                ))}
+                {confirm ? (
+                  <div ref={confirmRef}>
+                    <ConfirmCard confirm={confirm} busy={busy} onYes={onConfirm} onCancel={onCancel} />
+                  </div>
+                ) : null}
               </div>
-            ))}
-            {confirm ? (
-              <div className="ck-confirm">
-                <span>{confirm.summary || confirm.fact || "Confirm?"}</span>
-                <button type="button" onClick={onConfirm}>
-                  Confirm
-                </button>
-                <button type="button" onClick={onCancel}>
-                  Cancel
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <CmdBar
-            variant="cmd"
-            prompt=">_ cmd ·"
-            placeholder="type command or message"
-            busy={busy}
-            recording={recording}
-            sttOk={sttOk}
-            onSubmit={onSubmit}
-            onPttStart={onPttStart}
-            onPttStop={onPttStop}
-          />
-          <p className="ck-hint"># Enter to send · ↑ history</p>
+              <CmdBar
+                variant="cmd"
+                prompt=">_ cmd ·"
+                placeholder="type command or message"
+                busy={busy}
+                recording={recording}
+                sttOk={sttOk}
+                inputRef={channelInput}
+                onSubmit={onSubmit}
+                onPttStart={onPttStart}
+                onPttStop={onPttStop}
+              />
+            </>
+          )}
         </section>
       </div>
 
@@ -262,16 +362,16 @@ export function Cmd({
           <div className="ck-pill-head">
             <IconInbox size={15} />
             <strong>INBOX</strong>
-            <LiveDot on />
+            <LiveDot on={inboxCount > 0} />
           </div>
-          <span>{MOCK.inboxUnread} unread</span>
+          <span>{inboxCount ? `${inboxCount} inbound` : "—"}</span>
         </div>
         <div className="ck-pill">
           <div className="ck-pill-head">
             <IconCal size={15} />
             <strong>CALENDAR</strong>
           </div>
-          <span>Next: {MOCK.calendarNext}</span>
+          <span>{calendarLabel ? capCopy(calendarLabel, 28) : "—"}</span>
         </div>
         <div className="ck-pill">
           <div className="ck-pill-head">
@@ -287,9 +387,9 @@ export function Cmd({
           <div className="ck-pill-head">
             <IconBox size={15} />
             <strong>APPLY QUEUE</strong>
-            <LiveDot on={MOCK.applyPending === 0} />
+            <LiveDot on={applyCount === 0} />
           </div>
-          <span>{MOCK.applyPending} pending</span>
+          <span>{applyCount} pending</span>
         </div>
       </footer>
     </div>

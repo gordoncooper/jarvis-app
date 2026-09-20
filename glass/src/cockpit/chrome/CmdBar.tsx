@@ -1,4 +1,4 @@
-import { type FormEvent, type PointerEvent, useRef } from "react";
+import { type FormEvent, type PointerEvent, type MutableRefObject, type Ref, useRef } from "react";
 
 type Props = {
   busy: boolean;
@@ -7,6 +7,7 @@ type Props = {
   prompt?: string;
   placeholder?: string;
   variant?: "stage" | "cmd" | "noc";
+  inputRef?: MutableRefObject<HTMLInputElement | null>;
   onSubmit: (text: string) => void;
   onPttStart: () => void;
   onPttStop: () => void;
@@ -19,15 +20,18 @@ export function CmdBar({
   prompt = "cmd",
   placeholder = "Speak freely…",
   variant = "stage",
+  inputRef,
   onSubmit,
   onPttStart,
   onPttStop,
 }: Props) {
-  const input = useRef<HTMLInputElement>(null);
+  const local = useRef<HTMLInputElement>(null);
+  const input = inputRef ?? local;
 
   const submit = (ev: FormEvent) => {
     ev.preventDefault();
     const value = input.current?.value.trim() ?? "";
+    if (!value) return;
     if (input.current) input.current.value = "";
     onSubmit(value);
     input.current?.focus();
@@ -37,7 +41,7 @@ export function CmdBar({
     <form className={`ck-cmdbar ck-cmdbar-${variant}`} onSubmit={submit}>
       <span className="ck-cmd-prompt">{prompt}</span>
       <input
-        ref={input}
+        ref={input as Ref<HTMLInputElement>}
         type="text"
         placeholder={placeholder}
         autoComplete="off"
@@ -52,7 +56,7 @@ export function CmdBar({
             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
               <path fill="currentColor" d="M3.4 20.6 21 12 3.4 3.4l.1 6.7L15 12 3.5 13.9z" />
             </svg>
-            {variant === "stage" ? <span>Send</span> : null}
+            {variant === "stage" ? <span className="ck-send-label">Send</span> : null}
           </button>
           <button
             type="button"
@@ -61,13 +65,16 @@ export function CmdBar({
             title="Hold to talk"
             onPointerDown={(ev: PointerEvent) => {
               ev.preventDefault();
+              ev.currentTarget.setPointerCapture(ev.pointerId);
               onPttStart();
             }}
             onPointerUp={(ev: PointerEvent) => {
               ev.preventDefault();
+              if (ev.currentTarget.hasPointerCapture(ev.pointerId)) {
+                ev.currentTarget.releasePointerCapture(ev.pointerId);
+              }
               onPttStop();
             }}
-            onPointerLeave={() => onPttStop()}
           >
             {variant === "cmd" ? (
               <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">

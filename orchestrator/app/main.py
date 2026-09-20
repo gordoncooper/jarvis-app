@@ -41,13 +41,15 @@ from .hands import (
     pending_alive,
     propose_confirm,
 )
+from .briefing_map import assemble_briefing
+from .pulse import get_pulse
 from .stt import health_whisper, transcribe
 from .tts import health_piper, synthesize
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.17-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.18")
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
@@ -178,7 +180,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.17-dev",
+        "version": "0.6.18",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -188,6 +190,12 @@ async def health() -> dict[str, Any]:
         "mock": settings.mock_llm,
         "memory_facts": len(mem().active_facts(500)),
     }
+
+
+@app.get("/v1/pulse")
+async def pulse() -> dict[str, Any]:
+    """Rack snapshot for Earth chips + NOC. Unknown fields are null."""
+    return await get_pulse()
 
 
 @app.get("/v1/session")
@@ -200,6 +208,7 @@ async def get_session(x_session_id: str | None = Header(default=None, alias="X-S
         "created_at": sess.created_at,
         "greeting": settings.greeting,
         "briefing_blurb": settings.briefing_blurb,
+        "briefing": assemble_briefing(_load_text(settings.briefing_path, "")),
     }
     pending = pending_alive(store.get_pending(sess.id))
     if store.get_pending(sess.id) and not pending:

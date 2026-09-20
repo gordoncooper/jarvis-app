@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ConfirmPayload, PulsePayload } from "../../api.js";
+import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
-import { HexMark, LiveDot } from "../chrome/Marks.js";
-import { MOCK } from "../mock.js";
+import { LiveDot } from "../chrome/Marks.js";
+import { RACK_IDS, pulseText, rackFilter, rackRoleLabel, steelNum, type RackFilter } from "../state/pulse.js";
+import { Ring } from "../viz/Rings.js";
+import { Spark } from "../viz/Spark.js";
+import { TopologySvg } from "../viz/TopologySvg.js";
+import { Waveform } from "../viz/Waveform.js";
 
 type Props = {
+  pulse: PulsePayload | null;
+  confirm: ConfirmPayload | null;
   busy: boolean;
   recording: boolean;
   sttOk: boolean;
@@ -13,122 +21,111 @@ type Props = {
   onPttStop: () => void;
 };
 
-function Bar({ value }: { value: number }) {
+function Bar({ value }: { value: number | null | undefined }) {
+  const n = typeof value === "number" && Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
   return (
     <span className="ck-bar">
-      <span style={{ width: `${Math.min(100, value)}%` }} />
+      <span style={{ width: `${n}%` }} />
     </span>
   );
 }
 
-function Ring({ label, value }: { label: string; value: number }) {
-  const r = 26;
-  const c = 2 * Math.PI * r;
-  const dash = `${(value / 100) * c * 0.85} ${c}`;
-  return (
-    <div className="ck-ring">
-      <svg viewBox="0 0 72 72">
-        <circle cx="36" cy="36" r={r} className="ck-ring-track" />
-        <circle
-          cx="36"
-          cy="36"
-          r={r}
-          className="ck-ring-fill"
-          strokeDasharray={dash}
-          transform="rotate(-90 36 36)"
-        />
-      </svg>
-      <div className="ck-ring-lab">
-        <strong>{label}</strong>
-        <span>{value}%</span>
-      </div>
-    </div>
-  );
+function envBar(value: number | null | undefined, max: number): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(100, Math.max(0, (value / max) * 100));
 }
 
-function Waveform({ active }: { active: boolean }) {
-  const bars = Array.from({ length: 48 }, (_, i) => {
-    const mid = Math.abs(i - 24) / 24;
-    const h = active
-      ? 18 + Math.sin(i * 0.55) * 14 * (1 - mid * 0.4)
-      : 4 + Math.sin(i * 0.4) * 2;
-    return h;
+export function Noc({
+  pulse,
+  confirm,
+  busy,
+  recording,
+  sttOk,
+  live,
+  onSubmit,
+  onPttStart,
+  onPttStop,
+}: Props) {
+  const [filters, setFilters] = useState<Record<RackFilter, boolean>>({
+    CTRL: true,
+    GPU: true,
+    DATA: true,
+    APPS: true,
   });
-  return (
-    <div className={`ck-wave-panel ${active ? "is-on" : ""}`}>
-      <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-        {bars.map((h, i) => {
-          const x = i * (200 / bars.length);
-          const y = 20 - h / 2;
-          return (
-            <rect
-              key={i}
-              x={x}
-              y={y}
-              width="2.2"
-              height={h}
-              rx="1"
-              fill="currentColor"
-              opacity={0.35 + (h / 40) * 0.65}
-            />
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
+  const [selected, setSelected] = useState<string | null>(null);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [gpuHist, setGpuHist] = useState<Array<{ a: number | null; b: number | null }>>([]);
+  const cmdInput = useRef<HTMLInputElement>(null);
 
-export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttStop }: Props) {
-  const [utc, setUtc] = useState("");
-  const [filters, setFilters] = useState({ CTRL: true, GPU: true, DATA: true, APPS: true });
-  const [syncMs, setSyncMs] = useState(1.342);
+  const nodes = pulse?.nodes ?? [];
+  const gpu01 = nodes.find((n) => n.id.trim().toLowerCase() === "gpu-01");
+  const gpu02 = nodes.find((n) => n.id.trim().toLowerCase() === "gpu-02");
+  const t1 = typeof gpu01?.temp_c === "number" && Number.isFinite(gpu01.temp_c) ? gpu01.temp_c : null;
+  const t2 = typeof gpu02?.temp_c === "number" && Number.isFinite(gpu02.temp_c) ? gpu02.temp_c : null;
 
   useEffect(() => {
-    const tick = () => {
-      const d = new Date();
-      setUtc(
-        `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:${String(d.getUTCSeconds()).padStart(2, "0")}`,
-      );
-      setSyncMs(1 + Math.random() * 0.8);
-    };
-    tick();
-    const id = window.setInterval(tick, 1000);
+    if (!pulse) return;
+    setSyncedAt(Date.now());
+    if (t1 == null && t2 == null) return;
+    setGpuHist((prev) => [...prev, { a: t1, b: t2 }].slice(-24));
+  }, [pulse, t1, t2]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  const visible = MOCK.nodes.filter((n) => {
-    if (n.role.includes("CONTROL") && !filters.CTRL) return false;
-    if (n.role.includes("GPU") && !filters.GPU) return false;
-    if (n.role.includes("STORAGE") && !filters.DATA) return false;
-    if (n.role.includes("WORKLOAD") && !filters.APPS) return false;
-    return true;
-  });
+  const events = useMemo(() => {
+    const rows = pulse?.events ?? [];
+    if (!selected) return rows;
+    return rows.filter((e) => (e.src || "").toLowerCase() === selected.toLowerCase());
+  }, [pulse, selected]);
+
+  const tableIds = RACK_IDS.filter((id) => filters[rackFilter(id)]);
+  const lan = pulseText(pulse?.lan);
+  const k3s = pulseText(pulse?.k3s);
+  const utc = pulseText(pulse?.utc);
+  const syncAge = syncedAt == null ? "—" : Math.max(0, (now - syncedAt) / 1000).toFixed(3);
+  const air = pulse?.env?.air_c;
+  const hum = pulse?.env?.hum;
+  const pwr = pulse?.env?.pwr;
+
+  function onApply() {
+    if (confirm) {
+      onSubmit("yes");
+      return;
+    }
+    cmdInput.current?.focus();
+  }
 
   return (
     <div className="ck-noc">
       <header className="ck-noc-top">
         <div className="ck-stage-brand">
-          <HexMark size={18} variant="dot" />
-          <span className="ck-brand">JARVIS</span>
-          <span className="ck-live-pill ck-pulse">
-            <LiveDot on={live} /> LIVE
-          </span>
+          <Brand live={live} size={18} />
           <span className="ck-noc-meta">
-            LAN {MOCK.lan}
+            LAN {lan ?? "—"}
             <span className="ck-pipe" />
-            k3s {MOCK.k3s}
+            k3s {k3s ?? "—"}
           </span>
         </div>
-        <span className="ck-noc-utc">UTC {utc}</span>
+        <span className="ck-noc-utc">UTC {utc ?? "—"}</span>
         <div className="ck-noc-actions">
-          <button type="button">APPLY ▾</button>
-          <button type="button">PULSE ▾</button>
-          <button type="button">STATUS ▾</button>
+          <button type="button" onClick={onApply}>
+            APPLY
+          </button>
+          <button type="button" onClick={() => onSubmit("pulse")}>
+            PULSE
+          </button>
+          <button type="button" onClick={() => onSubmit("status cluster")}>
+            STATUS
+          </button>
         </div>
       </header>
 
       <div className="ck-noc-grid">
-        <aside className="ck-panel ck-noc-left ck-pulse-border">
+        <aside className="ck-panel ck-noc-left">
           <h2>DOSSIER // TRACK MODE</h2>
           <dl className="ck-noc-dl">
             <div>
@@ -154,7 +151,7 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
           </dl>
           <h3>FILTERS</h3>
           <div className="ck-filters">
-            {(Object.keys(filters) as Array<keyof typeof filters>).map((k) => (
+            {(Object.keys(filters) as RackFilter[]).map((k) => (
               <label key={k}>
                 <input
                   type="checkbox"
@@ -167,81 +164,49 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
             ))}
           </div>
           <p className="ck-sync">
-            LAST SYNC 00:00:0{syncMs.toFixed(3).slice(0, 5)} <LiveDot on />
+            LAST SYNC {syncAge}s <LiveDot on={pulse != null} />
           </p>
         </aside>
 
         <section className="ck-panel ck-topo">
           <header>
             <h2>CLUSTER TOPOLOGY // ORTHO RACK VIEW</h2>
-            <span>6 NODES · 3U LOGICAL</span>
+            <span>{nodes.length ? `${nodes.length} NODES` : "6 NODES"} · 3U LOGICAL</span>
           </header>
           <div className="ck-topo-wrap">
-            <div className="ck-topo-grid">
-              {visible.map((n) => (
-                <article key={n.name} className="ck-node">
-                  <LiveDot on />
-                  <header>
-                    <strong>{n.name}</strong>
-                    <span>{n.role}</span>
-                  </header>
-                  <p className="ck-node-ip">{n.ip}</p>
-                  <div className="ck-node-meters">
-                    <label>
-                      CPU {n.cpu}% <Bar value={n.cpu} />
-                    </label>
-                    <label>
-                      RAM {n.ram}% <Bar value={n.ram} />
-                    </label>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <TopologySvg nodes={nodes} filters={filters} selected={selected} onSelect={setSelected} />
           </div>
         </section>
 
         <aside className="ck-panel ck-noc-right">
           <h2>SYSTEM RINGS // LIVE</h2>
           <div className="ck-rings">
-            <Ring label="CPU" value={MOCK.rings.cpu} />
-            <Ring label="MEM" value={MOCK.rings.mem} />
-            <Ring label="NET" value={MOCK.rings.net} />
-            <Ring label="IO" value={MOCK.rings.io} />
+            <Ring label="CPU" value={pulse?.rings?.cpu} />
+            <Ring label="MEM" value={pulse?.rings?.mem} />
+            <Ring label="NET" value={pulse?.rings?.net} />
+            <Ring label="IO" value={pulse?.rings?.io} />
           </div>
           <h2>VOICE CHANNEL // LIVE</h2>
           <Waveform active={recording} />
           <h2>GPU TEMP // LIVE</h2>
-          <div className="ck-spark">
-            <svg viewBox="0 0 200 48" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="var(--ck-accent)"
-                strokeWidth="1.6"
-                points="0,30 18,26 36,32 54,18 72,24 90,12 108,20 126,14 144,22 162,10 180,16 200,12"
-              />
-              <polyline
-                fill="none"
-                stroke="#5eead4"
-                strokeWidth="1.3"
-                opacity="0.65"
-                points="0,34 18,32 36,36 54,28 72,30 90,24 108,28 126,22 144,26 162,20 180,24 200,22"
-              />
-            </svg>
-            <div className="ck-spark-labels">
-              <span>GPU-01 61°C</span>
-              <span>GPU-02 58°C</span>
-            </div>
-          </div>
+          <Spark
+            history={gpuHist}
+            labelA={`GPU-01 ${t1 == null ? "—" : `${steelNum(t1)}°C`}`}
+            labelB={`GPU-02 ${t2 == null ? "—" : `${steelNum(t2)}°C`}`}
+          />
           <h2>ENVIRONMENT</h2>
           <div className="ck-env">
             <label>
-              <span>AIR {MOCK.env.air}°C</span> <Bar value={55} />
+              <span>AIR {air == null ? "—" : `${steelNum(air, 1)}°C`}</span>
+              <Bar value={envBar(air, 40)} />
             </label>
             <label>
-              <span>HUM {MOCK.env.hum}%</span> <Bar value={MOCK.env.hum} />
+              <span>HUM {hum == null ? "—" : `${steelNum(hum)}%`}</span>
+              <Bar value={hum} />
             </label>
             <label>
-              <span>PWR {MOCK.env.pwr}%</span> <Bar value={MOCK.env.pwr} />
+              <span>PWR {pwr == null ? "—" : `${steelNum(pwr)}%`}</span>
+              <Bar value={pwr} />
             </label>
           </div>
         </aside>
@@ -250,9 +215,10 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
       <div className="ck-ticker">
         <strong>EVENT TICKER // TAIL -20</strong>
         <div className="ck-ticker-line">
-          {MOCK.events.map((e) => (
-            <span key={`${e.t}-${e.msg}`}>
-              {e.t} · {e.node} · {e.msg}
+          {events.length === 0 ? <span>no events</span> : null}
+          {events.map((e, i) => (
+            <span key={`${e.ts}-${e.src}-${e.msg}-${i}`}>
+              {(e.ts || "—").replace("T", " ").replace("Z", "")} · {e.src || "—"} · {e.msg || "—"}
             </span>
           ))}
         </div>
@@ -274,34 +240,38 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
             </tr>
           </thead>
           <tbody>
-            {MOCK.nodes.map((n) => (
-              <tr key={n.name}>
-                <td className="is-accent">{n.name}</td>
-                <td>{n.role}</td>
-                <td>{n.ip}</td>
-                <td>
-                  <Bar value={n.cpu} /> {n.cpu}%
-                </td>
-                <td>
-                  <Bar value={n.ram} /> {n.ram}%
-                </td>
-                <td>
-                  <Bar value={n.disk} /> {n.disk}%
-                </td>
-                <td>{n.load.toFixed(1)}</td>
-              </tr>
-            ))}
+            {tableIds.map((id) => {
+              const n = nodes.find((row) => row.id.trim().toLowerCase() === id);
+              return (
+                <tr key={id}>
+                  <td className="is-accent">{id}</td>
+                  <td>{rackRoleLabel(n?.role, id)}</td>
+                  <td>{n?.ip?.trim() || "—"}</td>
+                  <td>
+                    <Bar value={n?.cpu} /> {steelNum(n?.cpu)}%
+                  </td>
+                  <td>
+                    <Bar value={n?.ram} /> {steelNum(n?.ram)}%
+                  </td>
+                  <td>
+                    <Bar value={n?.disk} /> {steelNum(n?.disk)}%
+                  </td>
+                  <td>{steelNum(n?.load, 1)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>
 
       <CmdBar
-        variant="noc"
+        variant="stage"
         prompt="> cmd"
         placeholder="Speak freely."
         busy={busy}
         recording={recording}
         sttOk={sttOk}
+        inputRef={cmdInput}
         onSubmit={onSubmit}
         onPttStart={onPttStart}
         onPttStop={onPttStop}

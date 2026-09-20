@@ -41,22 +41,7 @@
   src: url("/fonts/plex-mono-600.woff2") format("woff2");
 }
 
-:root {
-  --ck-bg: #050607;
-  --ck-panel: #0c0f12;
-  --ck-panel-2: #10151a;
-  --ck-hair: #1c252e;
-  --ck-steel: #9aa8b4;
-  --ck-ink: #f2f0ea;
-  --ck-accent: #2dd4bf;
-  --ck-accent-warm: #e8a060;
-  --ck-accent-dim: color-mix(in oklch, var(--ck-accent) 35%, transparent);
-  --ck-warm-glow: color-mix(in oklch, var(--ck-accent-warm) 42%, transparent);
-  --ck-font: "IBM Plex Sans", "Segoe UI", sans-serif;
-  --ck-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --ck-radius: 6px;
-  --ck-pulse: 2.4s;
-}
+/* :root tokens live in src/cockpit/tokens.css (esbuild prepends them). */
 
 @keyframes ck-pulse-glow {
   0%,
@@ -149,29 +134,33 @@ input {
 
 .ck-track {
   display: flex;
-  width: 400%;
   height: 100%;
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
 .ck-slide {
-  width: 25%;
+  flex: 0 0 100vw;
+  width: 100vw;
   height: 100%;
-  flex: 0 0 25%;
   position: relative;
   overflow: hidden;
 }
 
 .ck-dots {
   position: fixed;
-  bottom: 0.35rem;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 0.45rem;
+  right: 0.45rem;
+  left: auto;
+  transform: none;
   z-index: 50;
   display: flex;
   gap: 0.35rem;
   pointer-events: auto;
+}
+
+.ck-shell[data-slide="login"] .ck-dots {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .ck-dots button {
@@ -191,44 +180,53 @@ input {
 
 /* —— shared —— */
 .ck-hex {
-  color: var(--ck-accent);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
+.ck-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
 .ck-brand {
+  font-family: var(--type-ui);
   font-weight: 600;
-  letter-spacing: 0.18em;
-  font-size: 0.95rem;
+  letter-spacing: 0.22em;
+  font-size: 0.92rem;
+  color: var(--ink);
 }
 
 .ck-live-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-family: var(--ck-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  color: var(--ck-accent);
+  gap: 0.4rem;
+  font-family: var(--type-data);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: var(--accent);
 }
 
+.ck-live-pip,
 .ck-live-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #3a4550;
+  background: color-mix(in oklch, var(--steel) 40%, var(--bg));
   display: inline-block;
 }
 
+.ck-live-pip.is-on,
 .ck-live-dot.is-on {
-  background: var(--ck-accent);
-  box-shadow: 0 0 8px var(--ck-accent-dim);
-  animation: ck-pulse-glow var(--ck-pulse) ease-in-out infinite;
+  background: var(--accent);
+  box-shadow: 0 0 7px color-mix(in oklch, var(--accent) 40%, transparent);
 }
 
 .ck-stage-brand {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.85rem;
 }
 
 .ck-conc {
@@ -243,9 +241,9 @@ input {
 }
 
 .ck-panel {
-  background: color-mix(in oklch, var(--ck-panel) 92%, transparent);
-  border: 1px solid var(--ck-hair);
-  border-radius: var(--ck-radius);
+  background: color-mix(in oklch, var(--panel) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
 
 .ck-panel h2 {
@@ -269,7 +267,7 @@ input {
   gap: 0.55rem;
   padding: 0.45rem 0.7rem;
   background: color-mix(in oklch, var(--ck-panel) 88%, transparent);
-  border: 1px solid var(--ck-hair);
+  border: 1px solid var(--line);
   border-radius: 999px;
 }
 
@@ -299,7 +297,7 @@ input {
   font-family: var(--ck-mono);
   font-size: 0.65rem;
   letter-spacing: 0.08em;
-  border: 1px solid var(--ck-hair);
+  border: 1px solid var(--line);
   background: var(--ck-panel-2);
   color: var(--ck-ink);
   border-radius: 999px;
@@ -362,6 +360,17 @@ button:disabled {
   inset: 0;
 }
 
+.ck-login-gate {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 2;
+}
+
 .ck-login-bg {
   position: absolute;
   inset: 0;
@@ -369,6 +378,35 @@ button:disabled {
   height: 100%;
   object-fit: cover;
   object-position: center;
+}
+
+@keyframes ck-tri-once {
+  0% {
+    opacity: 0.15;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  45% {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px var(--ck-accent-dim));
+  }
+  100% {
+    opacity: 0;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+.ck-login-tri {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 3.1rem;
+  height: 2.35rem;
+  transform: translateX(-50%);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  background: color-mix(in oklch, var(--accent) 55%, transparent);
+  pointer-events: none;
+  z-index: 1;
+  animation: ck-tri-once 0.8s ease 1 forwards;
 }
 
 .ck-login-card {
@@ -445,7 +483,7 @@ button:disabled {
 .ck-stage {
   position: absolute;
   inset: 0;
-  background: #030405;
+  background: var(--bg);
   font-family: var(--ck-mono);
   container-type: size;
   container-name: stage;
@@ -502,15 +540,16 @@ button:disabled {
   right: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(16rem, 1fr) auto minmax(9rem, 12rem);
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
   align-items: start;
-  gap: clamp(0.8rem, 1.5cqw, 1.4rem);
-  padding: clamp(0.85rem, 1.6cqh, 1.25rem) clamp(1rem, 2cqw, 1.6rem) 0.6rem;
+  gap: clamp(0.55rem, 1.2cqw, 1.2rem);
+  padding: clamp(0.7rem, 1.4cqh, 1.1rem) clamp(0.85rem, 1.6cqw, 1.4rem) 0.5rem;
 }
 
 .ck-stage-meta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.95rem;
   padding-top: 0.15rem;
 }
@@ -537,29 +576,38 @@ button:disabled {
 .ck-pipe {
   width: 1px;
   height: 1.65rem;
-  background: color-mix(in oklch, #fff 18%, transparent);
+  background: var(--line);
   align-self: center;
 }
 
 .ck-stage-systems {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.65rem;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
   padding-top: 0.1rem;
+  min-width: 0;
+}
+
+.ck-conc {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .ck-sys {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.2rem;
-  color: var(--ck-steel);
-  min-width: 3.8rem;
+  gap: 0.28rem;
+  color: var(--steel);
+  min-width: 0;
 }
 
 .ck-sys-txt {
-  text-align: center;
+  text-align: left;
   line-height: 1.15;
 }
 
@@ -577,7 +625,18 @@ button:disabled {
 }
 
 .ck-sys.is-live {
-  color: var(--ck-accent);
+  color: var(--accent);
+}
+
+.ck-stage-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ck-stage-hud .ck-cmdbar {
+  pointer-events: auto;
 }
 
 .ck-stage-dossier {
@@ -586,11 +645,9 @@ button:disabled {
   left: clamp(1rem, 2cqw, 1.6rem);
   z-index: 2;
   width: clamp(14rem, 22cqw, 18rem);
-  padding: clamp(0.85rem, 1.4cqh, 1.1rem) clamp(0.95rem, 1.4cqw, 1.15rem);
-  background: rgba(6, 5, 4, 0.48);
-  border: 1px solid color-mix(in oklch, var(--ck-accent) 38%, transparent);
-  border-radius: 4px;
-  backdrop-filter: blur(6px);
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
 .ck-panel-title {
@@ -625,27 +682,34 @@ button:disabled {
 }
 
 .ck-stage-dossier dd.is-accent {
-  color: var(--ck-accent-warm);
+  color: var(--accent);
+}
+
+.ck-meta-v.is-empty,
+.ck-chip em.is-empty,
+.ck-toast-asst.is-empty {
+  color: var(--steel);
+  opacity: 0.7;
 }
 
 .ck-stage-bottom {
   position: absolute;
-  left: clamp(1rem, 2cqw, 1.6rem);
-  right: clamp(1rem, 2cqw, 1.6rem);
-  bottom: clamp(5.4rem, 11cqh, 6.4rem);
+  left: clamp(0.85rem, 1.8cqw, 1.5rem);
+  right: clamp(0.85rem, 1.8cqw, 1.5rem);
+  bottom: clamp(5.4rem, 11cqh, 6.6rem);
   z-index: 2;
   display: flex;
-  gap: 0.65rem;
+  gap: 0.5rem;
   align-items: flex-end;
   pointer-events: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .ck-chip {
   padding: 0.55rem 0.85rem;
-  border: 1px solid color-mix(in oklch, #fff 16%, transparent);
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.48);
+  background: color-mix(in oklch, var(--bg) 72%, transparent);
   font-size: clamp(0.68rem, 1.1cqw, 0.78rem);
   letter-spacing: 0.1em;
   color: var(--ck-steel);
@@ -668,7 +732,7 @@ button:disabled {
 
 .ck-chip em {
   font-style: normal;
-  color: var(--ck-accent);
+  color: var(--accent);
   font-size: clamp(0.82rem, 1.3cqw, 0.95rem);
   letter-spacing: 0.04em;
 }
@@ -676,40 +740,41 @@ button:disabled {
 .ck-chip-row {
   margin-left: auto;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
-.ck-stage-reply {
+.ck-stage-toast {
   position: absolute;
   left: 50%;
-  bottom: clamp(5.6rem, 12cqh, 6.8rem);
+  bottom: clamp(4.1rem, 8.4cqh, 5.1rem);
   transform: translateX(-50%);
   z-index: 3;
-  width: min(48rem, 78cqw);
-  max-height: 26cqh;
-  overflow: auto;
-  padding: clamp(0.75rem, 1.4cqh, 1rem) clamp(1rem, 1.8cqw, 1.35rem);
-  background: rgba(4, 3, 2, 0.62);
-  border: 1px solid color-mix(in oklch, var(--ck-accent-warm) 28%, transparent);
-  border-radius: 14px;
-  pointer-events: auto;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 color-mix(in oklch, var(--ck-accent-warm) 18%, transparent);
+  width: min(52rem, 84cqw);
+  pointer-events: none;
+  font-family: var(--type-ui);
 }
 
-.ck-msg-user {
-  margin: 0 0 0.35rem;
-  color: var(--ck-steel);
-  font-size: clamp(0.88rem, 1.45cqw, 1.05rem);
-  line-height: 1.45;
-}
-
-.ck-msg-asst {
+.ck-toast-user,
+.ck-toast-asst {
   margin: 0;
-  font-size: clamp(0.95rem, 1.55cqw, 1.15rem);
-  color: var(--ck-ink);
-  white-space: pre-wrap;
-  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.ck-toast-user {
+  color: var(--steel);
+  font-size: 0.82rem;
+  margin-bottom: 0.2rem;
+}
+
+.ck-toast-asst {
+  color: var(--ink);
+  font-size: 0.92rem;
 }
 
 .ck-stage .ck-cmdbar {
@@ -719,25 +784,35 @@ button:disabled {
   width: min(52rem, 84cqw);
   bottom: clamp(1.1rem, 2.4cqh, 1.5rem);
   z-index: 3;
-  border-radius: 999px;
+  border-radius: 2px;
   pointer-events: auto;
-  padding: clamp(0.55rem, 1.2cqh, 0.75rem) clamp(0.85rem, 1.5cqw, 1.1rem);
-  background: rgba(8, 7, 6, 0.72);
-  border: 1px solid color-mix(in oklch, var(--ck-accent-warm) 32%, transparent);
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.4), 0 0 28px color-mix(in oklch, var(--ck-accent-warm) 12%, transparent);
-  backdrop-filter: blur(12px);
+  padding: 0.55rem 0.85rem;
+  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .ck-stage .ck-cmdbar input {
-  font-size: clamp(0.95rem, 1.5cqw, 1.12rem);
-  color: var(--ck-ink);
+  font-size: 0.95rem;
+  color: var(--ink);
 }
 
 .ck-stage .ck-cmdbar .ck-send,
 .ck-stage .ck-cmdbar .ck-mic {
-  font-size: clamp(0.78rem, 1.2cqw, 0.9rem);
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
+  font-size: 0.68rem;
+  padding: 0.28rem 0.45rem;
+  border-radius: 2px;
+  background: transparent;
+  border-color: transparent;
+}
+
+.ck-stage .ck-send-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
 }
 
 .ck-degraded {
@@ -748,7 +823,7 @@ button:disabled {
   z-index: 3;
   margin: 0;
   font-size: 0.78rem;
-  color: #d4786a;
+  color: var(--bad);
 }
 
 /* —— cmd (briefing) —— */
@@ -757,9 +832,10 @@ button:disabled {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: #0a0c0f;
-  padding: 0.55rem 0.9rem 0.55rem;
-  gap: 0.55rem;
+  background: var(--bg);
+  padding: 0.7rem 1rem 0.7rem;
+  gap: 0.65rem;
+  font-family: var(--type-ui);
 }
 
 .ck-cmd-top {
@@ -767,7 +843,8 @@ button:disabled {
   align-items: center;
   gap: 1rem;
   padding-bottom: 0.55rem;
-  border-bottom: 1px solid var(--ck-hair);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
 }
 
 .ck-cmd-widgets {
@@ -776,12 +853,13 @@ button:disabled {
   justify-content: center;
   align-items: center;
   gap: 0.9rem;
+  min-width: 0;
 }
 
 .ck-vdiv {
   width: 1px;
   height: 1.8rem;
-  background: var(--ck-hair);
+  background: var(--line);
 }
 
 .ck-widget {
@@ -816,6 +894,7 @@ button:disabled {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   color: var(--ck-steel);
+  flex-shrink: 0;
 }
 
 .ck-cmd-nav button {
@@ -836,8 +915,8 @@ button:disabled {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1.05fr 1.6fr 1.15fr;
-  gap: 0.6rem;
+  grid-template-columns: 17.5rem minmax(0, 1fr) 22.5rem;
+  gap: 0.7rem;
 }
 
 .ck-cmd-body .ck-panel {
@@ -845,9 +924,16 @@ button:disabled {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
-  border-radius: 8px;
-  background: #0d1116;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.ck-cmd-body .ck-channel {
+  padding: 0.7rem 0.75rem 0.55rem;
+  border-radius: var(--radius) 2px 2px var(--radius);
 }
 
 .ck-cmd .ck-panel h2 {
@@ -898,7 +984,7 @@ button:disabled {
   grid-template-columns: 2.5rem 1.5rem 1fr;
   gap: 0.45rem;
   padding: 0.55rem 0;
-  border-bottom: 1px solid color-mix(in oklch, var(--ck-hair) 80%, transparent);
+  border-bottom: 1px solid var(--line);
   align-items: start;
 }
 
@@ -980,7 +1066,7 @@ button:disabled {
 .ck-focus {
   margin-top: auto;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--ck-hair);
+  border-top: 1px solid var(--line);
 }
 
 .ck-focus strong {
@@ -1001,6 +1087,16 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.45rem;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ck-channel header h2 {
+  font-size: 0.7rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ck-collapse {
@@ -1038,10 +1134,10 @@ button:disabled {
 }
 
 .ck-bubble-body {
-  padding: 0.65rem 0.75rem;
-  border-radius: 10px;
-  background: #151a20;
-  border: 1px solid var(--ck-hair);
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
 }
 
 .ck-bubble.assistant .ck-bubble-body {
@@ -1057,7 +1153,54 @@ button:disabled {
 
 .ck-channel .ck-cmdbar {
   border-radius: 8px;
-  background: #12171d;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+
+.ck-confirm-card {
+  border: 1px solid color-mix(in oklch, var(--accent) 45%, transparent);
+  background: var(--panel-2);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ck-confirm-card strong {
+  font-family: var(--ck-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--ck-accent);
+}
+
+.ck-confirm-card p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ck-ink);
+  white-space: pre-wrap;
+}
+
+.ck-confirm-card-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ck-confirm-card-actions button {
+  font-family: var(--ck-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--ck-accent-dim);
+  background: var(--ck-panel-2);
+  color: var(--ck-accent);
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  cursor: pointer;
+}
+
+.ck-confirm-card-actions button:last-child {
+  color: var(--ck-steel);
+  border-color: var(--line);
 }
 
 .ck-cmdbar-cmd .ck-send {
@@ -1087,19 +1230,22 @@ button:disabled {
 
 .ck-cmd-foot {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
+  padding-right: 1.6rem;
 }
 
 .ck-pill {
-  padding: 0.65rem 0.8rem;
-  border: 1px solid var(--ck-hair);
-  border-radius: 10px;
-  background: #0d1116;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  min-height: 3.6rem;
+  gap: 0.28rem;
+  min-height: 3.4rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .ck-pill-head {
@@ -1112,9 +1258,12 @@ button:disabled {
 .ck-pill-head strong {
   font-size: 0.62rem;
   letter-spacing: 0.14em;
-  color: var(--ck-steel);
+  color: var(--steel);
   font-weight: 500;
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ck-pill > span,
@@ -1152,9 +1301,10 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  padding: 0.5rem 0.65rem 0.45rem;
-  background: #050607;
-  font-family: var(--ck-mono);
+  padding: 0.5rem 0.7rem 0.45rem;
+  background: var(--bg);
+  font-family: var(--type-data);
+  min-width: 0;
 }
 
 .ck-noc-top {
@@ -1162,7 +1312,8 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.2rem;
+  min-width: 0;
 }
 
 .ck-noc-meta {
@@ -1183,16 +1334,20 @@ button:disabled {
   font-size: 0.7rem;
   color: var(--ck-steel);
   letter-spacing: 0.04em;
+  flex: 1;
+  text-align: center;
+  min-width: 0;
 }
 
 .ck-noc-actions {
   display: flex;
   gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .ck-noc-actions button {
   background: transparent;
-  border: 1px solid var(--ck-hair);
+  border: 1px solid var(--line);
   color: var(--ck-ink);
   font-family: var(--ck-mono);
   font-size: 0.6rem;
@@ -1208,18 +1363,28 @@ button:disabled {
 }
 
 .ck-noc-grid {
-  flex: 1.15;
+  flex: 1;
   min-height: 0;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 11.5rem minmax(0, 1fr) 13.5rem;
+  grid-template-columns: 11rem minmax(0, 1fr) 12.75rem;
   gap: 0.4rem;
 }
 
 .ck-noc-grid .ck-panel {
-  padding: 0.5rem 0.6rem;
+  padding: 0.5rem 0.55rem;
   overflow: auto;
+  min-width: 0;
   border-radius: 2px;
-  background: #080a0c;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.ck-noc-grid .ck-topo {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .ck-noc .ck-panel h2 {
@@ -1316,24 +1481,81 @@ button:disabled {
   position: relative;
   min-height: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in oklch, var(--accent) 26%, var(--line));
+}
+
+.ck-topo-svg-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ck-topo-traces {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.ck-topo-traces path {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1px;
 }
 
 .ck-topo-grid {
   position: relative;
   z-index: 1;
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.65rem 0.8rem;
-  padding: 0.45rem 0.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 1fr 1fr;
+  gap: 0.55rem 0.65rem;
+  padding: 0.5rem 0.45rem 0.45rem;
 }
 
 .ck-node {
   position: relative;
-  border: 1px solid var(--ck-hair);
-  border-radius: 4px;
-  padding: 0.55rem 0.6rem 0.6rem;
-  background: rgba(12, 16, 20, 0.92);
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  border: 1px solid color-mix(in oklch, var(--accent) 22%, var(--line));
+  border-radius: 2px;
+  padding: 0.45rem 0.5rem 0.5rem;
+  background: color-mix(in oklch, var(--panel-2) 92%, transparent);
   transition: border-color 220ms ease, box-shadow 220ms ease;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.ck-node.is-off {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.ck-node.is-selected {
+  border-color: color-mix(in oklch, var(--ck-accent) 55%, transparent);
+}
+
+.ck-node.is-empty {
+  opacity: 0.72;
 }
 
 .ck-node:hover {
@@ -1341,7 +1563,8 @@ button:disabled {
   box-shadow: 0 0 16px color-mix(in oklch, var(--ck-accent-warm) 14%, transparent);
 }
 
-.ck-node > .ck-live-dot {
+.ck-node > .ck-live-dot,
+.ck-node > .ck-live-pip {
   position: absolute;
   top: 0.4rem;
   right: 0.4rem;
@@ -1367,9 +1590,13 @@ button:disabled {
 }
 
 .ck-node-ip {
-  margin: 0.3rem 0 0.4rem;
+  margin: 0.15rem 0 0.2rem;
   font-size: 0.62rem;
   color: var(--ck-steel);
+}
+
+.ck-node-meters {
+  margin-top: auto;
 }
 
 .ck-node-meters label {
@@ -1382,7 +1609,7 @@ button:disabled {
 .ck-bar {
   display: block;
   height: 3px;
-  background: #151a20;
+  background: var(--panel);
   border-radius: 1px;
   overflow: hidden;
   margin-top: 0.12rem;
@@ -1398,23 +1625,24 @@ button:disabled {
 .ck-rings {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.2rem 0.15rem;
-  margin-bottom: 0.45rem;
+  gap: 0.15rem 0.1rem;
+  margin-bottom: 0.4rem;
 }
 
 .ck-ring {
   position: relative;
   text-align: center;
+  min-width: 0;
 }
 
 .ck-ring svg {
   width: 100%;
-  max-width: 4rem;
+  max-width: 3.4rem;
 }
 
 .ck-ring-track {
   fill: none;
-  stroke: #151a20;
+  stroke: var(--panel-2);
   stroke-width: 3.5;
 }
 
@@ -1445,9 +1673,9 @@ button:disabled {
 .ck-wave-panel {
   height: 2.5rem;
   margin-bottom: 0.45rem;
-  border: 1px solid var(--ck-hair);
+  border: 1px solid var(--line);
   border-radius: 2px;
-  background: #06080a;
+  background: var(--bg);
   color: var(--ck-accent);
   padding: 0.15rem 0.25rem;
   opacity: 0.55;
@@ -1469,8 +1697,8 @@ button:disabled {
 .ck-spark svg {
   width: 100%;
   height: 2.5rem;
-  background: #06080a;
-  border: 1px solid var(--ck-hair);
+  background: var(--bg);
+  border: 1px solid var(--line);
   border-radius: 2px;
 }
 
@@ -1497,9 +1725,9 @@ button:disabled {
   align-items: center;
   gap: 0.65rem;
   padding: 0.32rem 0.5rem;
-  border: 1px solid var(--ck-hair);
+  border: 1px solid var(--line);
   border-radius: 2px;
-  background: #080a0c;
+  background: var(--panel);
   font-size: 0.58rem;
   overflow: hidden;
 }
@@ -1531,10 +1759,14 @@ button:disabled {
 }
 
 .ck-metrics {
-  padding: 0.4rem 0.5rem 0.45rem;
-  max-height: 26%;
+  padding: 0.35rem 0.5rem 0.4rem;
+  flex: 0 0 auto;
+  max-height: 28%;
+  min-height: 7.2rem;
   overflow: auto;
   border-radius: 2px;
+  border: 1px solid var(--line);
+  background: var(--panel);
 }
 
 .ck-metrics table {
@@ -1548,13 +1780,13 @@ button:disabled {
   color: var(--ck-steel);
   font-weight: 500;
   padding: 0.22rem 0.3rem;
-  border-bottom: 1px solid var(--ck-hair);
+  border-bottom: 1px solid var(--line);
   letter-spacing: 0.08em;
 }
 
 .ck-metrics td {
-  padding: 0.28rem 0.3rem;
-  border-bottom: 1px solid color-mix(in oklch, var(--ck-hair) 55%, transparent);
+  padding: 0.22rem 0.3rem;
+  border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
 
@@ -1567,7 +1799,9 @@ button:disabled {
 
 .ck-noc .ck-cmdbar {
   border-radius: 2px;
-  background: #080a0c;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  margin-right: 1.55rem;
 }
 
 .ck-confirm {
@@ -1599,7 +1833,23 @@ button:disabled {
   color: var(--ck-accent) !important;
 }
 
-@media (max-width: 1100px) {
+@media (prefers-reduced-motion: reduce) {
+  .ck-track {
+    transition: none;
+  }
+  .ck-pulse,
+  .ck-pulse-border,
+  .ck-live-pip.is-on,
+  .ck-live-dot.is-on,
+  .ck-login-tri {
+    animation: none;
+  }
+  .ck-login-tri {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 900px) {
   .ck-cmd-body {
     grid-template-columns: 1fr 1fr;
   }
@@ -1607,13 +1857,13 @@ button:disabled {
     display: none;
   }
   .ck-noc-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) 11.5rem;
   }
   .ck-noc-left {
     display: none;
   }
   .ck-topo-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
   .ck-stage-systems {
     flex-direction: row;
