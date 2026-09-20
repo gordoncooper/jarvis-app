@@ -17,13 +17,20 @@ from .config import settings
 from .llm import chat_stream, health_llm
 from .memory import PromotedMemory, parse_memory_intent
 from .session_store import SessionStore
+from .hands import (
+    audit_verb,
+    execute_verb,
+    format_verb_reply,
+    health_hands,
+    match_verb,
+)
 from .stt import health_whisper, transcribe
 from .tts import health_piper, synthesize
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.6-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.7-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -75,7 +82,9 @@ def system_prompt() -> str:
         parts.append("Promoted memory (Gordon asked you to remember):\n" + bullet)
     parts.append(
         "You have no tools in this turn. Do not invent live cluster numbers; "
-        "say you do not know if not in the briefing or promoted memory."
+        "say you do not know if not in the briefing or promoted memory. "
+        "Cluster health, GPU metrics, and the lab map are handled as declared "
+        "verbs before this talker runs — do not pretend you queried them."
     )
     return "\n\n".join(parts)
 
@@ -106,6 +115,7 @@ async def health() -> dict[str, Any]:
     llm_ok, llm_reason = await health_llm()
     stt_ok, stt_reason = await health_whisper()
     tts_ok, tts_reason = await health_piper()
+    hands_ok, hands_reason = await health_hands()
     degraded = not llm_ok
     reason = None if llm_ok else llm_reason
     if not degraded and not stt_ok:
@@ -115,12 +125,13 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.6-dev",
+        "version": "0.6.7-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
         "stt": stt_ok,
         "tts": tts_ok,
+        "hands": hands_ok,
         "mock": settings.mock_llm,
         "memory_facts": len(mem().active_facts(500)),
     }
@@ -248,6 +259,61 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 "reply_text": reply,
                 "degraded": False,
                 "memory": intent.kind,
+                "transcript": text,
+            }
+        )
+
+    hit = match_verb(text)
+    if hit is not None:
+        accept = request.headers.get("accept", "")
+        want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
+        try:
+            raw = await execute_verb(hit.name)
+            reply = format_verb_reply(hit.name, raw)
+            audit_verb(
+                settings.memory_db_path,
+                verb=hit.name,
+                ok=True,
+                detail=raw[:500],
+                session_id=sess.id,
+            )
+        except Exception as e:  # noqa: BLE001
+            log.exception("verb %s failed", hit.name)
+            reply = (
+                f"I could not run {hit.name} just now "
+                f"({type(e).__name__}). Live numbers need Hands — try again shortly."
+            )
+            audit_verb(
+                settings.memory_db_path,
+                verb=hit.name,
+                ok=False,
+                detail=str(e)[:500],
+                session_id=sess.id,
+            )
+        store.append(sess.id, "assistant", reply)
+        if want_sse:
+
+            async def verb_gen() -> AsyncIterator[bytes]:
+                yield _sse("meta", {"session_id": sess.id, "transcript": text})
+                yield _sse("token", {"text": reply})
+                yield _sse(
+                    "done",
+                    {
+                        "session_id": sess.id,
+                        "reply_text": reply,
+                        "degraded": False,
+                        "verb": hit.name,
+                        "transcript": text,
+                    },
+                )
+
+            return StreamingResponse(verb_gen(), media_type="text/event-stream")
+        return JSONResponse(
+            {
+                "session_id": sess.id,
+                "reply_text": reply,
+                "degraded": False,
+                "verb": hit.name,
                 "transcript": text,
             }
         )

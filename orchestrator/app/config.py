@@ -31,5 +31,7 @@ class Settings(BaseSettings):
     piper_model: str = "tts-1"
     piper_voice: str = "alloy"  # → en_GB-northern_english_male-medium (D-0014)
 
+    hands_base: str = "http://openclaw.agents.svc.cluster.local:4001"
+
 
 settings = Settings()
