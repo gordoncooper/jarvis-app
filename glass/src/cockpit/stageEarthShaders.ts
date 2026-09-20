@@ -28,7 +28,7 @@ void main() {
   vec3 bump = texture2D(tNormal, vUv).xyz * 2.0 - 1.0;
   n = normalize(n + bump * 0.28);
 
-  vec3 light = normalize(vec3(0.55, 0.35, 0.72));
+  vec3 light = normalize(mix(vec3(0.55, 0.35, 0.72), normalize(cameraPosition), 0.55));
   vec3 view = normalize(cameraPosition - vWorld);
   float ndl = dot(n, light);
   float dayF = smoothstep(-0.18, 0.42, ndl);
@@ -41,13 +41,13 @@ void main() {
   lights *= lights;
   vec3 gold = vec3(1.0, 0.72, 0.38);
   vec3 amber = vec3(1.0, 0.55, 0.22);
-  lights = lights * mix(gold, amber, 0.35) * 4.2;
+  lights = lights * mix(gold, amber, 0.35) * 5.4;
 
-  vec3 nightBase = dayC * 0.07 * vec3(0.85, 0.78, 0.7);
+  vec3 nightBase = dayC * 0.12 * vec3(0.9, 0.82, 0.72);
   vec3 nightC = nightBase + lights;
 
-  vec3 dayLit = dayC * (0.22 + 0.78 * smoothstep(-0.1, 1.0, ndl));
-  dayLit += vec3(0.42, 0.18, 0.06) * dusk * 0.55;
+  vec3 dayLit = dayC * (0.32 + 0.78 * smoothstep(-0.1, 1.0, ndl));
+  dayLit += vec3(0.48, 0.22, 0.08) * dusk * 0.7;
 
   vec3 col = mix(nightC, dayLit, dayF);
 
@@ -61,7 +61,7 @@ void main() {
   col += vec3(0.95, 0.55, 0.28) * fres * dusk * 0.22;
 
   float facing = max(dot(normalize(vNormal), view), 0.0);
-  col *= mix(1.0, 0.62, pow(facing, 1.35) * 0.55);
+  col *= mix(1.0, 0.78, pow(facing, 1.35) * 0.4);
 
   gl_FragColor = vec4(col, 1.0);
 }

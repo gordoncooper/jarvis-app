@@ -13,8 +13,8 @@ import {
 const R = 1.6;
 
 /** Americas-facing start: CONUS under the camera (Blue Marble UV, +Y west). */
-const USA_Y = 5.87;
-const USA_X = 0.18;
+const USA_Y = 4.85;
+const USA_X = 0.28;
 
 function useMaps() {
   const [day, night, spec, normal] = useLoader(THREE.TextureLoader, [
@@ -76,7 +76,7 @@ function WarmEarth() {
   );
 
   useFrame((_, dt) => {
-    if (group.current) group.current.rotation.y += 0.018 * dt;
+    if (group.current) group.current.rotation.y += 0.022 * dt;
   });
 
   return (
@@ -95,14 +95,14 @@ function Scene() {
   return (
     <>
       <color attach="background" args={["#030405"]} />
-      <ambientLight intensity={0.18} />
-      <directionalLight position={[4, 2, 3]} intensity={0.55} color="#ffd6a8" />
+      <ambientLight intensity={0.28} />
+      <directionalLight position={[4, 2, 3]} intensity={0.85} color="#ffd6a8" />
       <Stars radius={90} depth={50} count={2200} factor={2.4} saturation={0} fade speed={0.12} />
       <Suspense fallback={null}>
         <WarmEarth />
       </Suspense>
       <EffectComposer multisampling={0} enableNormalPass={false}>
-        <Bloom intensity={0.28} luminanceThreshold={0.82} luminanceSmoothing={0.28} mipmapBlur />
+        <Bloom intensity={0.22} luminanceThreshold={0.86} luminanceSmoothing={0.32} mipmapBlur />
       </EffectComposer>
     </>
   );
@@ -118,7 +118,7 @@ export function StageEarth() {
           alpha: false,
           powerPreference: "high-performance",
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.05,
+          toneMappingExposure: 1.22,
         }}
         camera={{ position: [0, 0.28, 3.55], fov: 34, near: 0.1, far: 120 }}
       >
