@@ -11,6 +11,7 @@ export type HealthPayload = {
   reason?: string | null;
   stt?: boolean;
   tts?: boolean;
+  hands?: boolean;
 };
 
 const jsonHeaders = { Accept: "application/json" };

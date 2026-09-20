@@ -30,7 +30,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.8-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.9-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -122,10 +122,13 @@ async def health() -> dict[str, Any]:
         reason = stt_reason
     elif not degraded and not tts_ok:
         reason = tts_reason
+    elif not degraded and not hands_ok:
+        # Soft — talker still works; glass banners Hands separately.
+        reason = hands_reason
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.8-dev",
+        "version": "0.6.9-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -268,13 +271,13 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         accept = request.headers.get("accept", "")
         want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
         try:
-            raw = await execute_verb(hit.name)
-            reply = format_verb_reply(hit.name, raw)
+            body = await execute_verb(hit.name)
+            reply = format_verb_reply(hit.name, body)
             audit_verb(
                 settings.memory_db_path,
                 verb=hit.name,
                 ok=True,
-                detail=raw[:500],
+                detail=(body.get("text") or str(body))[:500],
                 session_id=sess.id,
             )
         except Exception as e:  # noqa: BLE001

@@ -5,6 +5,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 
@@ -49,10 +50,11 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
         "cluster.health",
         re.compile(
             r"\b("
-            r"cluster\s+health|"
-            r"nodes?\s+(ready|status)|"
+            r"cluster\s+(health|status)|"
+            r"nodes?\s+(ready|status|up)|"
+            r"are\s+(the\s+)?nodes?\s+up|"
             r"(is|how'?s?|how\s+is)\s+the\s+(lab|cluster|rack)\b|"
-            r"(lab|cluster|rack)\s+(up|healthy|ok|okay)|"
+            r"(lab|cluster|rack)\s+(up|healthy|ok|okay|status)|"
             r"pod\s+status|crashing\s+pods?|"
             r"status\s+of\s+the\s+(lab|cluster|rack)"
             r")\b",
@@ -83,14 +85,20 @@ async def health_hands() -> tuple[bool, str | None]:
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.get(url)
-            if r.status_code < 500:
-                return True, None
-            return False, f"hands http {r.status_code}"
+            try:
+                body = r.json()
+            except Exception:  # noqa: BLE001
+                body = {}
+            if r.status_code >= 500 or body.get("ok") is False:
+                return False, "Hands unavailable — live rack questions will wait."
+            if r.status_code >= 400:
+                return False, "Hands unavailable — live rack questions will wait."
+            return True, None
     except Exception:  # noqa: BLE001
-        return False, "hands unreachable"
+        return False, "Hands unavailable — live rack questions will wait."
 
 
-async def execute_verb(name: str) -> str:
+async def execute_verb(name: str) -> dict[str, Any]:
     if name not in CATALOG:
         raise RuntimeError(f"unknown verb {name}")
     url = settings.hands_base.rstrip("/") + "/v1/verbs"
@@ -101,19 +109,39 @@ async def execute_verb(name: str) -> str:
         body = r.json()
         if not body.get("ok"):
             raise RuntimeError(body.get("error") or "verb failed")
-        text = (body.get("text") or "").strip()
-        if not text:
-            raise RuntimeError("empty verb result")
+        return body
+
+
+def format_verb_reply(name: str, body: dict[str, Any]) -> str:
+    """Prefer shim `text` (already prose). Fall back to structured `data`."""
+    text = (body.get("text") or "").strip()
+    if text:
         return text
 
-
-def format_verb_reply(name: str, raw: str) -> str:
-    title = {
-        "cluster.health": "Cluster health",
-        "cluster.gpus": "GPU status",
-        "lab.map": "Lab map",
-    }.get(name, name)
-    return f"{title} ({name}):\n\n{raw}"
+    data = body.get("data") or {}
+    if name == "cluster.health":
+        nodes = data.get("nodes") or []
+        ready = sum(1 for n in nodes if n.get("ready"))
+        total = len(nodes)
+        pod = data.get("pod_summary") or ""
+        return f"{ready}/{total} nodes Ready. {pod}".strip()
+    if name == "cluster.gpus":
+        bits = []
+        for g in data.get("gpus") or []:
+            part = str(g.get("node") or "?")
+            if g.get("temp_c") is not None:
+                part += f" {int(g['temp_c'])}°C"
+            if g.get("mem_used_bytes") is not None:
+                mb = float(g["mem_used_bytes"]) / (1024**3)
+                part += f", {mb:.1f} GiB used"
+            bits.append(part)
+        return "GPU status: " + "; ".join(bits) + "." if bits else "No GPU samples."
+    if name == "lab.map":
+        lines = ["Lab surfaces:"]
+        for s in data.get("surfaces") or []:
+            lines.append(f"- {s.get('name')}: {s.get('url')}")
+        return "\n".join(lines)
+    return f"{name}: no result"
 
 
 def audit_verb(db_path: str, *, verb: str, ok: bool, detail: str, session_id: str | None) -> None:

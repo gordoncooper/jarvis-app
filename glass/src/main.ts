@@ -75,6 +75,11 @@ async function main(): Promise<void> {
         ? `Degraded: ${health.reason}`
         : "Degraded: the talker is unavailable.";
       banner.classList.add("show");
+    } else if (health.hands === false) {
+      banner.textContent =
+        health.reason ||
+        "Hands unavailable — live rack questions will wait.";
+      banner.classList.add("show");
     } else if (health.stt === false) {
       banner.textContent = "Voice unavailable (STT). Typing still works.";
       banner.classList.add("show");
