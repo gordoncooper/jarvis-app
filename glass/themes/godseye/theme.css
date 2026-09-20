@@ -201,6 +201,7 @@ body {
 .hud-ticker,
 .hud-panel,
 .hud-channel,
+.hud-channel-anchor,
 .hud-systems,
 .hud-console,
 .hud-leftstack,
@@ -364,11 +365,18 @@ body {
   color: var(--accent);
 }
 
-.hud-channel {
+.hud-channel-anchor {
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: 5.2rem;
-  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.hud-channel {
+  position: relative;
   width: min(58vw, 78vh, 50rem);
   height: min(46vh, 62vw, 38rem);
   padding: 0;
@@ -605,9 +613,11 @@ button:disabled {
     flex-wrap: wrap;
     width: 9.6rem;
   }
+  .hud-channel-anchor {
+    bottom: 5.6rem;
+  }
   .hud-channel {
     width: min(88vw, 70vh);
     height: min(42vh, 88vw);
-    bottom: 5.6rem;
   }
 }

@@ -54,39 +54,41 @@ export function Channel({ messages, confirm, pinLast, onConfirm, onCancel }: Pro
   if (rows.length === 0 && !confirm) return null;
 
   return (
-    <motion.section
-      className="hud-channel"
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
-    >
-      <div className="hud-panel-label">CHANNEL</div>
-      <div className="hud-thread" ref={thread}>
-        <AnimatePresence initial={false}>
-          {rows.map(({ m, opacity }) => (
-            <motion.div
-              key={m.id}
-              className={`msg ${m.role}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.28, ease: "easeOut" }}
-            >
-              {m.content}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        {confirm ? (
-          <div className="confirm-row">
-            <button type="button" className="confirm-yes" onClick={onConfirm}>
-              Confirm
-            </button>
-            <button type="button" className="confirm-no" onClick={onCancel}>
-              Cancel
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </motion.section>
+    <div className="hud-channel-anchor">
+      <motion.section
+        className="hud-channel"
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
+        <div className="hud-panel-label">CHANNEL</div>
+        <div className="hud-thread" ref={thread}>
+          <AnimatePresence initial={false}>
+            {rows.map(({ m, opacity }) => (
+              <motion.div
+                key={m.id}
+                className={`msg ${m.role}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.28, ease: "easeOut" }}
+              >
+                {m.content}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {confirm ? (
+            <div className="confirm-row">
+              <button type="button" className="confirm-yes" onClick={onConfirm}>
+                Confirm
+              </button>
+              <button type="button" className="confirm-no" onClick={onCancel}>
+                Cancel
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </motion.section>
+    </div>
   );
 }
