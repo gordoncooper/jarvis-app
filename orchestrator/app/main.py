@@ -61,6 +61,12 @@ def system_prompt() -> str:
     return "\n\n".join(parts)
 
 
+@app.get("/readyz")
+async def readyz() -> dict[str, bool]:
+    """Fast liveness/readiness — does not call LiteLLM."""
+    return {"ok": True}
+
+
 @app.get("/health")
 async def health() -> dict[str, Any]:
     llm_ok, llm_reason = await health_llm()
@@ -117,7 +123,11 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
                     yield _sse("token", {"text": token})
             except Exception as e:  # noqa: BLE001 — surface to glass
                 log.exception("turn failed")
-                yield _sse("error", {"message": str(e)})
+                safe = "llm error"
+                err = str(e)
+                if "http" in err and "Bearer" not in err and "sk-" not in err:
+                    safe = err
+                yield _sse("error", {"message": safe})
                 yield _sse("done", {"session_id": sess.id, "degraded": True})
                 return
             reply = "".join(chunks).strip()

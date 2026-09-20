@@ -16,15 +16,29 @@ async def health_llm() -> tuple[bool, str | None]:
         return True, None
     if not settings.litellm_api_key:
         return False, "LITELLM_API_KEY unset"
-    url = settings.litellm_base.rstrip("/") + "/health"
+    # Strip accidental whitespace from secret mounts / files
+    key = settings.litellm_api_key.strip()
+    if not key:
+        return False, "LITELLM_API_KEY empty"
+    url = settings.litellm_base.rstrip("/") + "/v1/models"
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get(url, headers=_headers())
-            if r.status_code < 500:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            r = await client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                },
+            )
+            if r.status_code < 400:
                 return True, None
             return False, f"litellm http {r.status_code}"
     except Exception as e:  # noqa: BLE001
-        return False, str(e)
+        # Never surface header/Authorization material to callers
+        msg = str(e)
+        if "Bearer" in msg or "sk-" in msg:
+            return False, "litellm unreachable (auth/header)"
+        return False, "litellm unreachable"
 
 
 async def chat_stream(messages: list[dict[str, str]]) -> AsyncIterator[str]:
@@ -37,7 +51,8 @@ async def chat_stream(messages: list[dict[str, str]]) -> AsyncIterator[str]:
             yield word + " "
         return
 
-    if not settings.litellm_api_key:
+    key = settings.litellm_api_key.strip()
+    if not key:
         raise RuntimeError("LITELLM_API_KEY unset")
 
     url = settings.litellm_base.rstrip("/") + "/v1/chat/completions"
@@ -47,11 +62,14 @@ async def chat_stream(messages: list[dict[str, str]]) -> AsyncIterator[str]:
         "stream": True,
         "temperature": 0.4,
     }
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
     async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream("POST", url, headers=_headers(), json=payload) as resp:
+        async with client.stream("POST", url, headers=headers, json=payload) as resp:
             if resp.status_code >= 400:
-                body = await resp.aread()
-                raise RuntimeError(f"litellm {resp.status_code}: {body[:400]!r}")
+                raise RuntimeError(f"litellm http {resp.status_code}")
             async for line in resp.aiter_lines():
                 if not line.startswith("data:"):
                     continue
@@ -74,7 +92,8 @@ async def chat_stream(messages: list[dict[str, str]]) -> AsyncIterator[str]:
 
 
 def _headers() -> dict[str, str]:
+    key = settings.litellm_api_key.strip()
     return {
-        "Authorization": f"Bearer {settings.litellm_api_key}",
+        "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
