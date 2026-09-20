@@ -37,8 +37,8 @@ body {
 
 .hud-canvas {
   position: relative;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100%;
   padding: 0.75rem 1rem 0.85rem;
@@ -94,10 +94,25 @@ body {
 
 .hud-rail,
 .banner,
-.hud-stages,
-.hud-console {
+.hud-console,
+.hud-stages {
   position: relative;
   z-index: 1;
+}
+
+.hud-rail,
+.banner,
+.hud-console {
+  flex: 0 0 auto;
+}
+
+.hud-stages {
+  display: grid;
+  grid-template-columns: minmax(11rem, 18%) minmax(0, 1fr) minmax(11rem, 18%);
+  gap: 0.55rem;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
 }
 
 .hud-rail {
@@ -185,13 +200,6 @@ body {
 
 .banner.show {
   display: block;
-}
-
-.hud-stages {
-  display: grid;
-  grid-template-columns: minmax(11rem, 18%) minmax(0, 1fr) minmax(11rem, 18%);
-  gap: 0.55rem;
-  min-height: 0;
 }
 
 .hud-stage {
