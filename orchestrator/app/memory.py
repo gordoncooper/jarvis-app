@@ -250,10 +250,42 @@ def eligible_for_llm_extract(text: str) -> bool:
 
 
 def fact_already_known(fact: str, known: list[str]) -> bool:
+    """Strict-ish dedup: exact, containment, or token subset — not half-overlap."""
+    f = " ".join((fact or "").lower().split())
+    if not f:
+        return False
     for k in known:
-        if _forget_match(fact, k):
+        kk = " ".join((k or "").lower().split())
+        if not kk:
+            continue
+        if f == kk or f in kk or kk in f:
+            return True
+        ft, kt = _tokens(f), _tokens(kk)
+        if ft and kt and (ft <= kt or kt <= ft):
             return True
     return False
+
+
+def _forget_match(query: str, fact: str) -> bool:
+    """Substring either way, token subset, or single-token hit.
+
+    Multi-token queries require most query tokens present so
+    \"smoke-pizza\" does not match \"I like pizza\".
+    """
+    q = query.lower().strip()
+    f = fact.lower().strip()
+    if not q or not f:
+        return False
+    if q in f or f in q:
+        return True
+    qt, ft = _tokens(query), _tokens(fact)
+    if not qt or not ft:
+        return False
+    if qt <= ft or ft <= qt:
+        return True
+    if len(qt) == 1:
+        return bool(qt & ft)
+    return len(qt & ft) >= max(2, (len(qt) + 1) // 2)
 
 
 def _normalize_fact(raw: str) -> str:
@@ -275,23 +307,6 @@ def _tokens(s: str) -> set[str]:
         for t in re.findall(r"[a-z0-9]+", s.lower())
         if t not in _STOP and len(t) > 1
     }
-
-
-def _forget_match(query: str, fact: str) -> bool:
-    """Substring either way, or content-token overlap (STT paraphrase)."""
-    q = query.lower().strip()
-    f = fact.lower().strip()
-    if not q or not f:
-        return False
-    if q in f or f in q:
-        return True
-    qt, ft = _tokens(query), _tokens(fact)
-    if not qt or not ft:
-        return False
-    if qt <= ft or ft <= qt:
-        return True
-    smaller = qt if len(qt) <= len(ft) else ft
-    return len(qt & ft) >= max(1, (len(smaller) + 1) // 2)
 
 
 class PromotedMemory:

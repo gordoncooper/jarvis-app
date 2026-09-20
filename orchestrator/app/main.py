@@ -47,7 +47,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.16-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.17-dev")
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
@@ -178,7 +178,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.16-dev",
+        "version": "0.6.17-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -337,6 +337,8 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     pending = pending_alive(raw_pending)
     if raw_pending and not pending:
         store.set_pending(sess.id, None)
+    if not pending and (is_affirm(text) or is_cancel(text)):
+        return _reply("Nothing pending to confirm or cancel.")
     if pending:
         kind = str(pending.get("kind") or "hands")
         if is_affirm(text):
