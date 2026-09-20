@@ -49,7 +49,7 @@ export function CmdBar({
       ) : (
         <>
           <button className="ck-send" type="submit" disabled={busy} title="Send">
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
               <path fill="currentColor" d="M3.4 20.6 21 12 3.4 3.4l.1 6.7L15 12 3.5 13.9z" />
             </svg>
             {variant === "stage" ? <span>Send</span> : null}
@@ -58,6 +58,7 @@ export function CmdBar({
             type="button"
             className={`ck-mic ${recording ? "is-rec" : ""}`}
             disabled={busy || !sttOk}
+            title="Hold to talk"
             onPointerDown={(ev: PointerEvent) => {
               ev.preventDefault();
               onPttStart();
@@ -68,7 +69,21 @@ export function CmdBar({
             }}
             onPointerLeave={() => onPttStop()}
           >
-            {recording ? "Listening…" : "Hold to talk"}
+            {variant === "cmd" ? (
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" />
+                <path
+                  d="M5 11a7 7 0 0 0 14 0M12 18v3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                />
+              </svg>
+            ) : recording ? (
+              "Listening…"
+            ) : (
+              "Hold to talk"
+            )}
           </button>
         </>
       )}

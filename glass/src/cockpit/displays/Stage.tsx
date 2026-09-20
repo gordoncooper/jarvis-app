@@ -63,26 +63,31 @@ export function Stage({
   return (
     <div className="ck-stage">
       <div className="ck-stage-earth" />
+      <div className="ck-stage-vignette" />
+
       <header className="ck-stage-top">
         <div className="ck-stage-brand">
-          <HexMark />
+          <HexMark size={20} variant="dot" />
           <span className="ck-brand">JARVIS</span>
           <span className="ck-live-pill">
             <LiveDot on={live} /> LIVE
           </span>
         </div>
         <div className="ck-stage-meta">
-          <span>
-            LAN <em>{MOCK.lan}</em>
-          </span>
+          <div className="ck-meta-cell">
+            <span className="ck-meta-k">LAN</span>
+            <span className="ck-meta-v">{MOCK.lan}</span>
+          </div>
           <span className="ck-pipe" />
-          <span>
-            k3s <em>{MOCK.k3s}</em>
-          </span>
+          <div className="ck-meta-cell">
+            <span className="ck-meta-k">k3s</span>
+            <span className="ck-meta-v">{MOCK.k3s}</span>
+          </div>
           <span className="ck-pipe" />
-          <span>
-            UTC <em>{utc}</em>
-          </span>
+          <div className="ck-meta-cell">
+            <span className="ck-meta-k">UTC</span>
+            <span className="ck-meta-v">{utc}</span>
+          </div>
         </div>
         <div className="ck-stage-systems">
           {(
@@ -95,7 +100,7 @@ export function Stage({
           ).map(([label, ok]) => (
             <div key={label} className={`ck-sys ${ok ? "is-live" : ""}`}>
               <ConcRing on={ok} />
-              <div>
+              <div className="ck-sys-txt">
                 <strong>{label}</strong>
                 <span>{ok ? "LIVE" : "WAIT"}</span>
               </div>
@@ -111,34 +116,40 @@ export function Stage({
         <dl>
           <div>
             <dt>TRACK</dt>
-            <dd>GLOBAL</dd>
+            <dd>:</dd>
+            <dd className="is-accent">GLOBAL</dd>
           </div>
           <div>
             <dt>MODE</dt>
+            <dd>:</dd>
             <dd>OBSERVE</dd>
           </div>
           <div>
             <dt>HOS</dt>
+            <dd>:</dd>
             <dd>{unreachable ? "DEGRADED" : "NOMINAL"}</dd>
           </div>
           <div>
             <dt>LOCK</dt>
+            <dd>:</dd>
             <dd className={confirm ? "is-accent" : ""}>{confirm ? "TRUE" : "FALSE"}</dd>
           </div>
         </dl>
       </aside>
 
       <div className="ck-stage-bottom">
-        <div className="ck-chip">
+        <div className="ck-chip ck-chip-cluster">
           CLUSTER <LiveDot on={!unreachable} /> <em>LIVE</em>
         </div>
-        <div className="ck-chip">
-          UPTIME <em>{uptime}</em>
+        <div className="ck-chip ck-chip-stack">
+          <span className="ck-chip-k">UPTIME</span>
+          <em>{uptime}</em>
         </div>
         <div className="ck-chip-row">
           {MOCK.gpu.map((g) => (
-            <div key={g.id} className="ck-chip">
-              {g.id} <em>{g.temp}°C</em>
+            <div key={g.id} className="ck-chip ck-chip-stack">
+              <span className="ck-chip-k">{g.id}</span>
+              <em>{g.temp}°C</em>
             </div>
           ))}
         </div>

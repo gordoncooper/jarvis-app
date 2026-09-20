@@ -22,9 +22,9 @@ function Bar({ value }: { value: number }) {
 }
 
 function Ring({ label, value }: { label: string; value: number }) {
-  const r = 28;
+  const r = 26;
   const c = 2 * Math.PI * r;
-  const dash = `${(value / 100) * c} ${c}`;
+  const dash = `${(value / 100) * c * 0.85} ${c}`;
   return (
     <div className="ck-ring">
       <svg viewBox="0 0 72 72">
@@ -38,8 +38,42 @@ function Ring({ label, value }: { label: string; value: number }) {
           transform="rotate(-90 36 36)"
         />
       </svg>
-      <strong>{label}</strong>
-      <span>{value}%</span>
+      <div className="ck-ring-lab">
+        <strong>{label}</strong>
+        <span>{value}%</span>
+      </div>
+    </div>
+  );
+}
+
+function Waveform({ active }: { active: boolean }) {
+  const bars = Array.from({ length: 48 }, (_, i) => {
+    const mid = Math.abs(i - 24) / 24;
+    const h = active
+      ? 18 + Math.sin(i * 0.55) * 14 * (1 - mid * 0.4)
+      : 4 + Math.sin(i * 0.4) * 2;
+    return h;
+  });
+  return (
+    <div className={`ck-wave-panel ${active ? "is-on" : ""}`}>
+      <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+        {bars.map((h, i) => {
+          const x = i * (200 / bars.length);
+          const y = 20 - h / 2;
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={y}
+              width="2.2"
+              height={h}
+              rx="1"
+              fill="currentColor"
+              opacity={0.35 + (h / 40) * 0.65}
+            />
+          );
+        })}
+      </svg>
     </div>
   );
 }
@@ -74,13 +108,15 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
     <div className="ck-noc">
       <header className="ck-noc-top">
         <div className="ck-stage-brand">
-          <HexMark />
+          <HexMark size={18} variant="dot" />
           <span className="ck-brand">JARVIS</span>
           <span className="ck-live-pill">
             <LiveDot on={live} /> LIVE
           </span>
           <span className="ck-noc-meta">
-            LAN {MOCK.lan} · k3s {MOCK.k3s}
+            LAN {MOCK.lan}
+            <span className="ck-pipe" />
+            k3s {MOCK.k3s}
           </span>
         </div>
         <span className="ck-noc-utc">UTC {utc}</span>
@@ -94,7 +130,7 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
       <div className="ck-noc-grid">
         <aside className="ck-panel ck-noc-left">
           <h2>DOSSIER // TRACK MODE</h2>
-          <dl>
+          <dl className="ck-noc-dl">
             <div>
               <dt>HOS</dt>
               <dd>STANDBY</dd>
@@ -125,6 +161,7 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
                   checked={filters[k]}
                   onChange={() => setFilters((f) => ({ ...f, [k]: !f[k] }))}
                 />
+                <span className="ck-check" />
                 {k}
               </label>
             ))}
@@ -139,24 +176,41 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
             <h2>CLUSTER TOPOLOGY // ORTHO RACK VIEW</h2>
             <span>6 NODES · 3U LOGICAL</span>
           </header>
-          <div className="ck-topo-grid">
-            {visible.map((n) => (
-              <article key={n.name} className="ck-node">
-                <header>
-                  <strong>{n.name}</strong>
-                  <span>{n.role}</span>
-                </header>
-                <p>{n.ip}</p>
-                <div className="ck-node-meters">
-                  <label>
-                    CPU {n.cpu}% <Bar value={n.cpu} />
-                  </label>
-                  <label>
-                    RAM {n.ram}% <Bar value={n.ram} />
-                  </label>
-                </div>
-              </article>
-            ))}
+          <div className="ck-topo-wrap">
+            <svg className="ck-topo-links" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="M18 28 H50 H82" />
+              <path d="M18 72 H50 H82" />
+              <path d="M18 28 V72" />
+              <path d="M50 28 V72" />
+              <path d="M82 28 V72" />
+              <path d="M18 28 L50 72 L82 28" />
+              <circle cx="18" cy="28" r="1.2" />
+              <circle cx="50" cy="28" r="1.2" />
+              <circle cx="82" cy="28" r="1.2" />
+              <circle cx="18" cy="72" r="1.2" />
+              <circle cx="50" cy="72" r="1.2" />
+              <circle cx="82" cy="72" r="1.2" />
+            </svg>
+            <div className="ck-topo-grid">
+              {visible.map((n) => (
+                <article key={n.name} className="ck-node">
+                  <LiveDot on />
+                  <header>
+                    <strong>{n.name}</strong>
+                    <span>{n.role}</span>
+                  </header>
+                  <p className="ck-node-ip">{n.ip}</p>
+                  <div className="ck-node-meters">
+                    <label>
+                      CPU {n.cpu}% <Bar value={n.cpu} />
+                    </label>
+                    <label>
+                      RAM {n.ram}% <Bar value={n.ram} />
+                    </label>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -169,22 +223,22 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
             <Ring label="IO" value={MOCK.rings.io} />
           </div>
           <h2>VOICE CHANNEL // LIVE</h2>
-          <div className={`ck-wave-panel ${recording ? "is-on" : ""}`} />
+          <Waveform active={recording} />
           <h2>GPU TEMP // LIVE</h2>
           <div className="ck-spark">
             <svg viewBox="0 0 200 48" preserveAspectRatio="none">
               <polyline
                 fill="none"
                 stroke="var(--ck-accent)"
-                strokeWidth="1.5"
-                points="0,28 20,24 40,30 60,18 80,22 100,14 120,20 140,16 160,22 180,12 200,18"
+                strokeWidth="1.6"
+                points="0,30 18,26 36,32 54,18 72,24 90,12 108,20 126,14 144,22 162,10 180,16 200,12"
               />
               <polyline
                 fill="none"
-                stroke="#7dd3c0"
-                strokeWidth="1.2"
-                opacity="0.7"
-                points="0,32 20,30 40,34 60,26 80,28 100,24 120,28 140,22 160,26 180,20 200,24"
+                stroke="#5eead4"
+                strokeWidth="1.3"
+                opacity="0.65"
+                points="0,34 18,32 36,36 54,28 72,30 90,24 108,28 126,22 144,26 162,20 180,24 200,22"
               />
             </svg>
             <div className="ck-spark-labels">
@@ -195,13 +249,13 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
           <h2>ENVIRONMENT</h2>
           <div className="ck-env">
             <label>
-              AIR {MOCK.env.air}°C <Bar value={55} />
+              <span>AIR {MOCK.env.air}°C</span> <Bar value={55} />
             </label>
             <label>
-              HUM {MOCK.env.hum}% <Bar value={MOCK.env.hum} />
+              <span>HUM {MOCK.env.hum}%</span> <Bar value={MOCK.env.hum} />
             </label>
             <label>
-              PWR {MOCK.env.pwr}% <Bar value={MOCK.env.pwr} />
+              <span>PWR {MOCK.env.pwr}%</span> <Bar value={MOCK.env.pwr} />
             </label>
           </div>
         </aside>
@@ -212,10 +266,11 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
         <div className="ck-ticker-line">
           {MOCK.events.map((e) => (
             <span key={`${e.t}-${e.msg}`}>
-              {e.t} {e.node} {e.msg}
+              {e.t} · {e.node} · {e.msg}
             </span>
           ))}
         </div>
+        <span className="ck-ticker-arrow">▾</span>
       </div>
 
       <section className="ck-panel ck-metrics">
@@ -235,7 +290,7 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
           <tbody>
             {MOCK.nodes.map((n) => (
               <tr key={n.name}>
-                <td>{n.name}</td>
+                <td className="is-accent">{n.name}</td>
                 <td>{n.role}</td>
                 <td>{n.ip}</td>
                 <td>
