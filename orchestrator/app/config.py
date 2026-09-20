@@ -21,5 +21,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
 
+    memory_db_path: str = "/var/lib/jarvis/promoted.sqlite"
+    memory_inject_limit: int = 40
+
 
 settings = Settings()

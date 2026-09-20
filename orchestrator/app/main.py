@@ -15,13 +15,22 @@ from pydantic import BaseModel, Field
 
 from .config import settings
 from .llm import chat_stream, health_llm
+from .memory import PromotedMemory, parse_memory_intent
 from .session_store import SessionStore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.0-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.1-dev")
 store = SessionStore()
+_memory: PromotedMemory | None = None
+
+
+def mem() -> PromotedMemory:
+    global _memory
+    if _memory is None:
+        _memory = PromotedMemory(settings.memory_db_path)
+    return _memory
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,11 +63,30 @@ def system_prompt() -> str:
     parts = [persona]
     if briefing:
         parts.append("Lab briefing (stable facts):\n" + briefing[:6000])
+    facts = mem().active_facts(settings.memory_inject_limit)
+    if facts:
+        bullet = "\n".join(f"- {f}" for f in facts)
+        parts.append("Promoted memory (Gordon asked you to remember):\n" + bullet)
     parts.append(
         "You have no tools in this turn. Do not invent live cluster numbers; "
-        "say you do not know if not in the briefing."
+        "say you do not know if not in the briefing or promoted memory."
     )
     return "\n\n".join(parts)
+
+
+def _memory_reply(kind: str, fact: str, forgotten: int = 0) -> str:
+    if kind == "remember":
+        if not fact:
+            return (
+                "I will not store that — it looks like a secret or it was empty. "
+                "Say it again without credentials, sir."
+            )
+        return f"Noted. I will remember: {fact}"
+    if kind == "forget":
+        if forgotten:
+            return f"Forgotten ({forgotten})."
+        return "I found nothing matching that to forget."
+    return ""
 
 
 @app.get("/readyz")
@@ -74,11 +102,12 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.0-dev",
+        "version": "0.6.1-dev",
         "degraded": degraded,
         "reason": None if llm_ok else llm_reason,
         "llm": llm_ok,
         "mock": settings.mock_llm,
+        "memory_facts": len(mem().active_facts(500)),
     }
 
 
@@ -104,6 +133,44 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
     sid = body.session_id or request.headers.get("X-Session-Id") or str(uuid.uuid4())
     sess = store.get_or_create(sid)
     store.append(sess.id, "user", text)
+
+    intent = parse_memory_intent(text)
+    if intent.kind in ("remember", "forget"):
+        forgotten = 0
+        if intent.kind == "remember":
+            if intent.fact:
+                mem().remember(intent.fact, source_turn=sess.id)
+            reply = _memory_reply("remember", intent.fact)
+        else:
+            forgotten = mem().forget(intent.fact) if intent.fact else 0
+            reply = _memory_reply("forget", intent.fact, forgotten=forgotten)
+        store.append(sess.id, "assistant", reply)
+        accept = request.headers.get("accept", "")
+        want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
+        if want_sse:
+
+            async def mem_gen() -> AsyncIterator[bytes]:
+                yield _sse("meta", {"session_id": sess.id})
+                yield _sse("token", {"text": reply})
+                yield _sse(
+                    "done",
+                    {
+                        "session_id": sess.id,
+                        "reply_text": reply,
+                        "degraded": False,
+                        "memory": intent.kind,
+                    },
+                )
+
+            return StreamingResponse(mem_gen(), media_type="text/event-stream")
+        return JSONResponse(
+            {
+                "session_id": sess.id,
+                "reply_text": reply,
+                "degraded": False,
+                "memory": intent.kind,
+            }
+        )
 
     messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt()}]
     for m in sess.messages[-settings.max_history :]:
@@ -137,14 +204,13 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
 
         return StreamingResponse(event_gen(), media_type="text/event-stream")
 
-    # Non-SSE: collect full reply
     chunks: list[str] = []
     try:
         async for token in chat_stream(messages):
             chunks.append(token)
     except Exception as e:  # noqa: BLE001
         log.exception("turn failed")
-        raise HTTPException(502, f"llm error: {e}") from e
+        raise HTTPException(502, "llm error") from e
     reply = "".join(chunks).strip()
     if reply:
         store.append(sess.id, "assistant", reply)
