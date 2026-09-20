@@ -12,8 +12,8 @@ import {
 
 const R = 1.6;
 
-/** Americas-facing start: CONUS under the camera (tuned vs Blue Marble UV). */
-const USA_Y = 2.05;
+/** Americas-facing start: CONUS under the camera (Blue Marble UV, +Y west). */
+const USA_Y = 5.87;
 const USA_X = 0.18;
 
 function useMaps() {
