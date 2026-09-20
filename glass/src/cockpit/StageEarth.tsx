@@ -12,9 +12,9 @@ import {
 
 const R = 1.6;
 
-/** Americas-facing start: ~CONUS under the camera. */
-const USA_Y = 3.95;
-const USA_X = 0.22;
+/** Americas-facing start: CONUS under the camera (tuned vs Blue Marble UV). */
+const USA_Y = 2.05;
+const USA_X = 0.18;
 
 function useMaps() {
   const [day, night, spec, normal] = useLoader(THREE.TextureLoader, [
