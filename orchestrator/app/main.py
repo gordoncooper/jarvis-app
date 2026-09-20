@@ -15,7 +15,13 @@ from pydantic import BaseModel, Field
 
 from .config import settings
 from .llm import chat_stream, health_llm
-from .memory import PromotedMemory, parse_memory_intent
+from .memory import (
+    PromotedMemory,
+    fact_already_known,
+    new_memory_pending,
+    parse_memory_candidate,
+    parse_memory_intent,
+)
 from .session_store import SessionStore
 from .hands import (
     audit_verb,
@@ -36,8 +42,8 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.10-dev")
-store = SessionStore()
+app = FastAPI(title="jarvis-orchestrator", version="0.6.11-dev")
+store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
 
@@ -134,7 +140,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.10-dev",
+        "version": "0.6.11-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -150,13 +156,32 @@ async def health() -> dict[str, Any]:
 async def get_session(x_session_id: str | None = Header(default=None, alias="X-Session-Id")) -> dict[str, Any]:
     sid = x_session_id or str(uuid.uuid4())
     sess = store.get_or_create(sid)
-    return {
+    out: dict[str, Any] = {
         "session_id": sess.id,
         "messages": sess.messages,
         "created_at": sess.created_at,
         "greeting": settings.greeting,
         "briefing_blurb": settings.briefing_blurb,
     }
+    pending = pending_alive(store.get_pending(sess.id))
+    if store.get_pending(sess.id) and not pending:
+        store.set_pending(sess.id, None)
+    if pending:
+        kind = str(pending.get("kind") or "hands")
+        confirm: dict[str, Any] = {
+            "id": pending["id"],
+            "kind": kind,
+            "summary": pending.get("summary") or pending.get("fact") or pending.get("verb"),
+        }
+        if kind == "memory":
+            confirm["fact"] = pending.get("fact")
+            confirm["verb"] = "memory.remember"
+        else:
+            confirm["verb"] = pending.get("verb")
+            confirm["args"] = pending.get("args") or {}
+        out["confirm"] = confirm
+    return out
+
 
 
 @app.post("/v1/tts")
@@ -270,8 +295,19 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     if raw_pending and not pending:
         store.set_pending(sess.id, None)
     if pending:
+        kind = str(pending.get("kind") or "hands")
         if is_affirm(text):
             store.set_pending(sess.id, None)
+            if kind == "memory":
+                fact = str(pending.get("fact") or "").strip()
+                if fact:
+                    mem().remember(fact, source_turn=sess.id)
+                    return _reply(
+                        f"Noted. I will remember: {fact}",
+                        confirm=None,
+                        extra={"memory": "remember"},
+                    )
+                return _reply("Nothing to remember.")
             try:
                 body = await execute_verb(
                     pending["verb"],
@@ -302,6 +338,8 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             return _reply(reply, verb=pending["verb"])
         if is_cancel(text):
             store.set_pending(sess.id, None)
+            if kind == "memory":
+                return _reply("Cancelled — I will not store that.")
             audit_verb(
                 settings.memory_db_path,
                 verb=pending["verb"],
@@ -310,16 +348,22 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 session_id=sess.id,
             )
             return _reply("Cancelled.", verb=pending["verb"])
-        summary = pending.get("summary") or pending["verb"]
+        summary = pending.get("summary") or pending.get("fact") or pending.get("verb")
+        confirm: dict[str, Any] = {
+            "id": pending["id"],
+            "kind": kind,
+            "summary": summary,
+        }
+        if kind == "hands":
+            confirm["verb"] = pending.get("verb")
+            confirm["args"] = pending.get("args") or {}
+        else:
+            confirm["fact"] = pending.get("fact")
+            confirm["verb"] = "memory.remember"
         return _reply(
             f"Still waiting: {summary}. Say yes or cancel.",
-            verb=pending["verb"],
-            confirm={
-                "id": pending["id"],
-                "verb": pending["verb"],
-                "args": pending.get("args") or {},
-                "summary": summary,
-            },
+            verb=confirm.get("verb") if kind == "hands" else None,
+            confirm=confirm,
         )
 
     intent = parse_memory_intent(text)
@@ -359,6 +403,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             )
             confirm = {
                 "id": pending_obj["id"],
+                "kind": "hands",
                 "verb": prop["verb"],
                 "args": prop["args"],
                 "summary": prop["summary"],
@@ -394,6 +439,26 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     for m in sess.messages[-settings.max_history :]:
         messages.append({"role": m["role"], "content": m["content"]})
 
+    def _maybe_memory_confirm(reply: str) -> tuple[str, dict[str, Any] | None]:
+        """Append memory confirm ask after talker reply when heuristic hits."""
+        candidate = parse_memory_candidate(text)
+        if not candidate:
+            return reply, None
+        if fact_already_known(candidate, mem().active_facts(200)):
+            return reply, None
+        pending_obj = new_memory_pending(candidate)
+        store.set_pending(sess.id, pending_obj)
+        ask = f"Shall I remember: {candidate}? Say yes or cancel."
+        combined = (reply.rstrip() + "\n\n" + ask) if reply else ask
+        confirm = {
+            "id": pending_obj["id"],
+            "kind": "memory",
+            "verb": "memory.remember",
+            "fact": candidate,
+            "summary": pending_obj["summary"],
+        }
+        return combined, confirm
+
     if want_sse:
 
         async def event_gen() -> AsyncIterator[bytes]:
@@ -413,17 +478,21 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 yield _sse("done", {"session_id": sess.id, "degraded": True})
                 return
             reply = "".join(chunks).strip()
+            base = reply
+            reply, confirm = _maybe_memory_confirm(reply)
+            if confirm and reply != base:
+                yield _sse("token", {"text": reply[len(base) :] if reply.startswith(base) else "\n\n" + reply})
             if reply:
                 store.append(sess.id, "assistant", reply)
-            yield _sse(
-                "done",
-                {
-                    "session_id": sess.id,
-                    "reply_text": reply,
-                    "degraded": False,
-                    "transcript": text,
-                },
-            )
+            done: dict[str, Any] = {
+                "session_id": sess.id,
+                "reply_text": reply,
+                "degraded": False,
+                "transcript": text,
+            }
+            if confirm:
+                done["confirm"] = confirm
+            yield _sse("done", done)
 
         return StreamingResponse(event_gen(), media_type="text/event-stream")
 
@@ -435,17 +504,18 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         log.exception("turn failed")
         raise HTTPException(502, "llm error") from e
     reply = "".join(chunks).strip()
+    reply, confirm = _maybe_memory_confirm(reply)
     if reply:
         store.append(sess.id, "assistant", reply)
-    return JSONResponse(
-        {
-            "session_id": sess.id,
-            "reply_text": reply,
-            "degraded": False,
-            "transcript": text,
-        }
-    )
-
+    payload: dict[str, Any] = {
+        "session_id": sess.id,
+        "reply_text": reply,
+        "degraded": False,
+        "transcript": text,
+    }
+    if confirm:
+        payload["confirm"] = confirm
+    return JSONResponse(payload)
 
 
 def _sse(event: str, data: dict[str, Any]) -> bytes:

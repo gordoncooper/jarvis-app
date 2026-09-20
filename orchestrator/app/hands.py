@@ -311,6 +311,7 @@ def audit_verb(db_path: str, *, verb: str, ok: bool, detail: str, session_id: st
 def new_pending(verb: str, args: dict[str, str], summary: str) -> dict[str, Any]:
     return {
         "id": str(uuid.uuid4()),
+        "kind": "hands",
         "verb": verb,
         "args": args,
         "summary": summary,

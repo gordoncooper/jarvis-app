@@ -97,6 +97,61 @@ def parse_memory_intent(text: str) -> MemoryHit:
     return MemoryHit("none", "")
 
 
+# Non-explicit candidates → confirm UI (D-0024). Not lab/metrics language.
+_CANDIDATE = re.compile(
+    r"^\s*(?:"
+    r"i\s+prefer\s+.+|"
+    r"i(?:'?d|\s+would)\s+(?:rather|prefer)\s+.+|"
+    r"i\s+(?:really\s+)?(?:like|love|hate)\s+.+|"
+    r"i\s+always\s+.+|"
+    r"i\s+never\s+.+|"
+    r"call\s+me\s+.+|"
+    r"my\s+(?:name|wife|husband|partner|dog|cat|kid|kids|son|daughter|"
+    r"birthday|timezone|tz|email|phone|address|team|title|job)\s+(?:is|are)\s+.+"
+    r")\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_LABISH = re.compile(
+    r"\b(cluster|gpu|pod|node|prometheus|grafana|kubectl|deploy|namespace|"
+    r"temperature|vram|nfs|flux|traefik)\b",
+    re.I,
+)
+
+
+def parse_memory_candidate(text: str) -> str | None:
+    """Heuristic preference/identity fact without 'remember that…'."""
+    t = " ".join((text or "").strip().split())
+    if not t or not _CANDIDATE.match(t):
+        return None
+    if _LABISH.search(t):
+        return None
+    # Strip leading filler for a cleaner stored line.
+    fact = re.sub(
+        r"^\s*(?:hey[, ]+)?(?:jarvis[,:]?\s+)?",
+        "",
+        t,
+        flags=re.I,
+    ).strip()
+    return _normalize_fact(fact) or None
+
+
+def fact_already_known(fact: str, known: list[str]) -> bool:
+    for k in known:
+        if _forget_match(fact, k):
+            return True
+    return False
+
+
+def new_memory_pending(fact: str, ttl_sec: float = 90.0) -> dict:
+    return {
+        "id": str(uuid.uuid4()),
+        "kind": "memory",
+        "fact": fact,
+        "summary": f"remember: {fact}",
+        "expires_at": time.time() + ttl_sec,
+    }
+
+
 def _normalize_fact(raw: str) -> str:
     s = " ".join(raw.strip().strip("\"'").split())
     s = s.rstrip(".,!?;:")

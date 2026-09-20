@@ -3,6 +3,7 @@ export type SessionPayload = {
   messages: Array<{ role: string; content: string }>;
   greeting: string;
   briefing_blurb: string;
+  confirm?: ConfirmPayload;
 };
 
 export type HealthPayload = {
@@ -32,9 +33,11 @@ export async function fetchSession(sessionId: string | null): Promise<SessionPay
 
 export type ConfirmPayload = {
   id: string;
-  verb: string;
+  kind?: "hands" | "memory";
+  verb?: string;
   args?: Record<string, string>;
   summary?: string;
+  fact?: string;
 };
 
 export type TurnHandlers = {
@@ -98,15 +101,22 @@ async function consumeSse(r: Response, handlers: TurnHandlers): Promise<void> {
         const raw = obj.confirm;
         if (raw && typeof raw === "object") {
           const c = raw as Record<string, unknown>;
-          if (typeof c.id === "string" && typeof c.verb === "string") {
+          if (typeof c.id === "string") {
             confirm = {
               id: c.id,
-              verb: c.verb,
+              kind:
+                c.kind === "memory" || c.kind === "hands"
+                  ? c.kind
+                  : typeof c.verb === "string" && c.verb.startsWith("memory.")
+                    ? "memory"
+                    : "hands",
+              verb: typeof c.verb === "string" ? c.verb : undefined,
               args:
                 c.args && typeof c.args === "object"
                   ? (c.args as Record<string, string>)
                   : undefined,
               summary: typeof c.summary === "string" ? c.summary : undefined,
+              fact: typeof c.fact === "string" ? c.fact : undefined,
             };
           }
         }

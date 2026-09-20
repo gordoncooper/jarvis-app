@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     port: int = 8080
 
     memory_db_path: str = "/var/lib/jarvis/promoted.sqlite"
+    session_db_path: str = "/var/lib/jarvis/sessions.sqlite"
     memory_inject_limit: int = 40
 
     whisper_base: str = "http://jarvis-whisper.inference.svc.cluster.local:8000"

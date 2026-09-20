@@ -102,6 +102,7 @@ async function main(): Promise<void> {
     banner.classList.add("show");
   }
 
+  let restoreConfirm: ConfirmPayload | null = null;
   try {
     const session = await fetchSession(sessionId);
     sessionId = session.session_id;
@@ -113,6 +114,7 @@ async function main(): Promise<void> {
         thread.append(el("div", `msg ${m.role}`, m.content));
       }
     }
+    if (session.confirm) restoreConfirm = session.confirm;
   } catch {
     greeting.textContent = "Good evening.";
     blurb.textContent = "Session unavailable.";
@@ -190,6 +192,13 @@ async function main(): Promise<void> {
     input.value = "";
     await runText(text);
   });
+
+  if (restoreConfirm) {
+    const last = thread.querySelector(".msg.assistant:last-of-type");
+    if (last instanceof HTMLElement) {
+      showConfirm(last, restoreConfirm, runText);
+    }
+  }
 
   let media: MediaRecorder | null = null;
   let chunks: BlobPart[] = [];
