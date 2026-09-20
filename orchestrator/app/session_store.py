@@ -12,6 +12,7 @@ class Session:
     id: str
     created_at: float
     messages: list[dict[str, Any]] = field(default_factory=list)
+    pending_confirm: dict[str, Any] | None = None
 
 
 class SessionStore:
@@ -34,3 +35,11 @@ class SessionStore:
         with self._lock:
             sess = self._sessions[session_id]
             sess.messages.append({"role": role, "content": content, "ts": time.time()})
+
+    def set_pending(self, session_id: str, pending: dict[str, Any] | None) -> None:
+        with self._lock:
+            self._sessions[session_id].pending_confirm = pending
+
+    def get_pending(self, session_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            return self._sessions[session_id].pending_confirm

@@ -1,4 +1,5 @@
 import {
+  type ConfirmPayload,
   fetchHealth,
   fetchSession,
   fetchTtsObjectUrl,
@@ -44,6 +45,14 @@ async function main(): Promise<void> {
   let busy = false;
   let ttsOk = true;
   let currentAudio: HTMLAudioElement | null = null;
+  let activeConfirmRow: HTMLElement | null = null;
+
+  const clearConfirmRow = (): void => {
+    if (activeConfirmRow) {
+      activeConfirmRow.remove();
+      activeConfirmRow = null;
+    }
+  };
 
   const speak = async (text: string): Promise<void> => {
     if (!ttsOk || !text.trim()) return;
@@ -109,11 +118,39 @@ async function main(): Promise<void> {
     blurb.textContent = "Session unavailable.";
   }
 
+  const showConfirm = (
+    after: HTMLElement,
+    confirm: ConfirmPayload,
+    run: (text: string) => Promise<void>,
+  ): void => {
+    clearConfirmRow();
+    const row = el("div", "confirm-row");
+    const yes = el("button", "confirm-yes", "Confirm") as HTMLButtonElement;
+    yes.type = "button";
+    const no = el("button", "confirm-no", "Cancel") as HTMLButtonElement;
+    no.type = "button";
+    yes.addEventListener("click", () => {
+      yes.disabled = true;
+      no.disabled = true;
+      void run("yes");
+    });
+    no.addEventListener("click", () => {
+      yes.disabled = true;
+      no.disabled = true;
+      void run("cancel");
+    });
+    row.append(yes, no);
+    after.insertAdjacentElement("afterend", row);
+    activeConfirmRow = row;
+    void confirm;
+  };
+
   async function runText(text: string): Promise<void> {
     if (!text || !sessionId || busy) return;
     busy = true;
     send.disabled = true;
     mic.disabled = true;
+    clearConfirmRow();
     thread.append(el("div", "msg user", text));
     const assistant = el("div", "msg assistant", "");
     thread.append(assistant);
@@ -127,12 +164,13 @@ async function main(): Promise<void> {
       onToken: (t) => {
         assistant.textContent = (assistant.textContent ?? "") + t;
       },
-      onDone: (reply) => {
+      onDone: (reply, _transcript, confirm) => {
         if (reply && !assistant.textContent) assistant.textContent = reply;
         busy = false;
         send.disabled = false;
         mic.disabled = false;
         input.focus();
+        if (confirm) showConfirm(assistant, confirm, runText);
         void speak(reply);
       },
       onError: (message) => {
@@ -192,6 +230,7 @@ async function main(): Promise<void> {
     busy = true;
     send.disabled = true;
     mic.disabled = true;
+    clearConfirmRow();
     const userMsg = el("div", "msg user", "…");
     thread.append(userMsg);
     const assistant = el("div", "msg assistant", "");
@@ -206,12 +245,13 @@ async function main(): Promise<void> {
       onToken: (t) => {
         assistant.textContent = (assistant.textContent ?? "") + t;
       },
-      onDone: (reply, transcript) => {
+      onDone: (reply, transcript, confirm) => {
         if (transcript) userMsg.textContent = transcript;
         if (reply && !assistant.textContent) assistant.textContent = reply;
         busy = false;
         send.disabled = false;
         mic.disabled = false;
+        if (confirm) showConfirm(assistant, confirm, runText);
         void speak(reply);
       },
       onError: (message) => {

@@ -102,6 +102,34 @@ body {
   color: var(--ink);
 }
 
+.confirm-row {
+  display: flex;
+  gap: 0.5rem;
+  align-self: flex-start;
+  margin: -0.35rem 0 0.25rem;
+}
+
+.confirm-row button {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 0.35rem 0.85rem;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.confirm-row button.confirm-no {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+.confirm-row button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .composer {
   display: flex;
   gap: 0.5rem;

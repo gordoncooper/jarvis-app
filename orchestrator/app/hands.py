@@ -13,15 +13,71 @@ from .config import settings
 
 log = logging.getLogger("jarvis.orchestrator.hands")
 
-# Gordon-named trusted verbs (D-0022). Class trusted = auto-run, no confirm UI.
-CATALOG: dict[str, str] = {
-    "cluster.health": "Node Ready / non-Running pods snapshot.",
-    "cluster.gpus": "GPU temperature and memory from Prometheus.",
-    "lab.map": "Canonical lab URLs plus live node list.",
+CONFIRM_TTL_SEC = 90.0
+
+# Gordon-named verbs (D-0022 trusted / D-0023 confirm).
+CATALOG: dict[str, dict[str, str]] = {
+    "cluster.health": {"class": "trusted", "desc": "Node Ready / non-Running pods snapshot."},
+    "cluster.gpus": {"class": "trusted", "desc": "GPU temperature and memory from Prometheus."},
+    "lab.map": {"class": "trusted", "desc": "Canonical lab URLs plus live node list."},
+    "apps.recycle_pod": {"class": "confirm", "desc": "Delete one named pod (recreate via controller)."},
+    "apps.restart_deploy": {"class": "confirm", "desc": "Patch Deployment restartedAt to bounce pods."},
 }
 
-# Ingress heuristics — flexible speech → rigid verb (D-0009). First match wins.
+ALLOW_NS = frozenset({"apps", "inference", "agents", "monitoring"})
+
+# Bare short name → (namespace, resource kind for default verb).
+SHORT_NAMES: dict[str, tuple[str, str]] = {
+    "jarvis-glass": ("apps", "deploy"),
+    "jarvis-orchestrator": ("apps", "deploy"),
+    "jarvis-home": ("apps", "deploy"),
+    "homepage": ("apps", "deploy"),
+    "open-webui": ("apps", "deploy"),
+    "openclaw": ("agents", "deploy"),
+    "ollama": ("inference", "deploy"),
+    "litellm": ("inference", "deploy"),
+    "speaches": ("inference", "deploy"),
+    "openedai-speech": ("inference", "deploy"),
+    "piper": ("inference", "deploy"),
+    "whisper": ("inference", "deploy"),
+    "prometheus": ("monitoring", "deploy"),
+    "grafana": ("monitoring", "deploy"),
+    "nvidia-gpu-exporter": ("monitoring", "deploy"),
+}
+
+_AFFIRM = re.compile(
+    r"^\s*(yes|yep|yeah|confirm|do\s+it|go\s+ahead|proceed|ok|okay)\s*[.!?]?\s*$",
+    re.I,
+)
+_CANCEL = re.compile(
+    r"^\s*(cancel|no|nope|never\s*mind|stop|abort|don'?t)\s*[.!?]?\s*$",
+    re.I,
+)
+
+# Confirm rules before trusted health so "restart deploy X" does not hit cluster.health.
 _RULES: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "apps.restart_deploy",
+        re.compile(
+            r"\b("
+            r"(restart|bounce|recycle)\s+(the\s+)?(deploy(ment)?|deploy)\b|"
+            r"(restart|bounce)\s+(the\s+)?[\w-]+\s+deploy(ment)?\b|"
+            r"deploy(ment)?\s+(restart|bounce|recycle)\b"
+            r")",
+            re.I,
+        ),
+    ),
+    (
+        "apps.recycle_pod",
+        re.compile(
+            r"\b("
+            r"(recycle|delete|kill|restart)\s+(the\s+)?pod\b|"
+            r"pod\s+(recycle|delete|kill|restart)\b|"
+            r"recycle\s+(the\s+)?[\w-]+(\s+pod)?\b"
+            r")",
+            re.I,
+        ),
+    ),
     (
         "cluster.gpus",
         re.compile(
@@ -68,6 +124,7 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
 class VerbHit:
     name: str
     klass: str = "trusted"
+    args: dict[str, str] | None = None
 
 
 def match_verb(text: str) -> VerbHit | None:
@@ -76,8 +133,54 @@ def match_verb(text: str) -> VerbHit | None:
         return None
     for name, pat in _RULES:
         if pat.search(t):
-            return VerbHit(name=name)
+            klass = CATALOG.get(name, {}).get("class", "trusted")
+            if klass == "confirm":
+                args, err = parse_confirm_args(name, t)
+                if err or not args:
+                    return VerbHit(name=name, klass="confirm", args=None)
+                return VerbHit(name=name, klass="confirm", args=args)
+            return VerbHit(name=name, klass="trusted")
     return None
+
+
+def parse_confirm_args(verb: str, text: str) -> tuple[dict[str, str] | None, str | None]:
+    """Extract namespace/name from speech. Returns (args, error)."""
+    t = " ".join((text or "").strip().split())
+    # Explicit ns/name
+    m = re.search(r"\b([a-z0-9-]+)/([a-z0-9]([-a-z0-9]*[a-z0-9])?)\b", t, re.I)
+    if m and m.group(1).lower() in ALLOW_NS:
+        return {"namespace": m.group(1).lower(), "name": m.group(2).lower()}, None
+
+    # Known short names
+    low = t.lower()
+    for short, (ns, _kind) in sorted(SHORT_NAMES.items(), key=lambda x: -len(x[0])):
+        if re.search(rf"\b{re.escape(short)}\b", low):
+            return {"namespace": ns, "name": short}, None
+
+    # "pod foo-bar-123" / "deployment foo"
+    m = re.search(
+        r"\b(?:pod|deploy(?:ment)?)\s+([a-z0-9]([-a-z0-9]*[a-z0-9])?)\b",
+        low,
+    )
+    if m:
+        name = m.group(1)
+        if name in SHORT_NAMES:
+            ns, _ = SHORT_NAMES[name]
+            return {"namespace": ns, "name": name}, None
+        return None, f"I need a namespace for `{name}` (apps|inference|agents|monitoring)."
+
+    return None, (
+        "Name the target, sir — e.g. `recycle pod apps/jarvis-glass-…` "
+        "or `restart deploy jarvis-glass`."
+    )
+
+
+def is_affirm(text: str) -> bool:
+    return bool(_AFFIRM.match((text or "").strip()))
+
+
+def is_cancel(text: str) -> bool:
+    return bool(_CANCEL.match((text or "").strip()))
 
 
 async def health_hands() -> tuple[bool, str | None]:
@@ -98,18 +201,45 @@ async def health_hands() -> tuple[bool, str | None]:
         return False, "Hands unavailable — live rack questions will wait."
 
 
-async def execute_verb(name: str) -> dict[str, Any]:
+async def execute_verb(
+    name: str,
+    *,
+    args: dict[str, str] | None = None,
+    confirmed: bool = False,
+) -> dict[str, Any]:
     if name not in CATALOG:
         raise RuntimeError(f"unknown verb {name}")
     url = settings.hands_base.rstrip("/") + "/v1/verbs"
+    payload: dict[str, Any] = {"verb": name, "args": args or {}, "confirmed": confirmed}
     async with httpx.AsyncClient(timeout=90.0) as client:
-        r = await client.post(url, json={"verb": name, "args": {}})
-        if r.status_code >= 400:
-            raise RuntimeError(f"hands http {r.status_code}")
-        body = r.json()
-        if not body.get("ok"):
-            raise RuntimeError(body.get("error") or "verb failed")
+        r = await client.post(url, json=payload)
+        try:
+            body = r.json()
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"hands http {r.status_code}") from e
+        if body.get("error") == "confirm required":
+            return body
+        if r.status_code >= 400 or not body.get("ok"):
+            raise RuntimeError(body.get("error") or f"hands http {r.status_code}")
         return body
+
+
+async def propose_confirm(name: str, args: dict[str, str]) -> dict[str, Any]:
+    """Call shim without confirmed to resolve preview (pod name, etc.)."""
+    body = await execute_verb(name, args=args, confirmed=False)
+    if body.get("error") != "confirm required":
+        raise RuntimeError(body.get("error") or "expected confirm required")
+    preview = body.get("preview") or {}
+    ns = str(preview.get("namespace") or args.get("namespace") or "")
+    nm = str(preview.get("name") or args.get("name") or "")
+    summary = str(preview.get("summary") or f"{name} {ns}/{nm}")
+    text = (body.get("text") or f"Confirm: {summary}? Say yes or cancel.").strip()
+    return {
+        "verb": name,
+        "args": {"namespace": ns, "name": nm},
+        "summary": summary,
+        "text": text,
+    }
 
 
 def format_verb_reply(name: str, body: dict[str, Any]) -> str:
@@ -176,3 +306,21 @@ def audit_verb(db_path: str, *, verb: str, ok: bool, detail: str, session_id: st
                 detail[:2000],
             ),
         )
+
+
+def new_pending(verb: str, args: dict[str, str], summary: str) -> dict[str, Any]:
+    return {
+        "id": str(uuid.uuid4()),
+        "verb": verb,
+        "args": args,
+        "summary": summary,
+        "expires_at": time.time() + CONFIRM_TTL_SEC,
+    }
+
+
+def pending_alive(pending: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not pending:
+        return None
+    if float(pending.get("expires_at") or 0) < time.time():
+        return None
+    return pending

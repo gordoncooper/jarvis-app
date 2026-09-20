@@ -30,10 +30,21 @@ export async function fetchSession(sessionId: string | null): Promise<SessionPay
   return r.json() as Promise<SessionPayload>;
 }
 
+export type ConfirmPayload = {
+  id: string;
+  verb: string;
+  args?: Record<string, string>;
+  summary?: string;
+};
+
 export type TurnHandlers = {
   onMeta?: (sessionId: string, transcript?: string) => void;
   onToken?: (text: string) => void;
-  onDone?: (reply: string, transcript?: string) => void;
+  onDone?: (
+    reply: string,
+    transcript?: string,
+    confirm?: ConfirmPayload | null,
+  ) => void;
   onError?: (message: string) => void;
 };
 
@@ -83,9 +94,26 @@ async function consumeSse(r: Response, handlers: TurnHandlers): Promise<void> {
           typeof obj.reply_text === "string" && obj.reply_text.length > 0
             ? obj.reply_text
             : reply;
+        let confirm: ConfirmPayload | null = null;
+        const raw = obj.confirm;
+        if (raw && typeof raw === "object") {
+          const c = raw as Record<string, unknown>;
+          if (typeof c.id === "string" && typeof c.verb === "string") {
+            confirm = {
+              id: c.id,
+              verb: c.verb,
+              args:
+                c.args && typeof c.args === "object"
+                  ? (c.args as Record<string, string>)
+                  : undefined,
+              summary: typeof c.summary === "string" ? c.summary : undefined,
+            };
+          }
+        }
         handlers.onDone?.(
           full,
           typeof obj.transcript === "string" ? obj.transcript : undefined,
+          confirm,
         );
       }
     }

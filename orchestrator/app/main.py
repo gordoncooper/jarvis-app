@@ -22,7 +22,13 @@ from .hands import (
     execute_verb,
     format_verb_reply,
     health_hands,
+    is_affirm,
+    is_cancel,
     match_verb,
+    new_pending,
+    parse_confirm_args,
+    pending_alive,
+    propose_confirm,
 )
 from .stt import health_whisper, transcribe
 from .tts import health_piper, synthesize
@@ -30,7 +36,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.9-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.10-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -128,7 +134,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.9-dev",
+        "version": "0.6.10-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -225,6 +231,96 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     sid = session_id or str(uuid.uuid4())
     sess = store.get_or_create(sid)
     store.append(sess.id, "user", text)
+    accept = request.headers.get("accept", "")
+    want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
+
+    def _reply(
+        reply: str,
+        *,
+        verb: str | None = None,
+        confirm: dict[str, Any] | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> Response:
+        store.append(sess.id, "assistant", reply)
+        payload: dict[str, Any] = {
+            "session_id": sess.id,
+            "reply_text": reply,
+            "degraded": False,
+            "transcript": text,
+        }
+        if verb:
+            payload["verb"] = verb
+        if confirm:
+            payload["confirm"] = confirm
+        if extra:
+            payload.update(extra)
+        if want_sse:
+
+            async def gen() -> AsyncIterator[bytes]:
+                yield _sse("meta", {"session_id": sess.id, "transcript": text})
+                yield _sse("token", {"text": reply})
+                yield _sse("done", payload)
+
+            return StreamingResponse(gen(), media_type="text/event-stream")
+        return JSONResponse(payload)
+
+    # Resolve pending confirm before memory/verbs (yes/cancel).
+    raw_pending = store.get_pending(sess.id)
+    pending = pending_alive(raw_pending)
+    if raw_pending and not pending:
+        store.set_pending(sess.id, None)
+    if pending:
+        if is_affirm(text):
+            store.set_pending(sess.id, None)
+            try:
+                body = await execute_verb(
+                    pending["verb"],
+                    args=pending.get("args") or {},
+                    confirmed=True,
+                )
+                reply = format_verb_reply(pending["verb"], body)
+                audit_verb(
+                    settings.memory_db_path,
+                    verb=pending["verb"],
+                    ok=True,
+                    detail=(body.get("text") or str(body))[:500],
+                    session_id=sess.id,
+                )
+            except Exception as e:  # noqa: BLE001
+                log.exception("confirm execute %s failed", pending["verb"])
+                reply = (
+                    f"I could not complete {pending['verb']} "
+                    f"({type(e).__name__}). Try again shortly."
+                )
+                audit_verb(
+                    settings.memory_db_path,
+                    verb=pending["verb"],
+                    ok=False,
+                    detail=str(e)[:500],
+                    session_id=sess.id,
+                )
+            return _reply(reply, verb=pending["verb"])
+        if is_cancel(text):
+            store.set_pending(sess.id, None)
+            audit_verb(
+                settings.memory_db_path,
+                verb=pending["verb"],
+                ok=False,
+                detail="cancelled",
+                session_id=sess.id,
+            )
+            return _reply("Cancelled.", verb=pending["verb"])
+        summary = pending.get("summary") or pending["verb"]
+        return _reply(
+            f"Still waiting: {summary}. Say yes or cancel.",
+            verb=pending["verb"],
+            confirm={
+                "id": pending["id"],
+                "verb": pending["verb"],
+                "args": pending.get("args") or {},
+                "summary": summary,
+            },
+        )
 
     intent = parse_memory_intent(text)
     if intent.kind in ("remember", "forget"):
@@ -236,40 +332,39 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         else:
             forgotten = mem().forget(intent.fact) if intent.fact else 0
             reply = _memory_reply("forget", intent.fact, forgotten=forgotten)
-        store.append(sess.id, "assistant", reply)
-        accept = request.headers.get("accept", "")
-        want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
-        if want_sse:
-
-            async def mem_gen() -> AsyncIterator[bytes]:
-                yield _sse("meta", {"session_id": sess.id, "transcript": text})
-                yield _sse("token", {"text": reply})
-                yield _sse(
-                    "done",
-                    {
-                        "session_id": sess.id,
-                        "reply_text": reply,
-                        "degraded": False,
-                        "memory": intent.kind,
-                        "transcript": text,
-                    },
-                )
-
-            return StreamingResponse(mem_gen(), media_type="text/event-stream")
-        return JSONResponse(
-            {
-                "session_id": sess.id,
-                "reply_text": reply,
-                "degraded": False,
-                "memory": intent.kind,
-                "transcript": text,
-            }
-        )
+        return _reply(reply, extra={"memory": intent.kind})
 
     hit = match_verb(text)
     if hit is not None:
-        accept = request.headers.get("accept", "")
-        want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
+        if hit.klass == "confirm":
+            if not hit.args:
+                _args, err = parse_confirm_args(hit.name, text)
+                return _reply(err or "I need a clearer target for that action.")
+            try:
+                prop = await propose_confirm(hit.name, hit.args)
+            except Exception as e:  # noqa: BLE001
+                log.exception("propose %s failed", hit.name)
+                return _reply(
+                    f"I could not prepare {hit.name} ({type(e).__name__}). "
+                    "Check the name and try again."
+                )
+            pending_obj = new_pending(prop["verb"], prop["args"], prop["summary"])
+            store.set_pending(sess.id, pending_obj)
+            audit_verb(
+                settings.memory_db_path,
+                verb=hit.name,
+                ok=False,
+                detail="awaiting_confirm:" + prop["summary"][:400],
+                session_id=sess.id,
+            )
+            confirm = {
+                "id": pending_obj["id"],
+                "verb": prop["verb"],
+                "args": prop["args"],
+                "summary": prop["summary"],
+            }
+            return _reply(prop["text"], verb=hit.name, confirm=confirm)
+
         try:
             body = await execute_verb(hit.name)
             reply = format_verb_reply(hit.name, body)
@@ -293,40 +388,11 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 detail=str(e)[:500],
                 session_id=sess.id,
             )
-        store.append(sess.id, "assistant", reply)
-        if want_sse:
-
-            async def verb_gen() -> AsyncIterator[bytes]:
-                yield _sse("meta", {"session_id": sess.id, "transcript": text})
-                yield _sse("token", {"text": reply})
-                yield _sse(
-                    "done",
-                    {
-                        "session_id": sess.id,
-                        "reply_text": reply,
-                        "degraded": False,
-                        "verb": hit.name,
-                        "transcript": text,
-                    },
-                )
-
-            return StreamingResponse(verb_gen(), media_type="text/event-stream")
-        return JSONResponse(
-            {
-                "session_id": sess.id,
-                "reply_text": reply,
-                "degraded": False,
-                "verb": hit.name,
-                "transcript": text,
-            }
-        )
+        return _reply(reply, verb=hit.name)
 
     messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt()}]
     for m in sess.messages[-settings.max_history :]:
         messages.append({"role": m["role"], "content": m["content"]})
-
-    accept = request.headers.get("accept", "")
-    want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
 
     if want_sse:
 
@@ -379,6 +445,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             "transcript": text,
         }
     )
+
 
 
 def _sse(event: str, data: dict[str, Any]) -> bytes:

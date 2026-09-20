@@ -4,9 +4,9 @@
 # v0.5.2 = planning freeze / bootstrap.
 # Next implementation cut = v0.6.0 (create when slice 1 ships — D-0021).
 
-GIT_TAG=v0.6.9
+GIT_TAG=v0.6.10
 
 IMAGE_GLASS=docker.io/library/jarvis-glass
 IMAGE_ORCHESTRATOR=docker.io/library/jarvis-orchestrator
-IMAGE_GLASS_TAG=v0.6.9
-IMAGE_ORCHESTRATOR_TAG=v0.6.9
+IMAGE_GLASS_TAG=v0.6.10
+IMAGE_ORCHESTRATOR_TAG=v0.6.10
