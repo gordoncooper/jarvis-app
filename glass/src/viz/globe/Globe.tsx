@@ -205,14 +205,15 @@ function Stage(props: GlobeState) {
         sectionThickness={0.5}
         position={[0, -2.05, 0]}
       />
-      <EffectComposer multisampling={4} enableNormalPass={false}>
+      <EffectComposer multisampling={0} enableNormalPass={false}>
         <Bloom
-          intensity={0.62}
-          luminanceThreshold={0.28}
-          luminanceSmoothing={0.38}
+          intensity={0.22}
+          luminanceThreshold={0.88}
+          luminanceSmoothing={0.22}
           mipmapBlur
+          radius={0.45}
         />
-        <Vignette eskil={false} offset={0.32} darkness={0.72} />
+        <Vignette eskil={false} offset={0.42} darkness={0.52} />
       </EffectComposer>
     </>
   );
@@ -228,7 +229,7 @@ export function Globe(props: GlobeState) {
         alpha: false,
         powerPreference: "high-performance",
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 0.92,
+        toneMappingExposure: 0.82,
       }}
       camera={{ position: [0, 0.72, 5.2], fov: 32, near: 0.1, far: 90 }}
       onCreated={({ gl }) => {

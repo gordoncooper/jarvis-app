@@ -105,8 +105,8 @@ void main() {
   vec3 view = normalize(cameraPosition - vWorld);
   float fres = pow(1.0 - abs(dot(view, normalize(vNormal))), 2.05);
   vec3 col = mix(uAccent, vec3(0.38, 0.55, 0.82), 0.4 + 0.4 * uFrozen);
-  float a = smoothstep(0.05, 0.95, fres) * (0.42 + 0.3 * uLive + 0.38 * uAlert);
-  gl_FragColor = vec4(col * (0.45 + 0.7 * fres), a);
+  float a = smoothstep(0.08, 0.92, fres) * (0.22 + 0.18 * uLive + 0.28 * uAlert);
+  gl_FragColor = vec4(col * (0.35 + 0.65 * fres), a);
 }
 `;
 
