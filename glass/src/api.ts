@@ -10,9 +10,11 @@ export type HealthPayload = {
   ok: boolean;
   degraded?: boolean;
   reason?: string | null;
+  llm?: boolean;
   stt?: boolean;
   tts?: boolean;
   hands?: boolean;
+  memory_facts?: number;
 };
 
 const jsonHeaders = { Accept: "application/json" };

@@ -8,6 +8,8 @@ import {
   streamTurn,
 } from "./api.js";
 
+/** Frozen 3-column shell for `mark-hud` / `archive-gold` packs (D-0030). */
+
 const SESSION_KEY = "jarvis.session_id";
 
 function el<K extends keyof HTMLElementTagNameMap>(

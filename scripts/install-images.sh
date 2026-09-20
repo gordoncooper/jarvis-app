@@ -21,7 +21,7 @@ ORCH_TAG="${IMAGE_ORCHESTRATOR_TAG:-$TAG}"
 NODE_BIN="${NODE_BIN:-$HOME/.local/node-v22.14.0-linux-x64/bin}"
 
 echo "== paths =="
-echo "ROOT=$ROOT HOST=$HOST GLASS_TAG=$TAG ORCH_TAG=$ORCH_TAG THEME=${JARVIS_THEME:-mark-hud}"
+echo "ROOT=$ROOT HOST=$HOST GLASS_TAG=$TAG ORCH_TAG=$ORCH_TAG THEME=${JARVIS_THEME:-godseye}"
 test -f "$ROOT/orchestrator/Dockerfile"
 test -f "$ROOT/glass/Dockerfile"
 test -f "$ROOT/glass/nginx.conf"
@@ -32,7 +32,7 @@ command -v node >/dev/null || {
   echo "FATAL: node not on PATH (expected under $NODE_BIN)." >&2
   exit 1
 }
-THEME="${JARVIS_THEME:-mark-hud}"
+THEME="${JARVIS_THEME:-godseye}"
 echo "THEME=$THEME"
 (
   cd "$ROOT/glass"

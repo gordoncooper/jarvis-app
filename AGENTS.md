@@ -29,7 +29,8 @@ A dated decision outranks any prose here or there.
   cut is **v0.6.0** (D-0021)
 - Glass talks only to the orchestrator — no direct product wiring to LiteLLM,
   Open WebUI, or OpenClaw (D-0012)
-- No Vite / App Builder greenfield. TS compiles to static assets (D-0020)
+- No Vite / App Builder greenfield. TS compiles to static assets (D-0020).
+  React + three.js via esbuild is allowed for glass (D-0030)
 - Do not extend `jarvis-core` (D-0003). Do not put Flux manifests in this repo
 - Factory apps JARVIS builds later get their **own** repos; do not dump them here
   unless deliberately promoted to product (D-0020)
