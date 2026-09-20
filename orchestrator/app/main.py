@@ -20,6 +20,7 @@ from .memory import (
     PromotedMemory,
     eligible_for_llm_extract,
     fact_already_known,
+    format_forget_confirm_ask,
     gpu_temp_unit,
     new_memory_pending,
     parse_memory_candidate,
@@ -45,7 +46,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.14-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.15-dev")
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
@@ -175,7 +176,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.14-dev",
+        "version": "0.6.15-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -210,7 +211,12 @@ async def get_session(x_session_id: str | None = Header(default=None, alias="X-S
         }
         if kind == "memory":
             confirm["fact"] = pending.get("fact")
-            confirm["verb"] = "memory.remember"
+            confirm["facts"] = pending.get("facts") or []
+            confirm["verb"] = pending.get("verb") or (
+                "memory.forget"
+                if pending.get("action") == "forget"
+                else "memory.remember"
+            )
         else:
             confirm["verb"] = pending.get("verb")
             confirm["args"] = pending.get("args") or {}
@@ -334,6 +340,21 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         if is_affirm(text):
             store.set_pending(sess.id, None)
             if kind == "memory":
+                action = str(pending.get("action") or "remember")
+                if action == "forget":
+                    targets = [
+                        str(x)
+                        for x in (pending.get("facts") or [])
+                        if str(x).strip()
+                    ]
+                    if not targets and pending.get("fact"):
+                        targets = [str(pending["fact"])]
+                    removed = mem().forget_texts(targets) if targets else []
+                    return _reply(
+                        _memory_reply("forget", "", forgotten=removed),
+                        confirm=None,
+                        extra={"memory": "forget"},
+                    )
                 fact = str(pending.get("fact") or "").strip()
                 if fact:
                     mem().remember(fact, source_turn=sess.id)
@@ -376,6 +397,9 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         if is_cancel(text):
             store.set_pending(sess.id, None)
             if kind == "memory":
+                action = str(pending.get("action") or "remember")
+                if action == "forget":
+                    return _reply("Cancelled — I will not forget that.")
                 return _reply("Cancelled — I will not store that.")
             audit_verb(
                 settings.memory_db_path,
@@ -396,7 +420,12 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             confirm["args"] = pending.get("args") or {}
         else:
             confirm["fact"] = pending.get("fact")
-            confirm["verb"] = "memory.remember"
+            confirm["facts"] = pending.get("facts") or []
+            confirm["verb"] = pending.get("verb") or (
+                "memory.forget"
+                if pending.get("action") == "forget"
+                else "memory.remember"
+            )
         return _reply(
             f"Still waiting: {summary}. Say yes or cancel.",
             verb=confirm.get("verb") if kind == "hands" else None,
@@ -404,16 +433,37 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         )
 
     intent = parse_memory_intent(text)
-    if intent.kind in ("remember", "forget"):
-        forgotten: list[str] = []
-        if intent.kind == "remember":
-            if intent.fact:
-                mem().remember(intent.fact, source_turn=sess.id)
-            reply = _memory_reply("remember", intent.fact)
+    if intent.kind == "remember":
+        if intent.fact:
+            mem().remember(intent.fact, source_turn=sess.id)
+        reply = _memory_reply("remember", intent.fact)
+        return _reply(reply, extra={"memory": "remember"})
+
+    if intent.kind in ("forget", "forget_all"):
+        if intent.kind == "forget_all":
+            targets = mem().active_facts(500)
         else:
-            forgotten = mem().forget(intent.fact) if intent.fact else []
-            reply = _memory_reply("forget", intent.fact, forgotten=forgotten)
-        return _reply(reply, extra={"memory": intent.kind})
+            targets = mem().matching_facts(intent.fact) if intent.fact else []
+        if not targets:
+            return _reply(
+                "I found nothing matching that to forget.",
+                extra={"memory": "forget"},
+            )
+        pending_obj = new_memory_pending(
+            targets[0] if len(targets) == 1 else "",
+            action="forget",
+            facts=targets,
+        )
+        store.set_pending(sess.id, pending_obj)
+        confirm = {
+            "id": pending_obj["id"],
+            "kind": "memory",
+            "verb": "memory.forget",
+            "fact": pending_obj.get("fact") or "",
+            "facts": targets,
+            "summary": pending_obj["summary"],
+        }
+        return _reply(format_forget_confirm_ask(targets), confirm=confirm)
 
     # Preference/identity heuristics before Hands so "I prefer GPU temps in F"
     # is confirm-gated memory, not a live metrics verb. Skip the talker for

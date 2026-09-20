@@ -35,6 +35,16 @@ _FORGET = re.compile(
     r")\s*[,:]?\s+(.+?)\s*$",
     re.IGNORECASE | re.DOTALL,
 )
+# Wipe all promoted facts — always confirm-class (D-0027).
+_FORGET_ALL = re.compile(
+    _PREFIX
+    + r"(?:"
+    r"forget\s+(?:everything|all(?:\s+(?:of\s+)?(?:my\s+)?(?:memories|facts|that))?)"
+    r"|clear\s+(?:my\s+)?(?:promoted\s+)?memory"
+    r"|wipe\s+(?:my\s+)?(?:promoted\s+)?memory"
+    r")\s*$",
+    re.IGNORECASE,
+)
 
 # Dropped when matching forget queries to stored facts.
 _STOP = frozenset(
@@ -77,24 +87,76 @@ _STOP = frozenset(
 
 @dataclass
 class MemoryHit:
-    kind: str  # remember | forget | none
+    kind: str  # remember | forget | forget_all | none
     fact: str
 
 
 def parse_memory_intent(text: str) -> MemoryHit:
-    """Explicit remember/forget only (D-0013 / D-0017)."""
+    """Explicit remember / forget / forget-all (D-0013 / D-0027)."""
     t = " ".join(text.strip().split())
     m = _REMEMBER.match(t)
     if m:
         fact = _normalize_fact(m.group(1))
         if fact:
             return MemoryHit("remember", fact)
+    if _FORGET_ALL.match(t):
+        return MemoryHit("forget_all", "")
     m = _FORGET.match(t)
     if m:
         fact = _normalize_fact(m.group(1))
         if fact:
             return MemoryHit("forget", fact)
     return MemoryHit("none", "")
+
+
+def new_memory_pending(
+    fact: str,
+    *,
+    action: str = "remember",
+    facts: list[str] | None = None,
+    ttl_sec: float = 90.0,
+) -> dict:
+    """Pending confirm for remember or forget (D-0024 / D-0027)."""
+    act = action if action in ("remember", "forget") else "remember"
+    if act == "forget":
+        targets = [f for f in (facts or ([fact] if fact else [])) if f]
+        if len(targets) == 1:
+            summary = f"forget: {targets[0]}"
+        else:
+            summary = f"forget {len(targets)} facts"
+        return {
+            "id": str(uuid.uuid4()),
+            "kind": "memory",
+            "action": "forget",
+            "verb": "memory.forget",
+            "fact": targets[0] if len(targets) == 1 else "",
+            "facts": targets,
+            "summary": summary,
+            "expires_at": time.time() + ttl_sec,
+        }
+    return {
+        "id": str(uuid.uuid4()),
+        "kind": "memory",
+        "action": "remember",
+        "verb": "memory.remember",
+        "fact": fact,
+        "facts": [fact] if fact else [],
+        "summary": f"remember: {fact}",
+        "expires_at": time.time() + ttl_sec,
+    }
+
+
+def format_forget_confirm_ask(facts: list[str]) -> str:
+    if not facts:
+        return "I found nothing matching that to forget."
+    if len(facts) == 1:
+        return f"Shall I forget: {facts[0]}? Say yes or cancel."
+    preview = "; ".join(facts[:3])
+    extra = f" (+{len(facts) - 3} more)" if len(facts) > 3 else ""
+    return (
+        f"Shall I forget {len(facts)} facts: {preview}{extra}? "
+        "Say yes or cancel."
+    )
 
 
 # Non-explicit candidates → confirm UI (D-0024). Not lab/metrics language.
@@ -168,16 +230,6 @@ def fact_already_known(fact: str, known: list[str]) -> bool:
         if _forget_match(fact, k):
             return True
     return False
-
-
-def new_memory_pending(fact: str, ttl_sec: float = 90.0) -> dict:
-    return {
-        "id": str(uuid.uuid4()),
-        "kind": "memory",
-        "fact": fact,
-        "summary": f"remember: {fact}",
-        "expires_at": time.time() + ttl_sec,
-    }
 
 
 def _normalize_fact(raw: str) -> str:
@@ -262,6 +314,17 @@ class PromotedMemory:
             ).fetchall()
         return [r["text"] for r in rows]
 
+    def matching_facts(self, query: str, limit: int = 200) -> list[str]:
+        """Active facts that would be removed by forget(query)."""
+        q = (query or "").strip()
+        if not q:
+            return []
+        out: list[str] = []
+        for text in self.active_facts(limit):
+            if _forget_match(q, text):
+                out.append(text)
+        return out
+
     def remember(self, text: str, source_turn: str | None = None) -> str:
         fid = str(uuid.uuid4())
         now = time.time()
@@ -277,8 +340,11 @@ class PromotedMemory:
             )
         return fid
 
-    def forget(self, query: str) -> list[str]:
-        """Tombstone active facts matching query; return removed texts."""
+    def forget_texts(self, texts: list[str]) -> list[str]:
+        """Tombstone exact active fact texts; return removed texts."""
+        want = {t for t in texts if t}
+        if not want:
+            return []
         now = time.time()
         removed: list[str] = []
         with self._lock, self._connect() as conn:
@@ -286,7 +352,7 @@ class PromotedMemory:
                 "SELECT id, text FROM facts WHERE tombstoned_at IS NULL"
             ).fetchall()
             for row in rows:
-                if not _forget_match(query, row["text"]):
+                if row["text"] not in want:
                     continue
                 conn.execute(
                     "UPDATE facts SET tombstoned_at = ? WHERE id = ?",
@@ -299,3 +365,7 @@ class PromotedMemory:
                 )
                 removed.append(str(row["text"]))
         return removed
+
+    def forget(self, query: str) -> list[str]:
+        """Tombstone active facts matching query; return removed texts."""
+        return self.forget_texts(self.matching_facts(query))
