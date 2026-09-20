@@ -4,11 +4,11 @@
 # v0.5.2 = planning freeze / bootstrap.
 # Next implementation cut = v0.6.0 (create when slice 1 ships — D-0021).
 
-GIT_TAG=v0.6.27
+GIT_TAG=v0.6.28
 
 IMAGE_GLASS=docker.io/library/jarvis-glass
 IMAGE_ORCHESTRATOR=docker.io/library/jarvis-orchestrator
-IMAGE_GLASS_TAG=v0.6.27
+IMAGE_GLASS_TAG=v0.6.28
 IMAGE_ORCHESTRATOR_TAG=v0.6.17
 
 # Glass theme pack (D-0030). Directory under glass/themes/.

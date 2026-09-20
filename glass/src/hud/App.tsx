@@ -16,6 +16,7 @@ import { Panel } from "./Panel.js";
 import { Ribbon } from "./Ribbon.js";
 import { Ticker } from "./Ticker.js";
 import { GeoTape } from "./GeoTape.js";
+import { Scope } from "./Scope.js";
 
 const SESSION_KEY = "jarvis.session_id";
 
@@ -110,9 +111,14 @@ export function App() {
         const restored: ChatMsg[] = [];
         for (const m of session.messages) {
           if (m.role === "user" || m.role === "assistant") {
-            restored.push({ id: nextId(), role: m.role, content: m.content });
+            restored.push({ id: nextId(), role: m.role, content: m.content, at: 0 });
           }
         }
+        const n = restored.length;
+        const now = Date.now();
+        restored.forEach((m, i) => {
+          m.at = now - Math.min(40_000, (n - 1 - i) * 8_000);
+        });
         setMessages(restored);
         if (session.confirm) setConfirm(session.confirm);
       } catch {
@@ -158,10 +164,11 @@ export function App() {
       setConfirm(null);
       const userId = nextId();
       const asstId = nextId();
+      const t0 = Date.now();
       setMessages((prev) => [
         ...prev,
-        { id: userId, role: "user", content: text },
-        { id: asstId, role: "assistant", content: "" },
+        { id: userId, role: "user", content: text, at: t0 },
+        { id: asstId, role: "assistant", content: "", at: t0 },
       ]);
 
       await streamTurn(sessionId.current, text, {
@@ -179,7 +186,9 @@ export function App() {
         onDone: (reply, _transcript, nextConfirm) => {
           if (reply) {
             setMessages((prev) =>
-              prev.map((m) => (m.id === asstId ? { ...m, content: reply } : m)),
+              prev.map((m) =>
+                m.id === asstId ? { ...m, content: reply, at: Date.now() } : m,
+              ),
             );
           }
           busyRef.current = false;
@@ -240,10 +249,11 @@ export function App() {
     setConfirm(null);
     const userId = nextId();
     const asstId = nextId();
+    const t0 = Date.now();
     setMessages((prev) => [
       ...prev,
-      { id: userId, role: "user", content: "…" },
-      { id: asstId, role: "assistant", content: "" },
+      { id: userId, role: "user", content: "…", at: t0 },
+      { id: asstId, role: "assistant", content: "", at: t0 },
     ]);
 
     await streamAudioTurn(sessionId.current, blob, {
@@ -271,7 +281,9 @@ export function App() {
         }
         if (reply) {
           setMessages((prev) =>
-            prev.map((m) => (m.id === asstId ? { ...m, content: reply } : m)),
+            prev.map((m) =>
+              m.id === asstId ? { ...m, content: reply, at: Date.now() } : m,
+            ),
           );
         }
         busyRef.current = false;
@@ -313,12 +325,14 @@ export function App() {
         </div>
       ) : null}
       <div className="hud-vignette" />
+      <Scope />
       <div className="hud-overlay">
         <Ribbon
           greeting={greeting}
           live={live}
           alert={!!confirm}
           ticks={[
+            { id: "talker", label: "TALKER", live: talkerOk },
             { id: "hands", label: "HANDS", live: handsOk },
             { id: "stt", label: "STT", live: sttOk },
             { id: "tts", label: "TTS", live: ttsOk },
@@ -331,11 +345,16 @@ export function App() {
               <p className="blurb">{blurb}</p>
             </Panel>
           ) : null}
-          <GeoTape />
+          <GeoTape
+            sysOk={[talkerOk, handsOk, sttOk, ttsOk].filter(Boolean).length}
+            sysMax={4}
+            mem={health?.memory_facts ?? 0}
+          />
         </div>
         <Channel
           messages={messages}
           confirm={confirm}
+          pinLast={streaming || !!confirm}
           onConfirm={() => void runText("yes")}
           onCancel={() => void runText("cancel")}
         />

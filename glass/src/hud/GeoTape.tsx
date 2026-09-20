@@ -10,7 +10,13 @@ function fmtLon(v: number): string {
   return `${a}°${v >= 0 ? "E" : "W"}`;
 }
 
-export function GeoTape() {
+type Props = {
+  sysOk: number;
+  sysMax: number;
+  mem: number;
+};
+
+export function GeoTape({ sysOk, sysMax, mem }: Props) {
   const mode = useRef<HTMLSpanElement>(null);
   const hdg = useRef<HTMLSpanElement>(null);
   const look = useRef<HTMLSpanElement>(null);
@@ -47,6 +53,20 @@ export function GeoTape() {
         <span ref={look} className="hud-geo-val">
           —
         </span>
+      </div>
+      <div className="hud-geo-row">
+        <span>SYS</span>
+        <span className="hud-geo-val">
+          {sysOk}/{sysMax}
+        </span>
+      </div>
+      <div className="hud-geo-row">
+        <span>MEM</span>
+        <span className="hud-geo-val">{mem}</span>
+      </div>
+      <div className="hud-geo-row">
+        <span>RNG</span>
+        <span className="hud-geo-val">5.2</span>
       </div>
     </div>
   );

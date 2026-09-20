@@ -1,5 +1,6 @@
 import { Grid, Stars } from "@react-three/drei";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
 import {
@@ -129,7 +130,7 @@ function Earth({ live, streaming, alert, frozen }: Omit<GlobeState, "systems" | 
       <mesh material={earthMat}>
         <sphereGeometry args={[R, 96, 96]} />
       </mesh>
-      <mesh material={atmoMat} scale={1.07}>
+      <mesh material={atmoMat} scale={1.09}>
         <sphereGeometry args={[R, 64, 64]} />
       </mesh>
       <Graticule />
@@ -141,10 +142,41 @@ function Earth({ live, streaming, alert, frozen }: Omit<GlobeState, "systems" | 
   );
 }
 
+function ContactShadow() {
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec2 vUv;
+          void main() {
+            float d = length(vUv - 0.5) * 2.0;
+            float a = smoothstep(1.0, 0.1, d) * 0.58;
+            gl_FragColor = vec4(0.0, 0.0, 0.0, a);
+          }
+        `,
+      }),
+    [],
+  );
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.04, 0]} material={mat}>
+      <planeGeometry args={[5.4, 5.4]} />
+    </mesh>
+  );
+}
+
 function Stage(props: GlobeState) {
   return (
     <>
-      <Stars radius={60} depth={32} count={1200} factor={2.4} saturation={0} fade speed={0.2} />
+      <Stars radius={70} depth={40} count={1600} factor={2.1} saturation={0} fade speed={0.18} />
       <Suspense fallback={null}>
         <Earth
           live={props.live}
@@ -153,6 +185,7 @@ function Stage(props: GlobeState) {
           frozen={props.frozen}
         />
       </Suspense>
+      <ContactShadow />
       <SystemOrbits systems={props.systems} />
       <DataArcs live={props.live} streaming={props.streaming} />
       <RangeRings live={props.live} />
@@ -162,16 +195,25 @@ function Stage(props: GlobeState) {
       <MemoryBeads count={props.memoryFacts} />
       <Grid
         infiniteGrid
-        fadeDistance={18}
-        fadeStrength={1.2}
+        fadeDistance={20}
+        fadeStrength={1.35}
         cellSize={0.5}
         sectionSize={2.5}
         cellColor="#1c252e"
         sectionColor="#1a4a46"
-        cellThickness={0.3}
-        sectionThickness={0.55}
+        cellThickness={0.28}
+        sectionThickness={0.5}
         position={[0, -2.05, 0]}
       />
+      <EffectComposer multisampling={4} enableNormalPass={false}>
+        <Bloom
+          intensity={0.62}
+          luminanceThreshold={0.28}
+          luminanceSmoothing={0.38}
+          mipmapBlur
+        />
+        <Vignette eskil={false} offset={0.32} darkness={0.72} />
+      </EffectComposer>
     </>
   );
 }
@@ -180,9 +222,15 @@ export function Globe(props: GlobeState) {
   return (
     <Canvas
       className="hud-globe-canvas"
-      dpr={[1, 1.6]}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-      camera={{ position: [0, 0.48, 3.7], fov: 36, near: 0.1, far: 90 }}
+      dpr={[1, 1.5]}
+      gl={{
+        antialias: false,
+        alpha: false,
+        powerPreference: "high-performance",
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 0.92,
+      }}
+      camera={{ position: [0, 0.72, 5.2], fov: 32, near: 0.1, far: 90 }}
       onCreated={({ gl }) => {
         gl.setClearColor("#07090b", 1);
       }}

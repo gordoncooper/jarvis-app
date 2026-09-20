@@ -9,11 +9,14 @@ Empty channel reveals Earth.
 - Radius 2–4px. Motion 160–280ms ease-out.
 - Widgets mean something: `/health` (llm, hands, stt, tts, memory_facts,
   degraded) plus turn / confirm / PTT. No fake telemetry. No noc.lan scrape.
-- Globe: NASA-mapped Earth (day / night lights / specular / clouds / normals),
-  fresnel atmosphere, graticule, system orbits, data arcs, scan, lock reticle.
-  Frozen limb when HOLD. Confirm = LOCK. Streaming = SCAN. Track tape shows
-  real LOOK/HDG from the camera. No CDN at runtime.
-- Overlay: ribbon, dossier chip, floating channel slab, arc meters, ticker, CMD.
+- Globe: NASA-mapped Earth (day / night lights / specular / normals),
+  fresnel atmosphere with bloom, contact shadow, center-dim bowl, pulled-back
+  camera, graticule, system orbits, data arcs, scan, lock reticle. Frozen limb
+  when HOLD. Confirm = LOCK. Streaming = SCAN. Track tape shows real LOOK/HDG
+  from the camera. No CDN at runtime.
+- Overlay: scope ellipse + brackets, ribbon + clock, dossier chip, oval fading
+  channel, denser arc meters, ticker, CMD pill. Empty / fully-faded channel
+  reveals Earth.
 - Out: Vite, Tailwind, Recharts, Inter, indigo, glassmorphism, helmet visor,
   scanlines-over-everything, Sparkles.
 
