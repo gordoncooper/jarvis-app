@@ -45,7 +45,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.13-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.14-dev")
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
@@ -175,7 +175,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.13-dev",
+        "version": "0.6.14-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -416,10 +416,27 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         return _reply(reply, extra={"memory": intent.kind})
 
     # Preference/identity heuristics before Hands so "I prefer GPU temps in F"
-    # is confirm-gated memory, not a live metrics verb.
+    # is confirm-gated memory, not a live metrics verb. Skip the talker for
+    # heuristic hits — avoids premature "I will remember" and a free LLM round-trip.
     soft_candidate = parse_memory_candidate(text)
+    if soft_candidate and not fact_already_known(
+        soft_candidate, mem().active_facts(200)
+    ):
+        pending_obj = new_memory_pending(soft_candidate)
+        store.set_pending(sess.id, pending_obj)
+        confirm = {
+            "id": pending_obj["id"],
+            "kind": "memory",
+            "verb": "memory.remember",
+            "fact": soft_candidate,
+            "summary": pending_obj["summary"],
+        }
+        return _reply(
+            f"Shall I remember: {soft_candidate}? Say yes or cancel.",
+            confirm=confirm,
+        )
 
-    hit = None if soft_candidate else match_verb(text)
+    hit = match_verb(text)
     if hit is not None:
         if hit.klass == "confirm":
             if not hit.args:
@@ -482,7 +499,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
 
     async def _maybe_memory_confirm(reply: str) -> tuple[str, dict[str, Any] | None]:
         """Append memory confirm ask after talker reply (heuristic, then LLM)."""
-        candidate = soft_candidate or parse_memory_candidate(text)
+        candidate = parse_memory_candidate(text)
         if not candidate and eligible_for_llm_extract(text):
             candidate = await extract_memory_fact(text)
         if not candidate:
