@@ -1,0 +1,32 @@
+# secrets / local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.age
+learned.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / TS build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# caches
+.cache/
+tmp/

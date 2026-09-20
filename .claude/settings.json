@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(kubectl delete pvc:*)",
+      "Bash(kubectl delete pv:*)",
+      "Bash(kubectl delete ns:*)",
+      "Bash(kubectl delete namespace:*)",
+      "Bash(kubectl delete persistentvolume:*)",
+      "Bash(*kubectl delete pvc *)",
+      "Bash(*kubectl delete ns *)",
+      "Bash(*kubectl delete namespace *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git tag -f:*)",
+      "Bash(git tag --force:*)",
+      "Read(**/*.key)",
+      "Read(**/*.agekey)",
+      "Read(**/.kube/**)",
+      "Edit(**/*.key)",
+      "Edit(**/*.agekey)"
+    ]
+  }
+}
