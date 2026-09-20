@@ -14,9 +14,10 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .config import settings
-from .llm import chat_stream, health_llm
+from .llm import chat_stream, extract_memory_fact, health_llm
 from .memory import (
     PromotedMemory,
+    eligible_for_llm_extract,
     fact_already_known,
     new_memory_pending,
     parse_memory_candidate,
@@ -42,7 +43,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.11-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.12-dev")
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
@@ -140,7 +141,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.11-dev",
+        "version": "0.6.12-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -439,9 +440,11 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     for m in sess.messages[-settings.max_history :]:
         messages.append({"role": m["role"], "content": m["content"]})
 
-    def _maybe_memory_confirm(reply: str) -> tuple[str, dict[str, Any] | None]:
-        """Append memory confirm ask after talker reply when heuristic hits."""
+    async def _maybe_memory_confirm(reply: str) -> tuple[str, dict[str, Any] | None]:
+        """Append memory confirm ask after talker reply (heuristic, then LLM)."""
         candidate = parse_memory_candidate(text)
+        if not candidate and eligible_for_llm_extract(text):
+            candidate = await extract_memory_fact(text)
         if not candidate:
             return reply, None
         if fact_already_known(candidate, mem().active_facts(200)):
@@ -479,9 +482,16 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 return
             reply = "".join(chunks).strip()
             base = reply
-            reply, confirm = _maybe_memory_confirm(reply)
+            reply, confirm = await _maybe_memory_confirm(reply)
             if confirm and reply != base:
-                yield _sse("token", {"text": reply[len(base) :] if reply.startswith(base) else "\n\n" + reply})
+                yield _sse(
+                    "token",
+                    {
+                        "text": reply[len(base) :]
+                        if reply.startswith(base)
+                        else "\n\n" + reply
+                    },
+                )
             if reply:
                 store.append(sess.id, "assistant", reply)
             done: dict[str, Any] = {
@@ -504,7 +514,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         log.exception("turn failed")
         raise HTTPException(502, "llm error") from e
     reply = "".join(chunks).strip()
-    reply, confirm = _maybe_memory_confirm(reply)
+    reply, confirm = await _maybe_memory_confirm(reply)
     if reply:
         store.append(sess.id, "assistant", reply)
     payload: dict[str, Any] = {

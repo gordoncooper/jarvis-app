@@ -135,6 +135,21 @@ def parse_memory_candidate(text: str) -> str | None:
     return _normalize_fact(fact) or None
 
 
+def eligible_for_llm_extract(text: str) -> bool:
+    """Whether to spend a local LLM call after heuristic miss (D-0025)."""
+    t = " ".join((text or "").strip().split())
+    if len(t) < 12:
+        return False
+    if _LABISH.search(t):
+        return False
+    # Affirm/cancel — import lazily to keep memory free of hands cycle risk
+    from .hands import is_affirm, is_cancel
+
+    if is_affirm(t) or is_cancel(t):
+        return False
+    return True
+
+
 def fact_already_known(fact: str, known: list[str]) -> bool:
     for k in known:
         if _forget_match(fact, k):

@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     memory_db_path: str = "/var/lib/jarvis/promoted.sqlite"
     session_db_path: str = "/var/lib/jarvis/sessions.sqlite"
     memory_inject_limit: int = 40
+    memory_extract_model: str = "jarvis-local"
+    memory_extract_timeout: float = 3.0
 
     whisper_base: str = "http://jarvis-whisper.inference.svc.cluster.local:8000"
     whisper_model: str = "Systran/faster-whisper-small"
