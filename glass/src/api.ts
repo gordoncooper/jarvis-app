@@ -9,6 +9,7 @@ export type HealthPayload = {
   ok: boolean;
   degraded?: boolean;
   reason?: string | null;
+  stt?: boolean;
 };
 
 const jsonHeaders = { Accept: "application/json" };
@@ -28,31 +29,17 @@ export async function fetchSession(sessionId: string | null): Promise<SessionPay
 }
 
 export type TurnHandlers = {
-  onMeta?: (sessionId: string) => void;
+  onMeta?: (sessionId: string, transcript?: string) => void;
   onToken?: (text: string) => void;
-  onDone?: (reply: string) => void;
+  onDone?: (reply: string, transcript?: string) => void;
   onError?: (message: string) => void;
 };
 
-export async function streamTurn(
-  sessionId: string,
-  text: string,
-  handlers: TurnHandlers,
-): Promise<void> {
-  const r = await fetch("/v1/turns?stream=1", {
-    method: "POST",
-    headers: {
-      Accept: "text/event-stream",
-      "Content-Type": "application/json",
-      "X-Session-Id": sessionId,
-    },
-    body: JSON.stringify({ text, session_id: sessionId }),
-  });
+async function consumeSse(r: Response, handlers: TurnHandlers): Promise<void> {
   if (!r.ok || !r.body) {
     handlers.onError?.(`turn ${r.status}`);
     return;
   }
-
   const reader = r.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
@@ -80,7 +67,10 @@ export async function streamTurn(
         continue;
       }
       if (event === "meta" && typeof obj.session_id === "string") {
-        handlers.onMeta?.(obj.session_id);
+        handlers.onMeta?.(
+          obj.session_id,
+          typeof obj.transcript === "string" ? obj.transcript : undefined,
+        );
       } else if (event === "token" && typeof obj.text === "string") {
         reply += obj.text;
         handlers.onToken?.(obj.text);
@@ -91,8 +81,47 @@ export async function streamTurn(
           typeof obj.reply_text === "string" && obj.reply_text.length > 0
             ? obj.reply_text
             : reply;
-        handlers.onDone?.(full);
+        handlers.onDone?.(
+          full,
+          typeof obj.transcript === "string" ? obj.transcript : undefined,
+        );
       }
     }
   }
+}
+
+export async function streamTurn(
+  sessionId: string,
+  text: string,
+  handlers: TurnHandlers,
+): Promise<void> {
+  const r = await fetch("/v1/turns?stream=1", {
+    method: "POST",
+    headers: {
+      Accept: "text/event-stream",
+      "Content-Type": "application/json",
+      "X-Session-Id": sessionId,
+    },
+    body: JSON.stringify({ text, session_id: sessionId }),
+  });
+  await consumeSse(r, handlers);
+}
+
+export async function streamAudioTurn(
+  sessionId: string,
+  blob: Blob,
+  handlers: TurnHandlers,
+): Promise<void> {
+  const form = new FormData();
+  form.append("session_id", sessionId);
+  form.append("audio", blob, "speech.webm");
+  const r = await fetch("/v1/turns?stream=1", {
+    method: "POST",
+    headers: {
+      Accept: "text/event-stream",
+      "X-Session-Id": sessionId,
+    },
+    body: form,
+  });
+  await consumeSse(r, handlers);
 }

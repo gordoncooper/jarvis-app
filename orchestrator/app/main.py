@@ -17,11 +17,12 @@ from .config import settings
 from .llm import chat_stream, health_llm
 from .memory import PromotedMemory, parse_memory_intent
 from .session_store import SessionStore
+from .stt import health_whisper, transcribe
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.1-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.2-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -98,14 +99,19 @@ async def readyz() -> dict[str, bool]:
 @app.get("/health")
 async def health() -> dict[str, Any]:
     llm_ok, llm_reason = await health_llm()
+    stt_ok, stt_reason = await health_whisper()
     degraded = not llm_ok
+    reason = None if llm_ok else llm_reason
+    if not degraded and not stt_ok:
+        reason = stt_reason
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.1-dev",
+        "version": "0.6.2-dev",
         "degraded": degraded,
-        "reason": None if llm_ok else llm_reason,
+        "reason": reason,
         "llm": llm_ok,
+        "stt": stt_ok,
         "mock": settings.mock_llm,
         "memory_facts": len(mem().active_facts(500)),
     }
@@ -125,12 +131,44 @@ async def get_session(x_session_id: str | None = Header(default=None, alias="X-S
 
 
 @app.post("/v1/turns")
-async def post_turn(body: TurnIn, request: Request) -> Response:
-    text = body.text.strip()
+async def post_turn(request: Request) -> Response:
+    """Text JSON or multipart audio (orchestrator proxies Whisper — D-0016)."""
+    ctype = (request.headers.get("content-type") or "").lower()
+    text = ""
+    sid = request.headers.get("X-Session-Id")
+
+    if "multipart/form-data" in ctype:
+        form = await request.form()
+        sid = str(form.get("session_id") or sid or "") or None
+        upload = form.get("audio") or form.get("file")
+        if upload is None:
+            raise HTTPException(400, "missing audio")
+        data = await upload.read()  # type: ignore[union-attr]
+        filename = getattr(upload, "filename", None) or "audio.webm"
+        content_type = getattr(upload, "content_type", None) or "audio/webm"
+        try:
+            text = await transcribe(filename, content_type, data)
+        except Exception as e:  # noqa: BLE001
+            log.exception("stt failed")
+            raise HTTPException(502, "stt error") from e
+        if not text:
+            raise HTTPException(400, "empty transcript")
+    else:
+        try:
+            body = TurnIn.model_validate(await request.json())
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(400, "invalid json") from e
+        text = body.text.strip()
+        sid = body.session_id or sid
+
     if not text:
         raise HTTPException(400, "empty text")
 
-    sid = body.session_id or request.headers.get("X-Session-Id") or str(uuid.uuid4())
+    return await _run_turn(text=text, session_id=sid, request=request)
+
+
+async def _run_turn(*, text: str, session_id: str | None, request: Request) -> Response:
+    sid = session_id or str(uuid.uuid4())
     sess = store.get_or_create(sid)
     store.append(sess.id, "user", text)
 
@@ -150,7 +188,7 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
         if want_sse:
 
             async def mem_gen() -> AsyncIterator[bytes]:
-                yield _sse("meta", {"session_id": sess.id})
+                yield _sse("meta", {"session_id": sess.id, "transcript": text})
                 yield _sse("token", {"text": reply})
                 yield _sse(
                     "done",
@@ -159,6 +197,7 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
                         "reply_text": reply,
                         "degraded": False,
                         "memory": intent.kind,
+                        "transcript": text,
                     },
                 )
 
@@ -169,6 +208,7 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
                 "reply_text": reply,
                 "degraded": False,
                 "memory": intent.kind,
+                "transcript": text,
             }
         )
 
@@ -182,7 +222,7 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
     if want_sse:
 
         async def event_gen() -> AsyncIterator[bytes]:
-            yield _sse("meta", {"session_id": sess.id})
+            yield _sse("meta", {"session_id": sess.id, "transcript": text})
             chunks: list[str] = []
             try:
                 async for token in chat_stream(messages):
@@ -200,7 +240,15 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
             reply = "".join(chunks).strip()
             if reply:
                 store.append(sess.id, "assistant", reply)
-            yield _sse("done", {"session_id": sess.id, "reply_text": reply, "degraded": False})
+            yield _sse(
+                "done",
+                {
+                    "session_id": sess.id,
+                    "reply_text": reply,
+                    "degraded": False,
+                    "transcript": text,
+                },
+            )
 
         return StreamingResponse(event_gen(), media_type="text/event-stream")
 
@@ -219,6 +267,7 @@ async def post_turn(body: TurnIn, request: Request) -> Response:
             "session_id": sess.id,
             "reply_text": reply,
             "degraded": False,
+            "transcript": text,
         }
     )
 

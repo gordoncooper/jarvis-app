@@ -24,5 +24,8 @@ class Settings(BaseSettings):
     memory_db_path: str = "/var/lib/jarvis/promoted.sqlite"
     memory_inject_limit: int = 40
 
+    whisper_base: str = "http://jarvis-whisper.inference.svc.cluster.local:8000"
+    whisper_model: str = "Systran/faster-whisper-small"
+
 
 settings = Settings()

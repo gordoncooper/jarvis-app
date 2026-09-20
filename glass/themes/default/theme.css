@@ -139,6 +139,15 @@ body {
   cursor: default;
 }
 
+.composer button.mic {
+  min-width: 7.5rem;
+}
+
+.composer button.mic.recording {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 @keyframes rise {
   from {
     opacity: 0;

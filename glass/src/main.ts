@@ -1,4 +1,4 @@
-import { fetchHealth, fetchSession, streamTurn } from "./api.js";
+import { fetchHealth, fetchSession, streamAudioTurn, streamTurn } from "./api.js";
 
 const SESSION_KEY = "jarvis.session_id";
 
@@ -29,10 +29,13 @@ async function main(): Promise<void> {
   input.autocomplete = "off";
   const send = el("button", undefined, "Send") as HTMLButtonElement;
   send.type = "submit";
-  form.append(input, send);
+  const mic = el("button", "mic", "Hold to talk") as HTMLButtonElement;
+  mic.type = "button";
+  form.append(input, send, mic);
   root.append(brand, greeting, blurb, banner, thread, form);
 
   let sessionId = localStorage.getItem(SESSION_KEY);
+  let busy = false;
 
   try {
     const health = await fetchHealth();
@@ -41,6 +44,10 @@ async function main(): Promise<void> {
         ? `Degraded: ${health.reason}`
         : "Degraded: the talker is unavailable.";
       banner.classList.add("show");
+    } else if (health.stt === false) {
+      banner.textContent = "Voice unavailable (STT). Typing still works.";
+      banner.classList.add("show");
+      mic.disabled = true;
     }
   } catch {
     banner.textContent = "Cannot reach the orchestrator.";
@@ -63,12 +70,11 @@ async function main(): Promise<void> {
     blurb.textContent = "Session unavailable.";
   }
 
-  form.addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const text = input.value.trim();
-    if (!text || !sessionId) return;
-    input.value = "";
+  async function runText(text: string): Promise<void> {
+    if (!text || !sessionId || busy) return;
+    busy = true;
     send.disabled = true;
+    mic.disabled = true;
     thread.append(el("div", "msg user", text));
     const assistant = el("div", "msg assistant", "");
     thread.append(assistant);
@@ -84,16 +90,110 @@ async function main(): Promise<void> {
       },
       onDone: (reply) => {
         if (reply && !assistant.textContent) assistant.textContent = reply;
+        busy = false;
         send.disabled = false;
+        mic.disabled = false;
         input.focus();
       },
       onError: (message) => {
         assistant.textContent = `Error: ${message}`;
         banner.textContent = message;
         banner.classList.add("show");
+        busy = false;
         send.disabled = false;
+        mic.disabled = false;
       },
     });
+  }
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const text = input.value.trim();
+    input.value = "";
+    await runText(text);
+  });
+
+  let media: MediaRecorder | null = null;
+  let chunks: BlobPart[] = [];
+
+  const startRec = async () => {
+    if (busy || !sessionId) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunks = [];
+      media = new MediaRecorder(stream);
+      media.ondataavailable = (ev) => {
+        if (ev.data.size > 0) chunks.push(ev.data);
+      };
+      media.start();
+      mic.classList.add("recording");
+      mic.textContent = "Listening…";
+    } catch {
+      banner.textContent = "Microphone permission denied (needs HTTPS + trusted CA).";
+      banner.classList.add("show");
+    }
+  };
+
+  const stopRec = async () => {
+    if (!media || media.state === "inactive") return;
+    const rec = media;
+    media = null;
+    await new Promise<void>((resolve) => {
+      rec.onstop = () => resolve();
+      rec.stop();
+      rec.stream.getTracks().forEach((t) => t.stop());
+    });
+    mic.classList.remove("recording");
+    mic.textContent = "Hold to talk";
+    const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+    chunks = [];
+    if (!sessionId || blob.size < 1000) return;
+
+    busy = true;
+    send.disabled = true;
+    mic.disabled = true;
+    const userMsg = el("div", "msg user", "…");
+    thread.append(userMsg);
+    const assistant = el("div", "msg assistant", "");
+    thread.append(assistant);
+
+    await streamAudioTurn(sessionId, blob, {
+      onMeta: (id, transcript) => {
+        sessionId = id;
+        localStorage.setItem(SESSION_KEY, id);
+        if (transcript) userMsg.textContent = transcript;
+      },
+      onToken: (t) => {
+        assistant.textContent = (assistant.textContent ?? "") + t;
+      },
+      onDone: (reply, transcript) => {
+        if (transcript) userMsg.textContent = transcript;
+        if (reply && !assistant.textContent) assistant.textContent = reply;
+        busy = false;
+        send.disabled = false;
+        mic.disabled = false;
+      },
+      onError: (message) => {
+        assistant.textContent = `Error: ${message}`;
+        banner.textContent = message;
+        banner.classList.add("show");
+        busy = false;
+        send.disabled = false;
+        mic.disabled = false;
+      },
+    });
+  };
+
+  mic.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    void startRec();
+  });
+  mic.addEventListener("pointerup", (ev) => {
+    ev.preventDefault();
+    void stopRec();
+  });
+  mic.addEventListener("pointerleave", () => {
+    void stopRec();
   });
 
   input.focus();
