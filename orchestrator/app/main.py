@@ -23,7 +23,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.5-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.6-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -115,7 +115,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.5-dev",
+        "version": "0.6.6-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -148,6 +148,26 @@ async def post_tts(body: TtsIn) -> Response:
         log.exception("tts failed")
         raise HTTPException(502, "tts error") from e
     return Response(content=data, media_type=ctype)
+
+
+@app.post("/v1/stt")
+async def post_stt(request: Request) -> dict[str, str]:
+    """STT only (D-0014 laptop local commands). Does not create a chat turn."""
+    form = await request.form()
+    upload = form.get("audio") or form.get("file")
+    if upload is None:
+        raise HTTPException(400, "missing audio")
+    data = await upload.read()  # type: ignore[union-attr]
+    filename = getattr(upload, "filename", None) or "audio.webm"
+    content_type = getattr(upload, "content_type", None) or "audio/webm"
+    try:
+        text = await transcribe(filename, content_type, data)
+    except Exception as e:  # noqa: BLE001
+        log.exception("stt failed")
+        raise HTTPException(502, "stt error") from e
+    if not text:
+        raise HTTPException(400, "empty transcript")
+    return {"transcript": text}
 
 
 @app.post("/v1/turns")
