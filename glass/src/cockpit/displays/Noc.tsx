@@ -110,7 +110,7 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
         <div className="ck-stage-brand">
           <HexMark size={18} variant="dot" />
           <span className="ck-brand">JARVIS</span>
-          <span className="ck-live-pill">
+          <span className="ck-live-pill ck-pulse">
             <LiveDot on={live} /> LIVE
           </span>
           <span className="ck-noc-meta">
@@ -128,7 +128,7 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
       </header>
 
       <div className="ck-noc-grid">
-        <aside className="ck-panel ck-noc-left">
+        <aside className="ck-panel ck-noc-left ck-pulse-border">
           <h2>DOSSIER // TRACK MODE</h2>
           <dl className="ck-noc-dl">
             <div>
@@ -177,20 +177,6 @@ export function Noc({ busy, recording, sttOk, live, onSubmit, onPttStart, onPttS
             <span>6 NODES · 3U LOGICAL</span>
           </header>
           <div className="ck-topo-wrap">
-            <svg className="ck-topo-links" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path d="M18 28 H50 H82" />
-              <path d="M18 72 H50 H82" />
-              <path d="M18 28 V72" />
-              <path d="M50 28 V72" />
-              <path d="M82 28 V72" />
-              <path d="M18 28 L50 72 L82 28" />
-              <circle cx="18" cy="28" r="1.2" />
-              <circle cx="50" cy="28" r="1.2" />
-              <circle cx="82" cy="28" r="1.2" />
-              <circle cx="18" cy="72" r="1.2" />
-              <circle cx="50" cy="72" r="1.2" />
-              <circle cx="82" cy="72" r="1.2" />
-            </svg>
             <div className="ck-topo-grid">
               {visible.map((n) => (
                 <article key={n.name} className="ck-node">

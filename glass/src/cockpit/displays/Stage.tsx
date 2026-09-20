@@ -1,8 +1,10 @@
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { ConfirmPayload, HealthPayload } from "../../api.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { ConcRing, HexMark, LiveDot } from "../chrome/Marks.js";
 import { type ChatMsg, MOCK, formatUptime } from "../mock.js";
+import { StageEarth, stageWebglOk } from "../StageEarth.js";
 
 type Props = {
   health: HealthPayload | null;
@@ -41,6 +43,7 @@ export function Stage({
 }: Props) {
   const [utc, setUtc] = useState("");
   const [uptime, setUptime] = useState(() => formatUptime(0));
+  const [globeOk] = useState(() => stageWebglOk());
   const boot = useState(() => Date.now())[0];
   const live = talkerOk && !unreachable;
 
@@ -59,17 +62,19 @@ export function Stage({
 
   const lastAsst = [...messages].reverse().find((m) => m.role === "assistant" && m.content);
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const showChat = !!(lastUser || lastAsst || confirm);
 
   return (
     <div className="ck-stage">
-      <div className="ck-stage-earth" />
-      <div className="ck-stage-vignette" />
+      {globeOk ? <StageEarth /> : <div className="ck-stage-earth-fallback" />}
+      <div className="ck-stage-vignette" aria-hidden="true" />
+      <div className="ck-stage-heartbeat" aria-hidden="true" />
 
       <header className="ck-stage-top">
         <div className="ck-stage-brand">
-          <HexMark size={20} variant="dot" />
+          <HexMark size={24} variant="dot" />
           <span className="ck-brand">JARVIS</span>
-          <span className="ck-live-pill">
+          <span className="ck-live-pill ck-pulse">
             <LiveDot on={live} /> LIVE
           </span>
         </div>
@@ -109,7 +114,12 @@ export function Stage({
         </div>
       </header>
 
-      <aside className="ck-stage-dossier">
+      <motion.aside
+        className="ck-stage-dossier ck-pulse-border"
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="ck-panel-title">
           DOSSIER <LiveDot on={live} />
         </div>
@@ -135,10 +145,10 @@ export function Stage({
             <dd className={confirm ? "is-accent" : ""}>{confirm ? "TRUE" : "FALSE"}</dd>
           </div>
         </dl>
-      </aside>
+      </motion.aside>
 
       <div className="ck-stage-bottom">
-        <div className="ck-chip ck-chip-cluster">
+        <div className="ck-chip ck-chip-cluster ck-pulse-border">
           CLUSTER <LiveDot on={!unreachable} /> <em>LIVE</em>
         </div>
         <div className="ck-chip ck-chip-stack">
@@ -155,8 +165,13 @@ export function Stage({
         </div>
       </div>
 
-      {(lastUser || lastAsst || confirm) && (
-        <div className="ck-stage-reply">
+      {showChat ? (
+        <motion.div
+          className="ck-stage-reply"
+          initial={{ opacity: 0, y: 18, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
           {lastUser ? <p className="ck-msg-user">{lastUser.content}</p> : null}
           {lastAsst ? <p className="ck-msg-asst">{lastAsst.content}</p> : null}
           {confirm ? (
@@ -170,8 +185,8 @@ export function Stage({
               </button>
             </div>
           ) : null}
-        </div>
-      )}
+        </motion.div>
+      ) : null}
 
       <CmdBar
         variant="stage"

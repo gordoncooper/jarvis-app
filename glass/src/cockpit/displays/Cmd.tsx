@@ -90,7 +90,7 @@ export function Cmd({
         <div className="ck-stage-brand">
           <HexMark size={22} variant="j" />
           <span className="ck-brand">JARVIS</span>
-          <span className="ck-live-pill">
+          <span className="ck-live-pill ck-pulse">
             <LiveDot on={live} /> LIVE
           </span>
         </div>
@@ -141,7 +141,7 @@ export function Cmd({
       </header>
 
       <div className="ck-cmd-body">
-        <section className="ck-panel ck-dossier">
+        <section className="ck-panel ck-dossier ck-pulse-border">
           <h2>DOSSIER</h2>
           <div className="ck-lab">
             <div className="ck-lab-title">
