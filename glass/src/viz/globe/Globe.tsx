@@ -42,12 +42,13 @@ function useMaps() {
     "/globe/normal.jpg",
   ]);
   useMemo(() => {
-    for (const t of [day, night, clouds]) {
-      t.colorSpace = THREE.SRGBColorSpace;
+    for (const t of [day, night, clouds, spec, normal]) {
+      t.colorSpace = t === spec || t === normal ? THREE.NoColorSpace : THREE.SRGBColorSpace;
       t.anisotropy = 8;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.magFilter = THREE.LinearFilter;
+      t.generateMipmaps = true;
     }
-    spec.anisotropy = 8;
-    normal.anisotropy = 8;
   }, [day, night, spec, clouds, normal]);
   return { day, night, spec, clouds, normal };
 }
@@ -138,7 +139,7 @@ function Earth({ live, streaming, alert, frozen }: Omit<GlobeState, "systems" | 
   });
 
   return (
-    <group ref={group} rotation={[0.22, 0.85, 0]}>
+    <group ref={group} rotation={[0.28, 1.85, 0]}>
       <mesh material={earthMat}>
         <sphereGeometry args={[R, 96, 96]} />
       </mesh>

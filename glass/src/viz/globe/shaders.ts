@@ -35,17 +35,17 @@ void main() {
   vec3 bump = texture2D(tNormal, vUv).xyz * 2.0 - 1.0;
   n = normalize(n + bump * 0.35);
 
-  vec3 light = normalize(vec3(0.68, 0.18, 0.52));
+  vec3 light = normalize(vec3(0.25, 0.22, 0.94));
   vec3 view = normalize(cameraPosition - vWorld);
   float ndl = dot(n, light);
-  float dayF = smoothstep(-0.12, 0.28, ndl);
+  float dayF = smoothstep(-0.08, 0.22, ndl);
   float nightF = 1.0 - dayF;
 
   vec3 dayC = texture2D(tDay, vUv).rgb;
-  vec3 nightC = texture2D(tNight, vUv).rgb;
-  nightC *= mix(vec3(1.0), uAccent, 0.42) * 2.35;
+  vec3 lights = texture2D(tNight, vUv).rgb;
+  vec3 nightC = dayC * 0.09 + lights * mix(vec3(1.15), uAccent, 0.4) * 2.6;
 
-  vec3 col = mix(nightC, dayC * (0.22 + 0.78 * max(ndl, 0.0)), dayF);
+  vec3 col = mix(nightC, dayC * (0.28 + 0.72 * max(ndl, 0.0)), dayF);
 
   float specMask = texture2D(tSpec, vUv).r;
   vec3 halfV = normalize(light + view);
