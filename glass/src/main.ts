@@ -55,6 +55,7 @@ async function main(): Promise<void> {
 
   const grid = el("div", "hud-grid");
   const globe = el("div", "hud-globe");
+  document.body.prepend(grid, globe);
 
   const rail = el("header", "hud-rail");
   const brand = el("h1", "brand", "JARVIS");
@@ -105,7 +106,7 @@ async function main(): Promise<void> {
   mic.type = "button";
   form.append(consoleLabel, input, send, mic);
 
-  root.append(grid, globe, rail, banner, stages, form);
+  root.append(rail, banner, stages, form);
 
   let sessionId = localStorage.getItem(SESSION_KEY);
   let busy = false;
