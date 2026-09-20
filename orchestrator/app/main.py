@@ -21,6 +21,7 @@ from .memory import (
     eligible_for_llm_extract,
     fact_already_known,
     format_forget_confirm_ask,
+    format_list_reply,
     gpu_temp_unit,
     new_memory_pending,
     parse_memory_candidate,
@@ -46,7 +47,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.15-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.16-dev")
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
 _memory: PromotedMemory | None = None
 
@@ -101,9 +102,10 @@ def system_prompt() -> str:
         "say you do not know if not in the briefing or promoted memory. "
         "Cluster health, GPU metrics, and the lab map are handled as declared "
         "verbs before this talker runs — do not pretend you queried them. "
-        "Never say you will remember or have remembered a fact — the "
-        "orchestrator owns confirm and storage. Never invent dialogue turns "
-        "like '### User:' or '### Assistant:'."
+        "Never say you will remember, have remembered, forgotten, or deleted "
+        "a fact — the orchestrator owns confirm and storage. Never list or "
+        "enumerate promoted memory (Gordon uses list memories for that). "
+        "Never invent dialogue turns like '### User:' or '### Assistant:'."
     )
     return "\n\n".join(parts)
 
@@ -176,7 +178,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.15-dev",
+        "version": "0.6.16-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
@@ -433,7 +435,18 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         )
 
     intent = parse_memory_intent(text)
+    if intent.kind == "list":
+        facts = mem().active_facts(200)
+        return _reply(format_list_reply(facts), extra={"memory": "list"})
+
     if intent.kind == "remember":
+        if intent.fact and fact_already_known(
+            intent.fact, mem().active_facts(200)
+        ):
+            return _reply(
+                f"Already noted: {intent.fact}",
+                extra={"memory": "remember"},
+            )
         if intent.fact:
             mem().remember(intent.fact, source_turn=sess.id)
         reply = _memory_reply("remember", intent.fact)
@@ -469,9 +482,12 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     # is confirm-gated memory, not a live metrics verb. Skip the talker for
     # heuristic hits — avoids premature "I will remember" and a free LLM round-trip.
     soft_candidate = parse_memory_candidate(text)
-    if soft_candidate and not fact_already_known(
-        soft_candidate, mem().active_facts(200)
-    ):
+    if soft_candidate:
+        if fact_already_known(soft_candidate, mem().active_facts(200)):
+            return _reply(
+                f"Already noted: {soft_candidate}",
+                extra={"memory": "remember"},
+            )
         pending_obj = new_memory_pending(soft_candidate)
         store.set_pending(sess.id, pending_obj)
         confirm = {

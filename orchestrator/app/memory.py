@@ -31,7 +31,11 @@ _FORGET = re.compile(
     _PREFIX
     + r"(?:"
     r"forget(?:\s+that)?|"
-    r"stop\s+remembering"
+    r"stop\s+remembering|"
+    r"(?:delete|remove|drop)\s+(?:the\s+)?"
+    r"(?:memory|memories|fact)(?:\s+(?:about|for|of|regarding))?|"
+    r"(?:delete|remove|drop)\s+(?:my\s+)?"
+    r"preference(?:\s+for)?"
     r")\s*[,:]?\s+(.+?)\s*$",
     re.IGNORECASE | re.DOTALL,
 )
@@ -42,7 +46,18 @@ _FORGET_ALL = re.compile(
     r"forget\s+(?:everything|all(?:\s+(?:of\s+)?(?:my\s+)?(?:memories|facts|that))?)"
     r"|clear\s+(?:my\s+)?(?:promoted\s+)?memory"
     r"|wipe\s+(?:my\s+)?(?:promoted\s+)?memory"
+    r"|(?:delete|remove)\s+all\s+(?:my\s+)?(?:memories|facts|preferences)"
     r")\s*$",
+    re.IGNORECASE,
+)
+_LIST = re.compile(
+    _PREFIX
+    + r"(?:"
+    r"(?:list|show|what\s+are)\s+(?:all\s+|exact\s+|my\s+)?(?:the\s+)?"
+    r"(?:promoted\s+)?(?:memories|memory|facts)|"
+    r"what\s+do\s+you\s+remember|"
+    r"(?:list|show)\s+what\s+you\s+remember"
+    r")\s*\??\s*$",
     re.IGNORECASE,
 )
 
@@ -87,13 +102,15 @@ _STOP = frozenset(
 
 @dataclass
 class MemoryHit:
-    kind: str  # remember | forget | forget_all | none
+    kind: str  # remember | forget | forget_all | list | none
     fact: str
 
 
 def parse_memory_intent(text: str) -> MemoryHit:
-    """Explicit remember / forget / forget-all (D-0013 / D-0027)."""
+    """Explicit remember / forget / list (D-0013 / D-0027 / D-0028)."""
     t = " ".join(text.strip().split())
+    if _LIST.match(t):
+        return MemoryHit("list", "")
     m = _REMEMBER.match(t)
     if m:
         fact = _normalize_fact(m.group(1))
@@ -107,6 +124,13 @@ def parse_memory_intent(text: str) -> MemoryHit:
         if fact:
             return MemoryHit("forget", fact)
     return MemoryHit("none", "")
+
+
+def format_list_reply(facts: list[str]) -> str:
+    if not facts:
+        return "Promoted memory is empty — nothing stored yet."
+    lines = [f"{i}. {f}" for i, f in enumerate(facts, 1)]
+    return "Promoted memory:\n" + "\n".join(lines)
 
 
 def new_memory_pending(
