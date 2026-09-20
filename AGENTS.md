@@ -29,15 +29,28 @@ A dated decision outranks any prose here or there.
   cut is **v0.6.0** (D-0021)
 - Glass talks only to the orchestrator — no direct product wiring to LiteLLM,
   Open WebUI, or OpenClaw (D-0012)
-- No Vite / App Builder greenfield. TS compiles to static assets (D-0020).
-  React + three.js via esbuild is allowed for glass (D-0030). Product pack is
-  `cockpit` — four slideable displays (D-0031); `godseye` is archived.
+- Product glass is React + TypeScript under `glass/src/cockpit/**` (D-0031 /
+  D-0032). Creating display files there is the job, not a violation. Production
+  packer: esbuild → static nginx. Vite as a bastion-only glass dev server is
+  allowed. motion, SVG topology, and uPlot/canvas are allowed. Do not scaffold
+  factory apps, App Builder previews, or theme chat.lan. Product pack is
+  `cockpit`; `godseye` / `mark-hud` / `archive-gold` are archived.
+- Cockpit spec: docs/COCKPIT.md (copy of the builder brief). Law stays here
+  and in jarvis-infra DECISIONS.md.
 - Do not extend `jarvis-core` (D-0003). Do not put Flux manifests in this repo
 - Factory apps JARVIS builds later get their **own** repos; do not dump them here
   unless deliberately promoted to product (D-0020)
 - `.claude/settings.json` is deny-rules for Claude Code and Grok CLI (D-0007),
   not a second bible. Keep it committed
 - Do not commit `learned.md`. Never dump Secret `.data`, SOPS ciphertext, or keys
+
+## Hosts (this workstream)
+
+- **jarvis.lan** — product four-display cockpit. Build here.
+- **home.lan** — older command board until retired. Do not theme.
+- **chat.lan** — break-glass Open WebUI. Do not theme.
+- **noc.lan** — independent telemetry / break-glass. Do not scrape from glass
+  (D-0012); pulse via orchestrator `/v1/pulse`.
 
 ## Hands
 
