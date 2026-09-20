@@ -22,7 +22,7 @@ from .stt import health_whisper, transcribe
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.3-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.4-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -107,7 +107,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.3-dev",
+        "version": "0.6.4-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,

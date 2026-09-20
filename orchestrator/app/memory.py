@@ -8,9 +8,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 
+# Optional lead-in before the verb — STT / natural phrasing (D-0013).
+_PREFIX = (
+    r"^\s*(?:please\s+|just\s+)?"
+    r"(?:(?:hey|ok|okay)[, ]+)?"
+    r"(?:jarvis[,:]?\s+)?"
+    r"(?:please\s+)?"
+    r"(?:(?:can|could|would)\s+you\s+)?"
+    r"(?:i\s+(?:want|need)\s+you\s+to\s+|i(?:'?d|\s+would)\s+like\s+you\s+to\s+)?"
+)
 
 _REMEMBER = re.compile(
-    r"^\s*(?:please\s+)?(?:jarvis[,:]?\s+)?(?:"
+    _PREFIX
+    + r"(?:"
     r"remember(?:\s+that)?|"
     r"don'?t\s+forget(?:\s+that)?|"
     r"from\s+now\s+on"
@@ -18,11 +28,50 @@ _REMEMBER = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _FORGET = re.compile(
-    r"^\s*(?:please\s+)?(?:jarvis[,:]?\s+)?(?:"
+    _PREFIX
+    + r"(?:"
     r"forget(?:\s+that)?|"
     r"stop\s+remembering"
     r")\s*[,:]?\s+(.+?)\s*$",
     re.IGNORECASE | re.DOTALL,
+)
+
+# Dropped when matching forget queries to stored facts.
+_STOP = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "about",
+        "be",
+        "do",
+        "does",
+        "for",
+        "forget",
+        "i",
+        "is",
+        "it",
+        "its",
+        "me",
+        "my",
+        "mine",
+        "of",
+        "or",
+        "please",
+        "prefer",
+        "preference",
+        "preferences",
+        "preferred",
+        "prefers",
+        "remember",
+        "remembering",
+        "that",
+        "the",
+        "this",
+        "to",
+        "you",
+        "your",
+    }
 )
 
 
@@ -50,6 +99,7 @@ def parse_memory_intent(text: str) -> MemoryHit:
 
 def _normalize_fact(raw: str) -> str:
     s = " ".join(raw.strip().strip("\"'").split())
+    s = s.rstrip(".,!?;:")
     if len(s) < 2 or len(s) > 500:
         return ""
     # refuse obvious secrets
@@ -58,6 +108,31 @@ def _normalize_fact(raw: str) -> str:
         if bad in low:
             return ""
     return s
+
+
+def _tokens(s: str) -> set[str]:
+    return {
+        t
+        for t in re.findall(r"[a-z0-9]+", s.lower())
+        if t not in _STOP and len(t) > 1
+    }
+
+
+def _forget_match(query: str, fact: str) -> bool:
+    """Substring either way, or content-token overlap (STT paraphrase)."""
+    q = query.lower().strip()
+    f = fact.lower().strip()
+    if not q or not f:
+        return False
+    if q in f or f in q:
+        return True
+    qt, ft = _tokens(query), _tokens(fact)
+    if not qt or not ft:
+        return False
+    if qt <= ft or ft <= qt:
+        return True
+    smaller = qt if len(qt) <= len(ft) else ft
+    return len(qt & ft) >= max(1, (len(smaller) + 1) // 2)
 
 
 class PromotedMemory:
@@ -120,8 +195,7 @@ class PromotedMemory:
         return fid
 
     def forget(self, query: str) -> int:
-        """Tombstone active facts whose text contains query (case-insensitive)."""
-        q = query.lower()
+        """Tombstone active facts matching query (substring or token overlap)."""
         now = time.time()
         count = 0
         with self._lock, self._connect() as conn:
@@ -129,15 +203,16 @@ class PromotedMemory:
                 "SELECT id, text FROM facts WHERE tombstoned_at IS NULL"
             ).fetchall()
             for row in rows:
-                if q in row["text"].lower() or row["text"].lower() in q:
-                    conn.execute(
-                        "UPDATE facts SET tombstoned_at = ? WHERE id = ?",
-                        (now, row["id"]),
-                    )
-                    conn.execute(
-                        "INSERT INTO audit (id, ts, action, fact_id, detail) "
-                        "VALUES (?, ?, ?, ?, ?)",
-                        (str(uuid.uuid4()), now, "forget", row["id"], row["text"]),
-                    )
-                    count += 1
+                if not _forget_match(query, row["text"]):
+                    continue
+                conn.execute(
+                    "UPDATE facts SET tombstoned_at = ? WHERE id = ?",
+                    (now, row["id"]),
+                )
+                conn.execute(
+                    "INSERT INTO audit (id, ts, action, fact_id, detail) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), now, "forget", row["id"], row["text"]),
+                )
+                count += 1
         return count
