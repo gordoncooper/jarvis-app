@@ -16,8 +16,6 @@ import { geo, type SysFlags } from "./geo.js";
 import {
   atmoFrag,
   atmoVert,
-  cloudFrag,
-  cloudVert,
   earthFrag,
   earthVert,
 } from "./shaders.js";
@@ -34,30 +32,35 @@ export type GlobeState = {
 const R = 1.55;
 
 function useMaps() {
-  const [day, night, spec, clouds, normal] = useLoader(THREE.TextureLoader, [
+  const [day, night, spec, normal] = useLoader(THREE.TextureLoader, [
     "/globe/day.jpg",
     "/globe/night.jpg",
     "/globe/spec.jpg",
-    "/globe/clouds.png",
     "/globe/normal.jpg",
   ]);
   useMemo(() => {
-    for (const t of [day, night, clouds, spec, normal]) {
-      t.colorSpace = t === spec || t === normal ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+    for (const t of [day, night]) {
+      t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 8;
       t.minFilter = THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
       t.generateMipmaps = true;
     }
-  }, [day, night, spec, clouds, normal]);
-  return { day, night, spec, clouds, normal };
+    for (const t of [spec, normal]) {
+      t.colorSpace = THREE.NoColorSpace;
+      t.anisotropy = 8;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.magFilter = THREE.LinearFilter;
+      t.generateMipmaps = true;
+    }
+  }, [day, night, spec, normal]);
+  return { day, night, spec, normal };
 }
 
 function Earth({ live, streaming, alert, frozen }: Omit<GlobeState, "systems" | "memoryFacts">) {
   const group = useRef<THREE.Group>(null);
-  const cloudsRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
-  const { day, night, spec, clouds, normal } = useMaps();
+  const { day, night, spec, normal } = useMaps();
 
   const earthMat = useMemo(
     () =>
@@ -97,26 +100,10 @@ function Earth({ live, streaming, alert, frozen }: Omit<GlobeState, "systems" | 
       }),
     [],
   );
-  const cloudMat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: cloudVert,
-        fragmentShader: cloudFrag,
-        uniforms: {
-          tClouds: { value: clouds },
-          uAccent: { value: new THREE.Color("#5eead4") },
-          uLive: { value: 1 },
-        },
-        transparent: true,
-        depthWrite: false,
-      }),
-    [clouds],
-  );
 
   useFrame((_, dt) => {
     const spin = frozen ? 0.012 : live ? 0.055 : 0.02;
     if (group.current) group.current.rotation.y += spin * dt;
-    if (cloudsRef.current) cloudsRef.current.rotation.y += spin * dt * 1.12;
     const eu = earthMat.uniforms;
     eu.uTime.value += dt;
     eu.uLive.value = THREE.MathUtils.damp(eu.uLive.value, live ? 1 : 0, 4, dt);
@@ -126,7 +113,6 @@ function Earth({ live, streaming, alert, frozen }: Omit<GlobeState, "systems" | 
     atmoMat.uniforms.uLive.value = eu.uLive.value;
     atmoMat.uniforms.uAlert.value = eu.uAlert.value;
     atmoMat.uniforms.uFrozen.value = eu.uFrozen.value;
-    cloudMat.uniforms.uLive.value = eu.uLive.value;
 
     if (group.current) {
       const local = camera.position.clone();
@@ -139,12 +125,9 @@ function Earth({ live, streaming, alert, frozen }: Omit<GlobeState, "systems" | 
   });
 
   return (
-    <group ref={group} rotation={[0.28, 1.85, 0]}>
+    <group ref={group} rotation={[0.32, 0.55, 0]}>
       <mesh material={earthMat}>
         <sphereGeometry args={[R, 96, 96]} />
-      </mesh>
-      <mesh ref={cloudsRef} material={cloudMat}>
-        <sphereGeometry args={[R * 1.015, 64, 64]} />
       </mesh>
       <mesh material={atmoMat} scale={1.07}>
         <sphereGeometry args={[R, 64, 64]} />
