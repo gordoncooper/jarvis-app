@@ -7,7 +7,7 @@ COPY tsconfig.json esbuild.mjs ./
 COPY public ./public
 COPY src ./src
 COPY themes ./themes
-ARG JARVIS_THEME=default
+ARG JARVIS_THEME=mark-hud
 ENV JARVIS_THEME=$JARVIS_THEME
 RUN npm run build
 

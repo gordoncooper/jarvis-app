@@ -30,13 +30,22 @@ body {
   min-height: 100vh;
 }
 
-#app {
+.hud-canvas {
   width: min(720px, 100%);
   margin: 0 auto;
   padding: 2.5rem 1.25rem 2rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.hud-grid,
+.hud-globe {
+  display: none;
+}
+
+.hud-rail {
+  display: contents;
 }
 
 .brand {
@@ -46,6 +55,15 @@ body {
   font-weight: 600;
   margin: 0;
   animation: rise 0.7s ease-out both;
+}
+
+.pip-live,
+.hud-crumbs,
+.hud-stage-label,
+.hud-console-label,
+.hud-meter,
+.hud-stage-right {
+  display: none;
 }
 
 .greeting {
@@ -75,6 +93,19 @@ body {
   display: block;
 }
 
+.hud-stages {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.hud-stage-left,
+.hud-stage-center {
+  display: contents;
+}
+
+.hud-thread,
 .thread {
   flex: 1;
   display: flex;
@@ -130,6 +161,7 @@ body {
   cursor: default;
 }
 
+.hud-console,
 .composer {
   display: flex;
   gap: 0.5rem;
@@ -138,6 +170,7 @@ body {
   animation: rise 1s ease-out 0.2s both;
 }
 
+.hud-console input,
 .composer input {
   flex: 1;
   background: var(--bg-elev);
@@ -148,10 +181,12 @@ body {
   border-radius: 2px;
 }
 
+.hud-console input:focus,
 .composer input:focus {
   outline: 1px solid var(--accent);
 }
 
+.hud-console button,
 .composer button {
   background: transparent;
   border: 1px solid var(--accent);
@@ -162,15 +197,18 @@ body {
   border-radius: 2px;
 }
 
+.hud-console button:disabled,
 .composer button:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
+.hud-console button.mic,
 .composer button.mic {
   min-width: 7.5rem;
 }
 
+.hud-console button.mic.recording,
 .composer button.mic.recording {
   border-color: var(--danger);
   color: var(--danger);
