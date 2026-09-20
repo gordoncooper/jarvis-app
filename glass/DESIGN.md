@@ -1,24 +1,17 @@
-# God’s Eye — visual contract (D-0030)
+# Cockpit — visual contract (D-0031)
 
-jarvis.lan is a **stage**. The globe is the room. Chrome docks on the glass.
-Empty channel reveals Earth.
+jarvis.lan is four **slideable displays**: Login → Earth Stage → AM Briefing
+(CMD) → Topology NOC. Arrow keys / drag; Cmd header BRIEF|ASK|APPLY jumps.
 
-- Canvas `#07090b`. Hair `#1c252e`. Steel `#8b9aaa`. Ink `#e7eef4`.
-  Accent `#5eead4` only on LIVE / selected / scan. `--accent-dim` is an OKLCH mix.
-- IBM Plex Sans + Mono, weights 400/500/600, bundled (no Google Fonts).
-- Radius 2–4px. Motion 160–280ms ease-out.
-- Widgets mean something: `/health` (llm, hands, stt, tts, memory_facts,
-  degraded) plus turn / confirm / PTT. No fake telemetry. No noc.lan scrape.
-- Globe: NASA-mapped Earth (day / night lights / specular / normals),
-  fresnel atmosphere with bloom, contact shadow, center-dim bowl, pulled-back
-  camera, graticule, system orbits, data arcs, scan, lock reticle. Frozen limb
-  when HOLD. Confirm = LOCK. Streaming = SCAN. Track tape shows real LOOK/HDG
-  from the camera. No CDN at runtime.
-- Overlay: scope ellipse + brackets, ribbon + clock, dossier chip, oval fading
-  channel, denser arc meters, ticker, CMD pill. Empty / fully-faded channel
-  reveals Earth.
-- Out: Vite, Tailwind, Recharts, Inter, indigo, glassmorphism, helmet visor,
-  scanlines-over-everything, Sparkles.
+- Canvas `#050607`. Accent `#00e5c8`. Steel `#8b9aaa`. Ink `#e8eef4`.
+- IBM Plex Sans + Mono (fontsource, LAN).
+- Login uses the literal splash JPG + stub Enter (no auth yet).
+- Stage: night-Earth backdrop + thin HUD chrome + real cmd/PTT.
+- Cmd: dossier / briefing / channel — channel is real turns; timeline prototype.
+- Noc: topology / rings / ticker / metrics table — structure exact, metrics
+  prototype until a real feed lands. No noc.lan scrape (D-0012).
+- Real: `/health`, session, SSE turns, PTT, TTS, confirm.
+- Out: Vite, Tailwind, Recharts, godseye WebGL as product default.
 
-Swap look: `glass/themes/<name>/` + `JARVIS_THEME`. `godseye` is product.
-`mark-hud` is the archived 3-column. `archive-gold` stays rebuildable.
+Swap look: `glass/themes/<name>/` + `JARVIS_THEME`. Product pack is `cockpit`.
+`godseye`, `mark-hud`, `archive-gold` remain rebuildable.

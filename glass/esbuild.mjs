@@ -4,12 +4,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const theme = process.env.JARVIS_THEME || "godseye";
+const theme = process.env.JARVIS_THEME || "cockpit";
 const outdir = join(root, "dist");
 const packDir = join(root, "themes", theme);
 const css = join(packDir, "theme.css");
 
 const entries = {
+  cockpit: join(root, "src", "cockpit", "main.tsx"),
   godseye: join(root, "src", "hud", "main.tsx"),
 };
 

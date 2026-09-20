@@ -30,7 +30,8 @@ A dated decision outranks any prose here or there.
 - Glass talks only to the orchestrator — no direct product wiring to LiteLLM,
   Open WebUI, or OpenClaw (D-0012)
 - No Vite / App Builder greenfield. TS compiles to static assets (D-0020).
-  React + three.js via esbuild is allowed for glass (D-0030)
+  React + three.js via esbuild is allowed for glass (D-0030). Product pack is
+  `cockpit` — four slideable displays (D-0031); `godseye` is archived.
 - Do not extend `jarvis-core` (D-0003). Do not put Flux manifests in this repo
 - Factory apps JARVIS builds later get their **own** repos; do not dump them here
   unless deliberately promoted to product (D-0020)
