@@ -1,65 +1,253 @@
-# Cockpit builder brief
+# BUILD BRIEF — JARVIS four-display cockpit
 
-Spec for the next glass session. **Not law.** Law is `AGENTS.md` here and
+Spec for the builder session. **Not law.** Law is `AGENTS.md` here and
 jarvis-infra `docs/DECISIONS.md` (D-0031 / D-0032). Visual contract:
-`glass/DESIGN.md`. Layout detail: `docs/COCKPIT-PLAN.md`.
+`glass/DESIGN.md`. Architecture detail: `docs/COCKPIT-PLAN.md`.
 
-## Job
+Drop this entire file into Cursor, Claude Code, Grok Build, or any coding agent.
+Build exactly this. Do not invent a fifth product. Do not theme chat.lan.
 
-Build / harden the four-display product on **jarvis.lan** under
-`glass/src/cockpit/**`. Creating display files there is the product. That is
-not a factory scaffold and not illegal scaffolding.
+You are implementing the product surface at **jarvis.lan** in repo **gordoncooper/jarvis-app**.
+Law lives in **gordoncooper/jarvis-infra** `docs/DECISIONS.md` and `AGENTS.md`.
+Flux YAML lives in **gordoncooper/jarvis-cluster** (Gitea is origin; GitHub is a mirror).
 
-## Non-negotiables (from law)
+Reference frames (match these, do not “improve” them into SaaS):
 
-1. Open `glass/src/cockpit/` and work the displays. Do not ask whether scaffolding is forbidden.
-2. Put the NOC on jarvis.lan **display 4**. Do not clone noc.lan into the glass bundle.
-3. Ship **ConfirmCard** (CMD Channel + Earth toast). D-0017 “confirm deferred” is superseded (D-0032).
-4. Add / consume orchestrator **`/v1/pulse`**. Do not scrape Prometheus, noc.lan, or home.lan from glass (D-0012).
-5. Leave **chat.lan** and **jarvis-core** alone (D-0002 / D-0003).
+- Login: Fort Knox rack room + JARVIS wordmark + triangle Enter
+- Earth: night globe, HUD on the rim, cmd bar, no chat modal on the planet
+- CMD: dossier | AM briefing | channel drawer + four bottom pills
+- NOC: 2×3 ortho rack, rings, ticker, node table, cmd
 
-## Hosts
+Read `docs/COCKPIT-PLAN.md` if present. If both exist, the plan wins on architecture; this brief wins on “what to type.”
 
-| Host | This workstream |
-| --- | --- |
-| jarvis.lan | Product four-display cockpit. |
-| home.lan | Older command board — do not theme. |
-| chat.lan | Break-glass OWUI — do not theme. |
-| noc.lan | Independent telemetry — may stay up when the talker is down; not product chrome. |
+---
 
-## Stack
+## 0. Identity
 
-- React + TypeScript. Entry: `glass/src/cockpit/`.
-- Production packer: **esbuild** → static nginx.
-- Bastion-only: **Vite** as a glass dev server is allowed.
-- Allowed: three.js / R3F (**Earth only**), motion, SVG topology, uPlot/canvas sparklines.
-- Glass → orchestrator only. No LiteLLM / OWUI / OpenClaw wiring from glass.
+- Product repo: `~/jarvis-app` → GitHub `gordoncooper/jarvis-app`
+- Code: `glass/` (UI) + `orchestrator/` (FastAPI)
+- Theme pack name: `cockpit` (D-0031 / D-0032)
+- Operator user on bastion: `agent` (never `bastion`)
+- Glass talks **only** to orchestrator: `/health`, `/v1/session`, `/v1/turns`, `/v1/stt`, `/v1/tts`, and new `/v1/pulse`
+- Do not call LiteLLM, Open WebUI, OpenClaw, Prometheus, Piper, or Grafana from the browser
 
-## Theme
+---
 
-- Default pack: `cockpit` (`JARVIS_THEME=cockpit`).
-- Archived (rebuildable, not served): `godseye`, `mark-hud`, `archive-gold`.
-- Tokens: canvas `#05070a`, accent `#5eead4` — see `glass/DESIGN.md`.
+## 1. Stack you will use
 
-## API surface the builder may need
+- React 18 + TypeScript
+- Bundler: existing `glass/esbuild.mjs` unless the operator explicitly says Vite
+- `motion` for deck + login
+- `three` + `@react-three/fiber` + `@react-three/drei` + `@react-three/postprocessing` for Earth only
+- SVG for NOC topology
+- uPlot or a tiny canvas for NOC sparklines
+- IBM Plex Sans + IBM Plex Mono from `@fontsource/*` (already in package.json)
+- Existing client: `glass/src/api.ts` (`fetchHealth`, `fetchSession`, `streamTurn`, `streamAudioTurn`, `fetchTtsObjectUrl`)
 
-| Route | Use |
-| --- | --- |
-| `/health` | Talker / hands / STT / TTS / degraded |
-| `/v1/session` | Greeting, structured briefing (`overnight`, `lab`, `agenda`, `today`, `focus`) with `briefing_blurb` fallback, messages, pending confirm |
-| SSE turns / PTT / TTS / confirm yes-cancel | Shared across Earth / CMD / NOC cmd bars |
-| `/v1/pulse` | Earth chips + NOC topology metrics (orchestrator read model) |
+Do not add shadcn, Tailwind-as-theme, Next.js, React Flow, Recharts, Stream Chat, or a second bible (`CLAUDE.md`, extra `.cursor/rules` that restates AGENTS.md).
 
-## Do not
+---
 
-- Add `CLAUDE.md` or a second `.cursor/rules/*.mdc` that restates law (D-0005 / D-0006).
-- Theme chat.lan / home.lan / noc.lan in this workstream.
-- Extend jarvis-core.
-- `kubectl apply` Flux-owned YAML; push cluster changes via Gitea.
-- Dump secrets, SOPS ciphertext, or commit `learned.md`.
+## 2. Tokens (exact)
 
-## Done when (builder session)
+```css
+:root {
+  --bg: #05070a;
+  --panel: #0b1014;
+  --panel-2: #10151b;
+  --line: #1c252e;
+  --steel: #8b9aaa;
+  --ink: #e7eef4;
+  --accent: #5eead4;
+  --warn: #e8b86d;
+  --bad: #e06c75;
+  --radius: 10px;
+  --radius-lg: 18px;
+}
+```
 
-An operator can slide Login → Earth → CMD → NOC on jarvis.lan, confirm a Hands
-or memory action from glass, and see NOC numbers from `/v1/pulse` without any
-glass scrape of noc.lan.
+Type: IBM Plex Sans for chrome, IBM Plex Mono for numbers and cmd. Accent on ≤15% of pixels.
+
+---
+
+## 3. File map to create / replace
+
+Implement under `glass/src/cockpit/` as the product entry (keep old `hud/` / `godseye` themes archived, do not delete unless asked):
+
+```
+glass/src/cockpit/
+  main.tsx
+  App.tsx                 deck index 0=login 1=earth 2=cmd 3=noc
+  Shell.tsx
+  deck/Deck.tsx           snap translateX, arrow keys, swipe
+  chrome/Brand.tsx
+  chrome/CmdBar.tsx
+  chrome/LivePip.tsx
+  chrome/ConfirmCard.tsx
+  displays/Login.tsx
+  displays/Earth.tsx
+  displays/Cmd.tsx
+  displays/Noc.tsx
+  state/session.ts
+  state/health.ts
+  state/pulse.ts
+  state/deck.ts
+  viz/EarthGlobe.tsx
+  viz/TopologySvg.tsx
+  viz/Spark.tsx
+  viz/Waveform.tsx
+  viz/Rings.tsx
+  tokens.css
+```
+
+Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
+
+---
+
+## 4. Display contracts
+
+### Login (index 0)
+
+- Full-bleed still of the server-room plate (`themes/cockpit/login-plate.jpg` or `public/login-plate.jpg`).
+- HTML/SVG wordmark JARVIS, teal inner glow, subline `HOME-LAB AI CLUSTER COMMAND CENTER`.
+- Inverted triangle control. Click, Enter key, or spoken “open” → ensure session via `/v1/session`, then `deck = 1`.
+- No username, no password, no model picker.
+
+### Earth (index 1)
+
+- Full-viewport R3F night Earth. Drag to spin. Atmosphere limb. City lights.
+- DOM HUD pinned to edges:
+  - Top-left: hex + JARVIS + LIVE
+  - Top-center: LAN, k3s, UTC from `/v1/pulse`
+  - Top-right: four ring pips TALKER HANDS STT TTS from `/health`
+  - Left: dossier TRACK / MODE / HOS / LOCK
+  - Bottom chips: CLUSTER LIVE, UPTIME, GPU-01 °C, GPU-02 °C
+  - Bottom: CmdBar `cmd  Speak freely…` + Send + Hold to talk
+- **Forbidden:** centered chat modal, greeting card over the globe, purple, glassmorphism.
+
+Turns: `streamTurn` / `streamAudioTurn`. Streamed reply → TTS via `fetchTtsObjectUrl` + a two-line toast above CmdBar. Persist messages in session state for the CMD display.
+
+### CMD (index 2)
+
+Layout:
+
+- Header: Brand + local clock + weather stub + date + `BRIEF | ASK | APPLY`
+- Left ~280px: Dossier + Today icon rows
+- Center: AM BRIEFING sections Overnight / Lab / Agenda from structured session briefing
+- Right ~360px: Channel thread (session.messages + live tokens) + cmd input
+- Bottom pills: Inbox, Calendar, Voice, Apply queue
+
+BRIEF focuses this display and refetches session.
+ASK focuses the Channel input.
+APPLY: if `confirm` pending, scroll it into view; else send a turn that is a Hands verb (operator types it).
+
+ConfirmCard renders inside Channel when `session.confirm` is set. Yes/cancel are themselves turns (`"yes"` / `"cancel"`).
+
+### NOC (index 3)
+
+- Left rail: filters CTRL GPU DATA APPS + dossier track/mode
+- Center: SVG 2×3 tiles labeled ctrl-01, gpu-01, gpu-02, data-01, data-02, apps-01 with teal traces
+- Right: four ring meters (cpu/mem/net/io), voice waveform, GPU temp sparks, env bars
+- Full-width event ticker
+- Node metrics table: NODE ROLE IP CPU RAM DISK LOAD
+- Bottom CmdBar (same component as Earth)
+
+All numbers from `/v1/pulse` polled every 2s. If pulse is missing, show steel placeholders — do **not** invent cluster numbers in the client.
+
+Header APPLY / PULSE / STATUS send turns (`"status cluster"`, `"pulse"`, or the pending apply). They are not empty dropdowns.
+
+---
+
+## 5. Orchestrator changes (same repo, `orchestrator/app`)
+
+Add `GET /v1/pulse` returning JSON:
+
+```json
+{
+  "lan": "192.168.8.0/24",
+  "k3s": "7/7",
+  "utc": "ISO-8601",
+  "uptime": "15d 06h 42m 18s",
+  "nodes": [
+    {
+      "id": "gpu-01",
+      "role": "gpu-node",
+      "ip": "10.8.0.11",
+      "cpu": 67,
+      "ram": 71,
+      "disk": 64,
+      "load": 4.8,
+      "temp_c": 61
+    }
+  ],
+  "rings": { "cpu": 42, "mem": 56, "net": 18, "io": 27 },
+  "env": { "air_c": 22.1, "hum": 41, "pwr": 98 },
+  "events": [{ "ts": "ISO", "src": "ctrl-01", "msg": "NodeReady" }],
+  "talker": true,
+  "hands": true,
+  "stt": true,
+  "tts": true
+}
+```
+
+Fill pulse from Hands / existing health helpers. If a field is unknown, omit it or null — never fabricate.
+
+Extend `/v1/session` briefing to structured fields when you can do it without breaking old glass:
+
+```json
+"briefing": {
+  "overnight": "…",
+  "lab": "…",
+  "agenda": [{ "t": "09:00", "label": "Lab sync" }],
+  "today": [{ "t": "06:58", "kind": "inbound", "label": "3 unread" }],
+  "focus": "…"
+}
+```
+
+Keep `briefing_blurb` as a fallback string for one release.
+
+Do not teach glass to scrape noc.lan or home.lan.
+
+---
+
+## 6. Motion and input
+
+- Deck: `translateX(-index * 100%)`, 280–400ms ease. ArrowLeft / ArrowRight. Optional hash `#login|#earth|#cmd|#noc`.
+- Login triangle: single pulse on mount.
+- Earth HUD: fade in 200ms after globe first frame.
+- PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
+- No page reloads.
+
+---
+
+## 7. What you will not do
+
+- Do not put a chat transcript on the globe.
+- Do not use noc.lan or home.lan as the product UI.
+- Do not theme chat.lan / grafana.lan / agent.lan.
+- Do not `kubectl apply` product YAML; Flux owns cluster (edit `~/cluster` on the bastion, push Gitea).
+- Do not dump secrets, SOPS, or `learned.md`.
+- Do not extend `jarvis-core` (D-0003).
+- Do not invent GPU numbers in React.
+- Do not add a model picker.
+
+---
+
+## 8. Build order (one PR-sized slice per step)
+
+1. tokens.css + Brand + Deck with four empty stages at the right type
+2. Login plate + Enter → Earth
+3. Earth globe + HUD + CmdBar wired to existing `api.ts`
+4. CMD columns + Channel using session.messages + SSE
+5. ConfirmCard
+6. Orchestrator `/v1/pulse` + structured briefing
+7. NOC SVG + table + ticker + rings bound to pulse
+8. Pixel pass vs the four JPGs at 1920×1080
+
+Stop after each slice and show the operator. Do not binge all eight in one unattended loop unless asked.
+
+---
+
+## 9. Acceptance
+
+At 1920×1080, a screenshot of each stage is recognizably the matching reference JPG: same hierarchy, same teal, same plex, same density. Earth has no center modal. Login has no form fields. NOC is a schematic, not a globe. CMD is a briefing desk, not a rack.
