@@ -10,6 +10,7 @@ export type HealthPayload = {
   degraded?: boolean;
   reason?: string | null;
   stt?: boolean;
+  tts?: boolean;
 };
 
 const jsonHeaders = { Accept: "application/json" };
@@ -124,4 +125,19 @@ export async function streamAudioTurn(
     body: form,
   });
   await consumeSse(r, handlers);
+}
+
+/** Fetch Piper WAV via orchestrator (D-0014). Returns object URL or null. */
+export async function fetchTtsObjectUrl(text: string): Promise<string | null> {
+  const clean = text.trim();
+  if (!clean) return null;
+  const r = await fetch("/v1/tts", {
+    method: "POST",
+    headers: { Accept: "audio/wav, application/octet-stream", "Content-Type": "application/json" },
+    body: JSON.stringify({ text: clean.slice(0, 4000) }),
+  });
+  if (!r.ok) return null;
+  const blob = await r.blob();
+  if (blob.size < 64) return null;
+  return URL.createObjectURL(blob);
 }

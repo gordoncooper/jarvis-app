@@ -27,5 +27,9 @@ class Settings(BaseSettings):
     whisper_base: str = "http://jarvis-whisper.inference.svc.cluster.local:8000"
     whisper_model: str = "Systran/faster-whisper-small"
 
+    piper_base: str = "http://piper.apps.svc.cluster.local:8000"
+    piper_model: str = "tts-1"
+    piper_voice: str = "alloy"  # → en_GB-northern_english_male-medium (D-0014)
+
 
 settings = Settings()

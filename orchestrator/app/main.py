@@ -18,11 +18,12 @@ from .llm import chat_stream, health_llm
 from .memory import PromotedMemory, parse_memory_intent
 from .session_store import SessionStore
 from .stt import health_whisper, transcribe
+from .tts import health_piper, synthesize
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.4-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.5-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -45,6 +46,10 @@ app.add_middleware(
 class TurnIn(BaseModel):
     text: str = Field(min_length=1, max_length=8000)
     session_id: str | None = None
+
+
+class TtsIn(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
 
 
 def _load_text(path: str, fallback: str) -> str:
@@ -100,18 +105,22 @@ async def readyz() -> dict[str, bool]:
 async def health() -> dict[str, Any]:
     llm_ok, llm_reason = await health_llm()
     stt_ok, stt_reason = await health_whisper()
+    tts_ok, tts_reason = await health_piper()
     degraded = not llm_ok
     reason = None if llm_ok else llm_reason
     if not degraded and not stt_ok:
         reason = stt_reason
+    elif not degraded and not tts_ok:
+        reason = tts_reason
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.4-dev",
+        "version": "0.6.5-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
         "stt": stt_ok,
+        "tts": tts_ok,
         "mock": settings.mock_llm,
         "memory_facts": len(mem().active_facts(500)),
     }
@@ -128,6 +137,17 @@ async def get_session(x_session_id: str | None = Header(default=None, alias="X-S
         "greeting": settings.greeting,
         "briefing_blurb": settings.briefing_blurb,
     }
+
+
+@app.post("/v1/tts")
+async def post_tts(body: TtsIn) -> Response:
+    """Proxy Piper speech (D-0014 / D-0020). Glass never talks to Piper directly."""
+    try:
+        data, ctype = await synthesize(body.text)
+    except Exception as e:  # noqa: BLE001
+        log.exception("tts failed")
+        raise HTTPException(502, "tts error") from e
+    return Response(content=data, media_type=ctype)
 
 
 @app.post("/v1/turns")

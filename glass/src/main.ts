@@ -1,4 +1,10 @@
-import { fetchHealth, fetchSession, streamAudioTurn, streamTurn } from "./api.js";
+import {
+  fetchHealth,
+  fetchSession,
+  fetchTtsObjectUrl,
+  streamAudioTurn,
+  streamTurn,
+} from "./api.js";
 
 const SESSION_KEY = "jarvis.session_id";
 
@@ -36,9 +42,34 @@ async function main(): Promise<void> {
 
   let sessionId = localStorage.getItem(SESSION_KEY);
   let busy = false;
+  let ttsOk = true;
+  let currentAudio: HTMLAudioElement | null = null;
+
+  const speak = async (text: string): Promise<void> => {
+    if (!ttsOk || !text.trim()) return;
+    try {
+      const url = await fetchTtsObjectUrl(text);
+      if (!url) return;
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.src = "";
+        currentAudio = null;
+      }
+      const audio = new Audio(url);
+      currentAudio = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        if (currentAudio === audio) currentAudio = null;
+      };
+      await audio.play();
+    } catch {
+      // Autoplay / TTS failure — text already shown (D-0014).
+    }
+  };
 
   try {
     const health = await fetchHealth();
+    ttsOk = health.tts !== false;
     if (health.degraded) {
       banner.textContent = health.reason
         ? `Degraded: ${health.reason}`
@@ -48,6 +79,9 @@ async function main(): Promise<void> {
       banner.textContent = "Voice unavailable (STT). Typing still works.";
       banner.classList.add("show");
       mic.disabled = true;
+    } else if (!ttsOk) {
+      banner.textContent = "Speaker unavailable (TTS). Replies stay as text.";
+      banner.classList.add("show");
     }
   } catch {
     banner.textContent = "Cannot reach the orchestrator.";
@@ -94,6 +128,7 @@ async function main(): Promise<void> {
         send.disabled = false;
         mic.disabled = false;
         input.focus();
+        void speak(reply);
       },
       onError: (message) => {
         assistant.textContent = `Error: ${message}`;
@@ -172,6 +207,7 @@ async function main(): Promise<void> {
         busy = false;
         send.disabled = false;
         mic.disabled = false;
+        void speak(reply);
       },
       onError: (message) => {
         assistant.textContent = `Error: ${message}`;
