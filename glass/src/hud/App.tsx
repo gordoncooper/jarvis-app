@@ -15,6 +15,7 @@ import { ArcMeter, MemoryRing } from "./Meter.js";
 import { Panel } from "./Panel.js";
 import { Ribbon } from "./Ribbon.js";
 import { Ticker } from "./Ticker.js";
+import { GeoTape } from "./GeoTape.js";
 
 const SESSION_KEY = "jarvis.session_id";
 
@@ -301,7 +302,14 @@ export function App() {
     <>
       {globeOk ? (
         <div className="hud-stage">
-          <Globe live={live} streaming={streaming} alert={!!confirm} frozen={frozen} />
+          <Globe
+            live={live}
+            streaming={streaming}
+            alert={!!confirm}
+            frozen={frozen}
+            systems={{ talker: talkerOk, hands: handsOk, stt: sttOk, tts: ttsOk }}
+            memoryFacts={health?.memory_facts ?? 0}
+          />
         </div>
       ) : null}
       <div className="hud-vignette" />
@@ -317,11 +325,14 @@ export function App() {
           ]}
         />
         <Ticker text={ticker} />
-        {blurb ? (
-          <Panel className="hud-dossier" label="DOSSIER">
-            <p className="blurb">{blurb}</p>
-          </Panel>
-        ) : null}
+        <div className="hud-leftstack">
+          {blurb ? (
+            <Panel className="hud-dossier" label="DOSSIER">
+              <p className="blurb">{blurb}</p>
+            </Panel>
+          ) : null}
+          <GeoTape />
+        </div>
         <Channel
           messages={messages}
           confirm={confirm}

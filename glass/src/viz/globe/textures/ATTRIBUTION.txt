@@ -1,0 +1,6 @@
+NASA / public-domain Earth maps, bundled for LAN (D-0018). Not fetched at runtime.
+
+- day.jpg, spec.jpg, normal.jpg, clouds.png — three.js r170 planet example
+  (NASA Blue Marble / Visible Earth derivatives)
+- night.jpg — city lights (NASA Black Marble / DMSP via three-globe example),
+  resized 2048×1024

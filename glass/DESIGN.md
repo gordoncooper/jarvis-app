@@ -9,8 +9,10 @@ Empty channel reveals Earth.
 - Radius 2–4px. Motion 160–280ms ease-out.
 - Widgets mean something: `/health` (llm, hands, stt, tts, memory_facts,
   degraded) plus turn / confirm / PTT. No fake telemetry. No noc.lan scrape.
-- Globe: procedural night-side Earth, fresnel atmosphere, 3D grid, scan while
-  tokens stream. Frozen limb when HOLD/degraded. Confirm = pip + ring alert.
+- Globe: NASA-mapped Earth (day / night lights / specular / clouds / normals),
+  fresnel atmosphere, graticule, system orbits, data arcs, scan, lock reticle.
+  Frozen limb when HOLD. Confirm = LOCK. Streaming = SCAN. Track tape shows
+  real LOOK/HDG from the camera. No CDN at runtime.
 - Overlay: ribbon, dossier chip, floating channel slab, arc meters, ticker, CMD.
 - Out: Vite, Tailwind, Recharts, Inter, indigo, glassmorphism, helmet visor,
   scanlines-over-everything, Sparkles.

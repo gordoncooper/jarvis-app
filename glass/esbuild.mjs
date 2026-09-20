@@ -26,6 +26,11 @@ if (existsSync(extraStatic)) {
   cpSync(extraStatic, join(outdir, "theme-static"), { recursive: true });
 }
 
+const globeTex = join(root, "src", "viz", "globe", "textures");
+if (existsSync(globeTex)) {
+  cpSync(globeTex, join(outdir, "globe"), { recursive: true });
+}
+
 const fontsOut = join(outdir, "fonts");
 mkdirSync(fontsOut, { recursive: true });
 const fontPairs = [

@@ -111,6 +111,7 @@ body {
 .hud-channel,
 .hud-systems,
 .hud-console,
+.hud-leftstack,
 .confirm-row {
   pointer-events: auto;
 }
@@ -214,11 +215,17 @@ body {
   margin-bottom: 0.35rem;
 }
 
-.hud-dossier {
+.hud-leftstack {
   position: absolute;
   top: 3.6rem;
   left: 1.1rem;
   width: min(16.5rem, 28vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.hud-dossier {
   padding: 0.65rem 0.75rem 0.7rem;
   background: color-mix(in oklch, var(--panel) 72%, transparent);
   border: 1px solid var(--hair);
@@ -230,6 +237,28 @@ body {
   color: var(--steel);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.hud-geo {
+  padding: 0.5rem 0.7rem 0.55rem;
+  background: color-mix(in oklch, var(--panel) 72%, transparent);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+}
+
+.hud-geo-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--steel);
+  line-height: 1.55;
+}
+
+.hud-geo-val {
+  color: var(--accent);
 }
 
 .hud-channel {

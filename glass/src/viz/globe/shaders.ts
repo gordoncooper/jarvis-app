@@ -1,9 +1,11 @@
 export const earthVert = /* glsl */ `
+varying vec2 vUv;
 varying vec3 vPos;
 varying vec3 vNormal;
 varying vec3 vWorld;
 
 void main() {
+  vUv = uv;
   vPos = position;
   vNormal = normalize(normalMatrix * normal);
   vec4 world = modelMatrix * vec4(position, 1.0);
@@ -13,86 +15,59 @@ void main() {
 `;
 
 export const earthFrag = /* glsl */ `
+uniform sampler2D tDay;
+uniform sampler2D tNight;
+uniform sampler2D tSpec;
+uniform sampler2D tNormal;
 uniform float uTime;
 uniform vec3 uAccent;
-uniform vec3 uInk;
 uniform float uLive;
 uniform float uScan;
 uniform float uAlert;
 uniform float uFrozen;
+varying vec2 vUv;
 varying vec3 vPos;
 varying vec3 vNormal;
 varying vec3 vWorld;
 
-float hash(vec3 p) {
-  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
-}
-
-float noise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(
-    mix(mix(hash(i), hash(i + vec3(1.0, 0.0, 0.0)), f.x),
-        mix(hash(i + vec3(0.0, 1.0, 0.0)), hash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
-    mix(mix(hash(i + vec3(0.0, 0.0, 1.0)), hash(i + vec3(1.0, 0.0, 1.0)), f.x),
-        mix(hash(i + vec3(0.0, 1.0, 1.0)), hash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
-    f.z
-  );
-}
-
-float fbm(vec3 p) {
-  float a = 0.0;
-  float w = 0.5;
-  for (int i = 0; i < 6; i++) {
-    a += w * noise(p);
-    p = p * 2.13;
-    w *= 0.5;
-  }
-  return a;
-}
-
 void main() {
-  vec3 n = normalize(vPos);
-  vec3 light = normalize(vec3(0.62, 0.22, 0.72));
-  float ndotl = clamp(dot(n, light), 0.0, 1.0);
-  float night = 1.0 - smoothstep(0.0, 0.28, ndotl);
+  vec3 n = normalize(vNormal);
+  vec3 bump = texture2D(tNormal, vUv).xyz * 2.0 - 1.0;
+  n = normalize(n + bump * 0.35);
 
-  vec3 warped = n + 0.18 * vec3(noise(n * 1.7), noise(n * 1.7 + 4.1), noise(n * 1.7 + 8.3));
-  float continents = fbm(warped * 2.05 + vec3(0.31, -0.12, 0.44));
-  float land = smoothstep(0.50, 0.58, continents);
-  float poles = smoothstep(0.74, 0.9, abs(n.y));
-  float coast = smoothstep(0.0, 0.12, land) * (1.0 - smoothstep(0.12, 0.35, land));
-
-  vec3 ocean = vec3(0.012, 0.04, 0.05);
-  vec3 deep = vec3(0.006, 0.014, 0.02);
-  vec3 ground = vec3(0.05, 0.09, 0.1);
-  vec3 ice = vec3(0.38, 0.46, 0.5);
-  vec3 col = mix(mix(deep, ocean, 0.4 + 0.6 * ndotl), ground, land);
-  col = mix(col, ice, poles * (0.55 + 0.45 * land));
-  col += uAccent * coast * 0.22 * uLive;
-
-  float cities = step(0.987, hash(floor(n * 180.0))) * land * night;
-  col += uAccent * cities * (0.7 + 0.3 * uLive);
-
-  float lon = atan(n.z, n.x);
-  float scanLine = abs(fract(lon / 6.2831853 + uTime * 0.12) - 0.5);
-  float scan = smoothstep(0.045, 0.0, scanLine) * uScan;
-  col += uAccent * scan * 0.65;
-
-  float lat = abs(n.y);
-  float gridLat = smoothstep(0.012, 0.0, abs(fract(lat * 12.0) - 0.5) - 0.46);
-  float gridLon = smoothstep(0.012, 0.0, abs(fract((lon / 3.14159 + 1.0) * 6.0) - 0.5) - 0.46);
-  col += uAccent * (gridLat + gridLon) * 0.07 * uLive;
-
+  vec3 light = normalize(vec3(0.68, 0.18, 0.52));
   vec3 view = normalize(cameraPosition - vWorld);
-  float fres = pow(1.0 - abs(dot(view, normalize(vNormal))), 2.8);
-  col += uAccent * fres * (0.12 + 0.2 * uAlert);
+  float ndl = dot(n, light);
+  float dayF = smoothstep(-0.12, 0.28, ndl);
+  float nightF = 1.0 - dayF;
 
-  float shade = 0.16 + 0.84 * ndotl;
-  col *= mix(0.45, shade, 1.0 - night * 0.55);
-  col = mix(col, vec3(0.22, 0.26, 0.3), uFrozen * 0.55);
-  col = mix(col, uInk, 0.04);
+  vec3 dayC = texture2D(tDay, vUv).rgb;
+  vec3 nightC = texture2D(tNight, vUv).rgb;
+  nightC *= mix(vec3(1.0), uAccent, 0.42) * 2.35;
+
+  vec3 col = mix(nightC, dayC * (0.22 + 0.78 * max(ndl, 0.0)), dayF);
+
+  float specMask = texture2D(tSpec, vUv).r;
+  vec3 halfV = normalize(light + view);
+  float spec = pow(max(dot(n, halfV), 0.0), 42.0) * specMask * dayF;
+  col += vec3(0.55, 0.78, 0.9) * spec * 0.85;
+
+  float lon = vUv.x + uTime * 0.04;
+  float scan = smoothstep(0.018, 0.0, abs(fract(lon) - 0.5)) * uScan;
+  col += uAccent * scan * 0.55;
+
+  vec2 hex = vUv * vec2(56.0, 28.0);
+  float hx = abs(fract(hex.x) - 0.5);
+  float hy = abs(fract(hex.y + 0.5 * floor(hex.x)) - 0.5);
+  float hexLine = smoothstep(0.07, 0.02, min(hx, hy));
+  col += uAccent * hexLine * 0.07 * nightF * uLive;
+
+  float fres = pow(1.0 - abs(dot(view, normalize(vNormal))), 2.6);
+  col += uAccent * fres * (0.1 + 0.22 * uAlert);
+
+  float g = dot(col, vec3(0.22, 0.48, 0.08));
+  col = mix(col, vec3(g * 0.7, g * 0.78, g * 0.85), uFrozen * 0.72);
+  col *= 0.78 + 0.22 * uLive;
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -119,9 +94,42 @@ varying vec3 vWorld;
 
 void main() {
   vec3 view = normalize(cameraPosition - vWorld);
-  float fres = pow(1.0 - abs(dot(view, normalize(vNormal))), 2.2);
-  vec3 col = mix(uAccent, vec3(0.55, 0.62, 0.7), uFrozen);
-  float a = fres * (0.42 + 0.28 * uLive + 0.35 * uAlert);
-  gl_FragColor = vec4(col * fres, a);
+  float fres = pow(1.0 - abs(dot(view, normalize(vNormal))), 1.85);
+  vec3 col = mix(uAccent, vec3(0.45, 0.62, 0.85), 0.35 + 0.45 * uFrozen);
+  float a = fres * (0.38 + 0.28 * uLive + 0.4 * uAlert);
+  gl_FragColor = vec4(col * (0.6 + fres), a);
+}
+`;
+
+export const cloudVert = /* glsl */ `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vWorld;
+void main() {
+  vUv = uv;
+  vNormal = normalize(normalMatrix * normal);
+  vec4 world = modelMatrix * vec4(position, 1.0);
+  vWorld = world.xyz;
+  gl_Position = projectionMatrix * viewMatrix * world;
+}
+`;
+
+export const cloudFrag = /* glsl */ `
+uniform sampler2D tClouds;
+uniform vec3 uAccent;
+uniform float uLive;
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vWorld;
+
+void main() {
+  float c = texture2D(tClouds, vUv).r;
+  vec3 view = normalize(cameraPosition - vWorld);
+  float ndl = max(dot(normalize(vNormal), normalize(vec3(0.68, 0.18, 0.52))), 0.0);
+  vec3 col = mix(vec3(0.75, 0.82, 0.88), uAccent, 0.08 * uLive);
+  float a = c * (0.22 + 0.28 * ndl);
+  float fres = pow(1.0 - abs(dot(view, normalize(vNormal))), 3.0);
+  a *= 1.0 - fres * 0.35;
+  gl_FragColor = vec4(col, a);
 }
 `;
