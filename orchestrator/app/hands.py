@@ -51,7 +51,7 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
             r"\b("
             r"cluster\s+health|"
             r"nodes?\s+(ready|status)|"
-            r"(is|how\s+is)\s+the\s+(lab|cluster|rack)\b|"
+            r"(is|how'?s?|how\s+is)\s+the\s+(lab|cluster|rack)\b|"
             r"(lab|cluster|rack)\s+(up|healthy|ok|okay)|"
             r"pod\s+status|crashing\s+pods?|"
             r"status\s+of\s+the\s+(lab|cluster|rack)"

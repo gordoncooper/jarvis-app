@@ -30,7 +30,7 @@ from .tts import health_piper, synthesize
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
 
-app = FastAPI(title="jarvis-orchestrator", version="0.6.7-dev")
+app = FastAPI(title="jarvis-orchestrator", version="0.6.8-dev")
 store = SessionStore()
 _memory: PromotedMemory | None = None
 
@@ -125,7 +125,7 @@ async def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "jarvis-orchestrator",
-        "version": "0.6.7-dev",
+        "version": "0.6.8-dev",
         "degraded": degraded,
         "reason": reason,
         "llm": llm_ok,
