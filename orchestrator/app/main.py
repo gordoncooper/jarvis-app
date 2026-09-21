@@ -42,6 +42,7 @@ from .hands import (
     propose_confirm,
 )
 from .briefing_map import assemble_briefing
+from .overnight import build_cluster_briefing
 from .pulse import get_pulse
 from .stt import health_whisper, transcribe
 from .tts import health_piper, synthesize
@@ -202,13 +203,21 @@ async def pulse() -> dict[str, Any]:
 async def get_session(x_session_id: str | None = Header(default=None, alias="X-Session-Id")) -> dict[str, Any]:
     sid = x_session_id or str(uuid.uuid4())
     sess = store.get_or_create(sid)
+    briefing = assemble_briefing(_load_text(settings.briefing_path, ""))
+    # briefing.md carries the stable lab facts; the cluster supplies what
+    # actually happened overnight. An operator-written Overnight section wins.
+    cluster = await build_cluster_briefing()
+    if not briefing.get("overnight") and cluster.get("overnight"):
+        briefing["overnight"] = cluster["overnight"]
+    if not briefing.get("today") and cluster.get("today"):
+        briefing["today"] = cluster["today"]
     out: dict[str, Any] = {
         "session_id": sess.id,
         "messages": sess.messages,
         "created_at": sess.created_at,
         "greeting": settings.greeting,
         "briefing_blurb": settings.briefing_blurb,
-        "briefing": assemble_briefing(_load_text(settings.briefing_path, "")),
+        "briefing": briefing,
     }
     pending = pending_alive(store.get_pending(sess.id))
     if store.get_pending(sess.id) and not pending:

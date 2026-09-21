@@ -1058,8 +1058,14 @@ button:disabled {
 .ck-brief p,
 .ck-brief-list li {
   font-size: 0.8rem;
-  line-height: 1.5;
+  line-height: 1.55;
   color: color-mix(in oklch, var(--ck-ink) 90%, transparent);
+}
+
+/* Overnight is a block of short lines, not separated paragraphs. */
+.ck-brief h3 + p,
+.ck-brief p + p {
+  margin-top: 0.3rem;
 }
 
 .ck-brief-list {
@@ -2143,3 +2149,49 @@ button:disabled {
     justify-content: flex-end;
   }
 }
+
+/* Cluster-derived Today rows carry no clock time, so the gutter collapses. */
+.ck-timeline li.is-untimed {
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+}
+
+/* A pill with no backing integration says so rather than showing a bare dash. */
+.ck-pill span.is-unset {
+  color: var(--ck-steel);
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* CMD signals list: same journal the NOC ticker reads, in a readable column. */
+.ck-signals {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  font-family: var(--ck-mono);
+  font-size: 0.72rem;
+}
+
+.ck-signals li {
+  display: grid;
+  grid-template-columns: 7rem 6.5rem minmax(0, 1fr);
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ck-ink);
+}
+
+.ck-signals li:last-child {
+  border-bottom: none;
+}
+
+.ck-sig-ts {
+  color: var(--ck-steel);
+}
+
+.ck-signals strong {
+  font-weight: 500;
+  color: var(--ck-accent);
+}
+
+.ck-signals li.is-warn strong { color: var(--warn); }
+.ck-signals li.is-bad strong { color: var(--bad); }

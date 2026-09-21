@@ -303,7 +303,7 @@ export function App() {
 
   return (
     <Deck index={slide} onIndex={setSlide}>
-      <Login onEnter={() => setSlide(1)} />
+      <Login onEnter={() => setSlide(1)} active={slide === 0} />
       <Earth
         health={health}
         unreachable={unreachable}

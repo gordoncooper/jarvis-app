@@ -7,6 +7,8 @@ export type BriefingToday = {
   t: string;
   kind: string;
   label: string;
+  /** Second line under the title. Falls back to the kind when absent. */
+  detail: string | null;
 };
 
 export type SessionBriefing = {
@@ -22,6 +24,17 @@ export function capCopy(text: string, max = 420): string {
   const t = text.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max - 1).trimEnd()}…`;
+}
+
+/** capCopy collapses every run of whitespace, which flattens a multi-line
+ *  briefing into one paragraph. This caps line-by-line instead. */
+export function capLines(text: string, maxLines = 8, maxPerLine = 160): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, maxLines)
+    .map((line) => capCopy(line, maxPerLine));
 }
 
 function asString(value: unknown): string | null {
@@ -49,10 +62,12 @@ function asToday(value: unknown): BriefingToday[] {
     const rec = row as Record<string, unknown>;
     const label = asString(rec.label);
     if (!label) continue;
+    const detail = asString(rec.detail);
     out.push({
       t: asString(rec.t) ?? "",
       kind: asString(rec.kind) ?? "note",
       label: capCopy(label, 80),
+      detail: detail ? capCopy(detail, 90) : null,
     });
   }
   return out.slice(0, 8);

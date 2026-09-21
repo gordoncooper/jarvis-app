@@ -17,7 +17,7 @@ import {
   LiveDot,
 } from "../chrome/Marks.js";
 import { type ChatMsg, dayOfYear } from "../mock.js";
-import { capCopy, parseBriefing, type SessionBriefing } from "../state/session.js";
+import { capCopy, capLines, parseBriefing, type SessionBriefing } from "../state/session.js";
 
 type Props = {
   greeting: string;
@@ -104,7 +104,7 @@ export function Cmd({
   }, [wantFocus, confirm, collapsed]);
 
   const structured = useMemo(() => parseBriefing(briefing), [briefing]);
-  const overnight = structured?.overnight ? capCopy(structured.overnight, 280) : null;
+  const overnightLines = structured?.overnight ? capLines(structured.overnight, 6) : [];
   const lab = structured?.lab ? capCopy(structured.lab, 280) : null;
   const focus = structured?.focus ? capCopy(structured.focus, 220) : null;
   const labName = structured?.lab_name ? capCopy(structured.lab_name, 48) : "OPERATOR WORKSPACE";
@@ -146,6 +146,22 @@ export function Cmd({
     setCollapsed(false);
     setWantFocus("apply");
   }
+
+  // Newest-first tail of the orchestrator's event journal: real observed
+  // transitions, the same source the NOC ticker reads.
+  const signals = useMemo(() => {
+    const rows = pulse?.events ?? [];
+    return rows
+      .slice(-5)
+      .reverse()
+      .map((e) => ({
+        ts: e.ts ?? "",
+        when: (e.ts ?? "").replace("T", " ").replace("Z", "").slice(5, 16) || "—",
+        src: e.src ?? "—",
+        msg: e.msg ?? "—",
+        level: e.level ?? "info",
+      }));
+  }, [pulse]);
 
   // Real reading from /v1/pulse, or nothing. The header used to ship a
   // hardcoded "16°C, overcast" that was wrong everywhere except by accident.
@@ -237,14 +253,14 @@ export function Cmd({
             {today.map((row, i) => {
               const Ico = KIND_ICON[row.kind.toLowerCase()] ?? IconDoc;
               return (
-                <li key={`${row.t}-${i}`}>
-                  <span className="ck-tl-time">{row.t || "—"}</span>
+                <li key={`${row.t}-${row.label}-${i}`} className={row.t ? "" : "is-untimed"}>
+                  {row.t ? <span className="ck-tl-time">{row.t}</span> : null}
                   <span className="ck-tl-ico">
                     <Ico />
                   </span>
                   <div>
                     <strong>{row.label}</strong>
-                    <p>{row.kind}</p>
+                    <p>{row.detail ?? row.kind}</p>
                   </div>
                 </li>
               );
@@ -264,14 +280,13 @@ export function Cmd({
               </li>
             ) : null}
             {today.length === 0 && memoryFacts === 0 ? (
-              <li>
-                <span className="ck-tl-time">—</span>
+              <li className="is-untimed">
                 <span className="ck-tl-ico">
                   <IconDoc />
                 </span>
                 <div>
-                  <strong>Today</strong>
-                  <p>No structured today rows</p>
+                  <strong>Nothing to report</strong>
+                  <p>No cluster activity in the briefing window</p>
                 </div>
               </li>
             ) : null}
@@ -288,11 +303,17 @@ export function Cmd({
             </span>
           </header>
           <p className="ck-greeting">{greetingCopy}</p>
-          {!overnight && !lab && !agenda.length && blurbCopy ? <p className="ck-blurb">{blurbCopy}</p> : null}
-          {overnight ? (
+          {!overnightLines.length && !lab && !agenda.length && blurbCopy ? (
+            <p className="ck-blurb">{blurbCopy}</p>
+          ) : null}
+          {overnightLines.length ? (
             <>
-              <h3 className="ck-sec-teal">OVERNIGHT</h3>
-              <p>{overnight}</p>
+              <h3 className="ck-sec-teal">OVERNIGHT · LAST 12H</h3>
+              {overnightLines.map((line, i) => (
+                <p key={i} className={line.startsWith("\u0394") ? "ck-delta" : undefined}>
+                  {line}
+                </p>
+              ))}
             </>
           ) : null}
           {lab ? (
@@ -309,6 +330,20 @@ export function Cmd({
                   <li key={`${row.t}-${i}`}>
                     {row.t ? `${row.t} · ` : ""}
                     {row.label}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {signals.length ? (
+            <>
+              <h3>SIGNALS · OBSERVED</h3>
+              <ul className="ck-signals">
+                {signals.map((e, i) => (
+                  <li key={`${e.ts}-${i}`} className={`is-${e.level || "info"}`}>
+                    <span className="ck-sig-ts">{e.when}</span>
+                    <strong>{e.src}</strong>
+                    <span>{e.msg}</span>
                   </li>
                 ))}
               </ul>
@@ -382,14 +417,18 @@ export function Cmd({
             <strong>INBOX</strong>
             <LiveDot on={inboxCount > 0} />
           </div>
-          <span>{inboxCount ? `${inboxCount} inbound` : "—"}</span>
+          <span className={inboxCount ? "" : "is-unset"}>
+            {inboxCount ? `${inboxCount} inbound` : "no source configured"}
+          </span>
         </div>
         <div className="ck-pill">
           <div className="ck-pill-head">
             <IconCal size={15} />
             <strong>CALENDAR</strong>
           </div>
-          <span>{calendarLabel ? capCopy(calendarLabel, 28) : "—"}</span>
+          <span className={calendarLabel ? "" : "is-unset"}>
+            {calendarLabel ? capCopy(calendarLabel, 28) : "no source configured"}
+          </span>
         </div>
         <div className="ck-pill">
           <div className="ck-pill-head">
