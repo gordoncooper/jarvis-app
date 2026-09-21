@@ -188,6 +188,36 @@ class JournalTest(unittest.TestCase):
         self.assertTrue(any("above 80" in m for m in msgs))
         self.assertEqual(next(e for e in after if e["msg"] == "NodeNotReady")["level"], "bad")
 
+    def test_boot_seeding_retries_when_prometheus_was_not_up_yet(self) -> None:
+        j = EventJournal()
+        nodes = [{"id": "ctrl-01", "ready": True}, {"id": "gpu-01", "ready": True}]
+        kw = {"k3s": "2/2", "services": {"talker": True}}
+
+        # Orchestrator restarted ahead of Prometheus: no uptimes to seed from.
+        first = j.observe(nodes=nodes, uptimes={}, **kw)
+        self.assertEqual([(e["src"], e["msg"]) for e in first], [("pulse", "journal started")])
+
+        # Still nothing: the placeholder must not be duplicated every pulse.
+        again = j.observe(nodes=nodes, uptimes={}, **kw)
+        self.assertEqual(len(again), 1)
+
+        # Prometheus answers: real boot history replaces the placeholder.
+        seeded = j.observe(nodes=nodes, uptimes={"ctrl-01": 90000.0, "gpu-01": 3600.0}, **kw)
+        self.assertEqual([e["msg"] for e in seeded], ["node booted", "node booted"])
+        self.assertEqual([e["src"] for e in seeded], ["ctrl-01", "gpu-01"])
+        self.assertFalse(any(e["src"] == "pulse" for e in seeded))
+
+        # And it does not seed a second time.
+        once = j.observe(nodes=nodes, uptimes={"ctrl-01": 90000.0, "gpu-01": 3600.0}, **kw)
+        self.assertEqual(len(once), 2)
+
+    def test_transitions_are_still_logged_before_boot_seeding_succeeds(self) -> None:
+        j = EventJournal()
+        kw = {"uptimes": {}, "k3s": "2/2", "services": {}}
+        j.observe(nodes=[{"id": "gpu-01", "ready": True}], **kw)
+        out = j.observe(nodes=[{"id": "gpu-01", "ready": False}], **kw)
+        self.assertIn("NodeNotReady", [e["msg"] for e in out])
+
     def test_ring_buffer_is_bounded(self) -> None:
         j = EventJournal(maxlen=3)
         kw = {"uptimes": {}, "k3s": "1/1", "services": {}}

@@ -1,3 +1,11 @@
+/** How often App refetches /v1/session. The CMD header renders this cadence,
+ *  so the claim on screen and the timer cannot drift apart. */
+export const SESSION_POLL_MS = 300_000;
+
+export function sessionPollLabel(ms = SESSION_POLL_MS): string {
+  return ms >= 60_000 ? `${Math.round(ms / 60_000)}m` : `${Math.round(ms / 1000)}s`;
+}
+
 export type BriefingAgenda = {
   t: string;
   label: string;

@@ -2195,3 +2195,7 @@ button:disabled {
 
 .ck-signals li.is-warn strong { color: var(--warn); }
 .ck-signals li.is-bad strong { color: var(--bad); }
+
+.ck-live-pill.is-down {
+  color: var(--ck-steel);
+}

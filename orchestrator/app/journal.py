@@ -38,7 +38,8 @@ class EventJournal:
         self._gpu_hot: dict[str, bool] = {}
         self._services: dict[str, bool] = {}
         self._k3s: str | None = None
-        self._seeded = False
+        self._primed = False
+        self._boot_seeded = False
 
     def snapshot(self) -> list[dict[str, str]]:
         return list(self._events)
@@ -46,17 +47,26 @@ class EventJournal:
     def _add(self, ts: float, src: str, msg: str, level: str = "info") -> None:
         self._events.append({"ts": _iso(ts), "src": src, "msg": msg, "level": level})
 
-    def _seed_boots(self, nodes: list[dict[str, Any]], uptimes: dict[str, float]) -> None:
-        """One real entry per node, stamped at that node's actual boot time."""
+    def _seed_boots(self, uptimes: dict[str, float]) -> bool:
+        """One real entry per node, stamped at that node's actual boot time.
+
+        Returns False when Prometheus had nothing to give, so the caller can try
+        again on a later pulse instead of latching a journal with one line in it
+        for the life of the process. The Deployment uses strategy: Recreate, so
+        the orchestrator restarts on every deploy and can easily come up before
+        Prometheus answers.
+        """
         now = time.time()
         boots = sorted(
             ((now - secs, node) for node, secs in uptimes.items() if secs is not None),
             key=lambda pair: pair[0],
         )
-        for boot_ts, node in boots:
-            self._add(boot_ts, node, "node booted", "info")
         if not boots:
-            self._add(now, "pulse", "journal started", "info")
+            return False
+        # Oldest boot first, ahead of anything already observed.
+        for boot_ts, node in reversed(boots):
+            self._events.appendleft({"ts": _iso(boot_ts), "src": node, "msg": "node booted", "level": "info"})
+        return True
 
     def observe(
         self,
@@ -68,20 +78,33 @@ class EventJournal:
     ) -> list[dict[str, str]]:
         now = time.time()
 
-        if not self._seeded:
-            self._seed_boots(nodes, uptimes)
-            self._seeded = True
-            for node in nodes:
-                ready = node.get("ready")
-                if isinstance(ready, bool):
-                    self._node_ready[str(node["id"])] = ready
+        if not self._primed:
+            self._primed = True
             self._k3s = k3s
             self._services = dict(services)
             for node in nodes:
+                name = str(node.get("id") or "")
+                if not name:
+                    continue
+                ready = node.get("ready")
+                if isinstance(ready, bool):
+                    self._node_ready[name] = ready
                 temp = node.get("temp_c")
                 if isinstance(temp, (int, float)):
-                    self._gpu_hot[str(node["id"])] = temp >= GPU_WARN_C
+                    self._gpu_hot[name] = temp >= GPU_WARN_C
+            if not self._seed_boots(uptimes):
+                self._add(now, "pulse", "journal started", "info")
+            else:
+                self._boot_seeded = True
             return self.snapshot()
+
+        if not self._boot_seeded and self._seed_boots(uptimes):
+            self._boot_seeded = True
+            # Drop the placeholder now that the real boot history is in.
+            for i, ev in enumerate(self._events):
+                if ev["src"] == "pulse" and ev["msg"] == "journal started":
+                    del self._events[i]
+                    break
 
         for node in nodes:
             name = str(node.get("id") or "")

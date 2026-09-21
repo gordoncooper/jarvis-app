@@ -17,7 +17,7 @@ import {
   LiveDot,
 } from "../chrome/Marks.js";
 import { type ChatMsg, dayOfYear } from "../mock.js";
-import { capCopy, capLines, parseBriefing, type SessionBriefing } from "../state/session.js";
+import { capCopy, capLines, parseBriefing, sessionPollLabel, type SessionBriefing } from "../state/session.js";
 
 type Props = {
   greeting: string;
@@ -31,6 +31,8 @@ type Props = {
   sttOk: boolean;
   live: boolean;
   memoryFacts: number;
+  /** epoch ms of the last successful /v1/session fetch, or null. */
+  sessionAt: number | null;
   onRefetchSession: () => void | Promise<void>;
   onSubmit: (text: string) => void;
   onPttStart: () => void;
@@ -68,6 +70,7 @@ export function Cmd({
   sttOk,
   live,
   memoryFacts,
+  sessionAt,
   onRefetchSession,
   onSubmit,
   onPttStart,
@@ -147,6 +150,11 @@ export function Cmd({
     setWantFocus("apply");
   }
 
+  const fetchedAt = useMemo(() => {
+    if (sessionAt == null) return null;
+    return new Date(sessionAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  }, [sessionAt]);
+
   // Newest-first tail of the orchestrator's event journal: real observed
   // transitions, the same source the NOC ticker reads.
   const signals = useMemo(() => {
@@ -183,8 +191,8 @@ export function Cmd({
         <div className="ck-stage-brand">
           <HexMark size={22} />
           <span className="ck-brand">JARVIS</span>
-          <span className="ck-live-pill ck-pulse">
-            <LiveDot on={live} /> LIVE
+          <span className={`ck-live-pill ck-pulse ${live ? "" : "is-down"}`}>
+            <LiveDot on={live} /> {live ? "LIVE" : "OFFLINE"}
           </span>
         </div>
         <div className="ck-cmd-widgets">
@@ -299,7 +307,10 @@ export function Cmd({
               <IconDoc size={16} /> AM BRIEFING
             </h2>
             <span>
-              Updated {local.slice(0, 5)} · Auto-refresh ON <LiveDot on={live} />
+              {/* The wall clock here used to be read as a freshness stamp. This
+                  is the time of the last successful session fetch. */}
+              Updated {fetchedAt ?? "—"} · Auto-refresh {sessionAt == null ? "OFF" : sessionPollLabel()}{" "}
+              <LiveDot on={live && sessionAt != null} />
             </span>
           </header>
           <p className="ck-greeting">{greetingCopy}</p>

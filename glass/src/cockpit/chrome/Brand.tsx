@@ -11,9 +11,10 @@ export function Brand({ live = true, size = 20 }: Props) {
     <div className="ck-brand-lockup">
       <HexMark size={size} />
       <span className="ck-brand">JARVIS</span>
-      <span className="ck-live-pill">
+      {/* A grey pip beside the word LIVE reads as live. Say what is true. */}
+      <span className={`ck-live-pill ${live ? "" : "is-down"}`}>
         <LivePip on={live} />
-        LIVE
+        {live ? "LIVE" : "OFFLINE"}
       </span>
     </div>
   );

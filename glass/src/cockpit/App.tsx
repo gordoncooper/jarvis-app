@@ -16,7 +16,7 @@ import { Earth } from "./displays/Earth.js";
 import { Login } from "./displays/Login.js";
 import { Noc } from "./displays/Noc.js";
 import { type ChatMsg } from "./mock.js";
-import { parseBriefing, type SessionBriefing } from "./state/session.js";
+import { parseBriefing, SESSION_POLL_MS, type SessionBriefing } from "./state/session.js";
 import { type EarthToast } from "./state/pulse.js";
 
 const SESSION_KEY = "jarvis.session_id";
@@ -39,6 +39,7 @@ export function App() {
   const [micDenied, setMicDenied] = useState(false);
   const [pulse, setPulse] = useState<PulsePayload | null>(null);
   const [toast, setToast] = useState<EarthToast | null>(null);
+  const [sessionAt, setSessionAt] = useState<number | null>(null);
 
   const sessionId = useRef<string | null>(localStorage.getItem(SESSION_KEY));
   const busyRef = useRef(false);
@@ -99,6 +100,7 @@ export function App() {
       setGreeting(session.greeting);
       setBlurb(session.briefing_blurb);
       setBriefing(parseBriefing(session.briefing));
+      setSessionAt(Date.now());
       if (!busyRef.current) {
         const restored: ChatMsg[] = [];
         for (const m of session.messages) {
@@ -115,14 +117,21 @@ export function App() {
     }
   }, []);
 
+  // The CMD header claims "Auto-refresh ON", so the briefing has to actually
+  // refresh. build_cluster_briefing is ten Prometheus queries, so this is a
+  // 5 minute poll, not the 2s pulse cadence. loadSession skips messages and
+  // confirm while a turn is streaming.
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    const poll = async () => {
       if (!alive) return;
       await loadSession();
-    })();
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), SESSION_POLL_MS);
     return () => {
       alive = false;
+      window.clearInterval(id);
     };
   }, [loadSession]);
 
@@ -322,6 +331,7 @@ export function App() {
         pulse={pulse}
         live={live}
         memoryFacts={health?.memory_facts ?? 0}
+        sessionAt={sessionAt}
         onRefetchSession={() => {
           setSlide(2);
           void loadSession();
