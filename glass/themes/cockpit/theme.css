@@ -358,17 +358,8 @@ button:disabled {
 .ck-login {
   position: absolute;
   inset: 0;
-}
-
-.ck-login-gate {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  cursor: pointer;
-  z-index: 2;
+  overflow: hidden;
+  background: #04060a;
 }
 
 .ck-login-bg {
@@ -380,41 +371,105 @@ button:disabled {
   object-position: center;
 }
 
-@keyframes ck-tri-once {
-  0% {
-    opacity: 0.15;
-    filter: drop-shadow(0 0 0 transparent);
-  }
-  45% {
-    opacity: 1;
-    filter: drop-shadow(0 0 14px var(--ck-accent-dim));
-  }
-  100% {
-    opacity: 0;
-    filter: drop-shadow(0 0 0 transparent);
-  }
-}
-
-.ck-login-tri {
+/* Pool of light on the back wall so the badge reads as lit, not pasted on. */
+.ck-login-glow {
   position: absolute;
   left: 50%;
-  top: 56%;
-  width: 3.1rem;
-  height: 2.35rem;
-  transform: translateX(-50%);
-  clip-path: polygon(50% 100%, 0 0, 100% 0);
-  background: color-mix(in oklch, var(--accent) 55%, transparent);
+  top: 46%;
+  width: min(70vw, 62rem);
+  height: min(46vh, 26rem);
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  z-index: 1;
-  animation: ck-tri-once 0.8s ease 1 forwards;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in oklch, var(--ck-accent) 13%, transparent) 0%,
+    transparent 68%
+  );
+  animation: ck-login-breathe 7s ease-in-out infinite;
+}
+
+@keyframes ck-login-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* The badge is the lid. Sealed it is the only control; clicking lifts it and
+   the prompt is revealed underneath. */
+.ck-login-badge {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  translate: -50% -50%;
+  width: min(64vw, 66rem);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 3;
+  transform-origin: 50% 40%;
+  filter: drop-shadow(0 0 34px color-mix(in oklch, var(--ck-accent) 22%, transparent));
+  transition: filter 320ms ease;
+}
+
+.ck-login-badge img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ck-login-badge:hover,
+.ck-login-badge:focus-visible {
+  filter: drop-shadow(0 0 52px color-mix(in oklch, var(--ck-accent) 42%, transparent));
+  outline: none;
+}
+
+.ck-login[data-gate="sealed"] .ck-login-badge {
+  animation: ck-badge-idle 6s ease-in-out infinite;
+}
+
+@keyframes ck-badge-idle {
+  0%, 100% { filter: drop-shadow(0 0 30px color-mix(in oklch, var(--ck-accent) 18%, transparent)); }
+  50% { filter: drop-shadow(0 0 46px color-mix(in oklch, var(--ck-accent) 34%, transparent)); }
+}
+
+.ck-login-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  margin: 0;
+  z-index: 3;
+  font-family: var(--ck-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--ck-steel) 80%, transparent);
+  animation: ck-hint-fade 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ck-hint-fade {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ck-login-glow,
+  .ck-login[data-gate="sealed"] .ck-login-badge,
+  .ck-login-hint {
+    animation: none;
+  }
 }
 
 .ck-login-card {
   position: absolute;
   left: 50%;
-  top: 62%;
-  transform: translate(-50%, 0);
-  width: min(22rem, 86vw);
+  top: 58%;
+  translate: -50% 0;
+  width: min(23rem, 86vw);
+  z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -2198,4 +2253,31 @@ button:disabled {
 
 .ck-live-pill.is-down {
   color: var(--ck-steel);
+}
+
+.ck-login-rule {
+  height: 1px;
+  margin-bottom: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--ck-accent) 55%, transparent),
+    transparent
+  );
+}
+
+.ck-login-field input[readonly] {
+  color: var(--ck-accent);
+  letter-spacing: 0.18em;
+  cursor: default;
+}
+
+.ck-login-note {
+  margin: 0;
+  text-align: center;
+  font-family: var(--ck-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  color: var(--ck-steel);
+  opacity: 0.8;
 }

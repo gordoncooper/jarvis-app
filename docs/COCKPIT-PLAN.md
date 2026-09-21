@@ -87,10 +87,12 @@ Stage, not a form.
 - Full-viewport plate: the rack-room still.
 - Center: extruded “JARVIS” as SVG/HTML with a teal inner glow (keep letters out of the JPG for 4K sharpness).
 - Subline: `HOME-LAB AI CLUSTER COMMAND CENTER`
-- Inverted triangle = Enter. Click / Enter / say “open” → `GET`/`POST` session and slide to Earth.
-- No username field. Presence gate. Real auth later: LAN allowlist + optional PIN to orchestrator.
+- The badge is a lift-open lid (revised 2026-09-20). Click / Enter lifts it and
+  reveals a mocked presence-gate prompt; Authorise slides to Earth.
+- Presence gate, not auth — no credential is checked and the UI says so.
+  Real auth later: LAN allowlist + optional PIN to orchestrator.
 
-Motion: 800ms ease, wordmark fades up, triangle pulses once, deck translates.
+Motion: badge glows while sealed, springs up and shrinks on open, prompt wipes in.
 
 ### 2. Earth — first breath
 
@@ -209,7 +211,7 @@ Deck is the router. Hash optional (`#earth`).
 
 | Input | Where | Effect |
 |---|---|---|
-| Enter / triangle | Login | session + deck→Earth |
+| Enter / badge | Login | lift the lid, then session + deck→Earth |
 | Type + Send / PTT | Earth, CMD, NOC | `/v1/turns` SSE |
 | Hold to talk | Earth cmd | `streamAudioTurn` |
 | Arrow keys / drag | any | adjacent display |
@@ -244,7 +246,7 @@ Deck is the router. Hash optional (`#earth`).
 
 ## Done when
 
-- Login: same room, same wordmark weight, same subline, triangle is the only control.
+- Login: same room, badge composited as a separate sharp PNG, lid lifts to the prompt.
 - Earth: globe is the hero; instruments on the rim; cmd is a hairline; no center chat.
 - CMD: three columns + four pills; Channel is a dock; briefing is the stage.
 - NOC: 2×3 ortho rack, rings, ticker, table, cmd.

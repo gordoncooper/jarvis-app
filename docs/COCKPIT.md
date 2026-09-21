@@ -13,7 +13,7 @@ Flux YAML lives in **gordoncooper/jarvis-cluster** (Gitea is origin; GitHub is a
 
 Reference frames (match these, do not “improve” them into SaaS):
 
-- Login: Fort Knox rack room + JARVIS wordmark + triangle Enter
+- Login: Fort Knox rack room plate + JARVIS badge as a lift-open lid
 - Earth: night globe, HUD on the rim, cmd bar, no chat modal on the planet
 - CMD: dossier | AM briefing | channel drawer + four bottom pills
 - NOC: 2×3 ortho rack, rings, ticker, node table, cmd
@@ -109,10 +109,23 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
 
 ### Login (index 0)
 
-- Full-bleed still of the server-room plate (`themes/cockpit/login-plate.jpg` or `public/login-plate.jpg`).
-- HTML/SVG wordmark JARVIS, teal inner glow, subline `HOME-LAB AI CLUSTER COMMAND CENTER`.
-- Inverted triangle control. Click, Enter key, or spoken “open” → ensure session via `/v1/session`, then `deck = 1`.
-- No username, no password, no model picker.
+- Full-bleed still of the empty server-room wall,
+  `themes/cockpit/static/login-plate.jpg`. The wall carries no lettering.
+- The JARVIS badge is a separate transparent PNG,
+  `themes/cockpit/static/login-badge.png` (wordmark + subline + triangle),
+  composited centre-wall so it stays sharp at 4K. It replaced a plate with the
+  wordmark baked in, which was soft at scale.
+- **Revised 2026-09-20 (operator request), superseding "no form fields":** the
+  badge is a lid. Click it, or press Enter, and it lifts and shrinks to reveal
+  a login prompt underneath; Authorise (or Enter in the field) sets `deck = 1`.
+- The prompt is a presence gate, not authentication. The operator name is fixed
+  and the passphrase field is labelled `NOT YET ENFORCED` with the note "no
+  credential is checked", because the orchestrator has no auth and the UI must
+  not imply otherwise. Real auth later: LAN allowlist + PIN.
+- Still no model picker.
+- Focus lands in the field only after the lift finishes. Focusing immediately
+  let the same Enter that opened the lid produce a keypress on the new input,
+  implicitly submitting the form and skipping the prompt.
 
 ### Earth (index 1)
 
@@ -214,7 +227,8 @@ Do not teach glass to scrape noc.lan or home.lan.
 ## 6. Motion and input
 
 - Deck: `translateX(-index * 100%)`, 280–400ms ease. ArrowLeft / ArrowRight. Optional hash `#login|#earth|#cmd|#noc`.
-- Login triangle: single pulse on mount.
+- Login badge: slow glow while sealed; spring lift + scale on open, with the
+  prompt revealed by a clip-path wipe. Both respect `prefers-reduced-motion`.
 - Earth HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
 - No page reloads.
@@ -251,4 +265,4 @@ Stop after each slice and show the operator. Do not binge all eight in one unatt
 
 ## 9. Acceptance
 
-At 1920×1080, a screenshot of each stage is recognizably the matching reference JPG: same hierarchy, same teal, same plex, same density. Earth has no center modal. Login has no form fields. NOC is a schematic, not a globe. CMD is a briefing desk, not a rack.
+At 1920×1080, a screenshot of each stage is recognizably the matching reference JPG: same hierarchy, same teal, same plex, same density. Earth has no center modal. Login opens from the badge into the mocked presence gate (revised 2026-09-20). NOC is a schematic, not a globe. CMD is a briefing desk, not a rack.
