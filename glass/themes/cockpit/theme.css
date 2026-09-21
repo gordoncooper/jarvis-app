@@ -2303,3 +2303,23 @@ button:disabled {
   color: var(--ck-steel);
   opacity: 0.8;
 }
+
+/* Keycap hint on the mic control. */
+.ck-kbd {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid color-mix(in oklch, var(--ck-steel) 45%, transparent);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-family: var(--ck-mono);
+  font-size: 0.82em;
+  line-height: 1.35;
+  color: var(--ck-steel);
+}
+
+.ck-mic:hover .ck-kbd,
+.ck-mic:focus-visible .ck-kbd {
+  border-color: color-mix(in oklch, var(--ck-accent) 55%, transparent);
+  color: var(--ck-accent);
+}

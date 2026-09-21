@@ -68,6 +68,9 @@ Four checks, in the order they catch things:
    ```bash
    PORT=5174 ORCH=http://127.0.0.1:19999 node devserve.mjs
    ```
+   For anything touching the microphone, `FAKE_MEDIA=1` makes
+   `tools/drive.mjs` auto-grant permission and feed a synthetic audio track,
+   so the real push-to-talk path runs headlessly instead of being eyeballed.
 4. **Check more than one window size** if you touched layout. 1272×620 and
    3070×1600 have both exposed real bugs that 1920×1080 did not.
 

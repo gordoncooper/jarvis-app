@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useJarvis } from "@core";
+import { useHoldToTalk } from "./ui/useHoldToTalk.js";
 import { Deck, type Slide } from "./ui/deck/Deck.js";
 import { Cmd } from "./ui/displays/Cmd.js";
 import { Breath } from "./ui/displays/Breath.js";
@@ -14,6 +15,17 @@ import { Noc } from "./ui/displays/Noc.js";
 export function App() {
   const j = useJarvis();
   const [slide, setSlide] = useState<Slide>(0);
+
+  // Hold Space to talk from any room that has a cmd bar — the login gate has
+  // its own keyboard semantics and no way to send a turn.
+  useHoldToTalk({
+    enabled: slide !== 0,
+    recording: j.recording,
+    busy: j.busy,
+    sttOk: j.status.stt,
+    onStart: j.startPtt,
+    onStop: j.stopPtt,
+  });
 
   const turnProps = {
     busy: j.busy,

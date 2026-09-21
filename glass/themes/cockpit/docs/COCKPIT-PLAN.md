@@ -215,7 +215,7 @@ resolves to `#breath`.
 |---|---|---|
 | Enter / badge | Login | lift the lid, then session + deck→Breath |
 | Type + Send / PTT | Breath, CMD, NOC | `/v1/turns` SSE |
-| Hold to talk | Breath cmd | `streamAudioTurn` |
+| Hold to talk / hold Space | Breath, CMD, NOC | `streamAudioTurn` |
 | Arrow keys / drag | any | adjacent display |
 | BRIEF | header | deck→CMD, refetch session |
 | ASK | header | deck→CMD, focus Channel |

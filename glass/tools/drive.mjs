@@ -5,6 +5,7 @@
 //   node tools/drive.mjs <url> <out.png> '<json actions>'
 //
 // actions: {wait:ms} {click:"sel"} {at:[x,y]} {type:["sel","text"]} {key:"Enter",code:13}
+//          {hold:["Space",ms]} — keydown, wait, keyup (push-to-talk)
 //          {drag:["sel",dx,dy]} {eval:"expr"} {shot:"file.png"}
 //
 // Static screenshots miss interaction bugs. Two real ones were only found this
@@ -38,6 +39,12 @@ const chrome = spawn("google-chrome", [
   `--user-data-dir=${profile}`, "--hide-scrollbars", "--ignore-certificate-errors",
   "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
   "--force-device-scale-factor=1", `--window-size=${VW},${VH}`,
+  // FAKE_MEDIA=1 auto-grants the mic and feeds a synthetic audio track, so the
+  // real push-to-talk path can be exercised headlessly. Off by default, or it
+  // would mask a genuine permission-denied state.
+  ...(process.env.FAKE_MEDIA === "1"
+    ? ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
+    : []),
   `--remote-debugging-port=${PORT}`, "about:blank",
 ], { stdio: "ignore" });
 
@@ -138,6 +145,18 @@ for (const a of actions) {
   if (a.eval) {
     const r = await send("Runtime.evaluate", { expression: a.eval, returnByValue: true, awaitPromise: true });
     console.log("eval", a.eval, "=>", JSON.stringify(r.result.value ?? r.result.description));
+  }
+  if (a.hold) {
+    const [key, ms] = a.hold;
+    const k = key === "Space" ? " " : key;
+    await send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: k, code: key, windowsVirtualKeyCode: 32 });
+    // Real keyboards autorepeat while held; replay that so the guard is tested.
+    for (let t = 0; t < ms; t += 120) {
+      await sleep(120);
+      await send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: k, code: key, windowsVirtualKeyCode: 32, autoRepeat: true });
+    }
+    await send("Input.dispatchKeyEvent", { type: "keyUp", key: k, code: key, windowsVirtualKeyCode: 32 });
+    await sleep(300);
   }
   if (a.key) {
     // Enter needs text/\r or the form never submits.

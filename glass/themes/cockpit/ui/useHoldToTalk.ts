@@ -1,0 +1,88 @@
+import { useEffect, useRef } from "react";
+
+/**
+ * Hold Space to talk — the keyboard twin of the "Hold to talk" button.
+ *
+ * The engine owns *what* push-to-talk does (`startPtt` / `stopPtt` on
+ * useJarvis); a key binding is a theme decision, so it lives here. Another
+ * theme is free to bind something else, or nothing.
+ */
+type Options = {
+  /** False on rooms without a cmd bar (the login gate). */
+  enabled: boolean;
+  recording: boolean;
+  busy: boolean;
+  sttOk: boolean;
+  onStart: () => void;
+  onStop: () => void;
+};
+
+const KEY = " ";
+
+function isTyping(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  // BUTTON matters as much as INPUT: Space activates a focused button, so
+  // without this the mic button's own click and this handler both fire.
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || el.isContentEditable;
+}
+
+export function useHoldToTalk({ enabled, recording, busy, sttOk, onStart, onStop }: Options): void {
+  // Only release what this hook started, so a key-up cannot cut short a
+  // recording the operator began by holding the button.
+  const held = useRef(false);
+
+  useEffect(() => {
+    const release = () => {
+      if (!held.current) return;
+      held.current = false;
+      onStop();
+    };
+
+    if (!enabled) {
+      release();
+      return;
+    }
+
+    const down = (ev: KeyboardEvent) => {
+      if (ev.key !== KEY || ev.defaultPrevented) return;
+      if (isTyping(ev.target)) return;
+      // keydown autorepeats ~30x/s while held; without this each repeat would
+      // spin up another MediaRecorder.
+      if (ev.repeat) {
+        ev.preventDefault();
+        return;
+      }
+      // Space scrolls the page by default.
+      ev.preventDefault();
+      if (held.current || recording || busy || !sttOk) return;
+      held.current = true;
+      onStart();
+    };
+
+    const up = (ev: KeyboardEvent) => {
+      if (ev.key !== KEY) return;
+      if (!held.current) return;
+      ev.preventDefault();
+      release();
+    };
+
+    // A key-up never arrives if the window loses focus mid-hold, which would
+    // otherwise leave the mic recording until the operator came back.
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") release();
+    };
+
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", release);
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", release);
+      document.removeEventListener("visibilitychange", onHidden);
+    };
+  }, [enabled, recording, busy, sttOk, onStart, onStop]);
+}

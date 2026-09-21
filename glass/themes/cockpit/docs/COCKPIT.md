@@ -277,6 +277,16 @@ Do not teach glass to scrape noc.lan or home.lan.
   prompt revealed by a clip-path wipe. Both respect `prefers-reduced-motion`.
 - Breath HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
+- **Hold Space** is the keyboard twin of the mic button, added 2026-09-21.
+  Bound in the theme (`ui/useHoldToTalk.ts`), not the engine — the engine owns
+  what push-to-talk *does*, a theme owns what triggers it. Live in breath, cmd
+  and noc; the login gate has no cmd bar and keeps its own keys.
+  It must ignore Space when focus is in an input, textarea, button or
+  contenteditable, swallow autorepeat (keydown fires ~30x/s while held, and
+  each one would open another MediaRecorder), `preventDefault` so the page
+  does not scroll, and release on window blur or tab hide — a key-up never
+  arrives if focus leaves mid-hold, which would otherwise record until the
+  operator came back. No latch: press-and-hold only.
 - No page reloads.
 
 ---

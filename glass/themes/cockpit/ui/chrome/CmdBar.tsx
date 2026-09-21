@@ -62,7 +62,7 @@ export function CmdBar({
             type="button"
             className={`ck-mic ${recording ? "is-rec" : ""}`}
             disabled={busy || !sttOk}
-            title="Hold to talk"
+            title="Hold to talk — or hold the space bar"
             onPointerDown={(ev: PointerEvent) => {
               ev.preventDefault();
               ev.currentTarget.setPointerCapture(ev.pointerId);
@@ -89,7 +89,9 @@ export function CmdBar({
             ) : recording ? (
               "Listening…"
             ) : (
-              "Hold to talk"
+              <>
+                Hold to talk <kbd className="ck-kbd">space</kbd>
+              </>
             )}
           </button>
         </>
