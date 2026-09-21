@@ -104,54 +104,62 @@ def route(text: str) -> Route:
     return Route(CHAT)
 
 
+# Verbs the classifier may name. memory.remember / memory.forget are excluded
+# on purpose: both need a *fact* extracted from the utterance, which the
+# classifier does not produce, so naming one would fire a confirm prompt with
+# nothing in it. Explicit phrasings still reach them deterministically.
+CLASSIFIER_PROMOTABLE = frozenset(
+    set(CATALOG) | {MEMORY_LIST, META_CAPABILITIES}
+)
+
+
 def combine(text: str, deterministic: Route, verdict: object | None, *,
             min_confidence: float, min_confidence_write: float) -> Route:
     """Fold a classifier verdict into the deterministic route (D-0033 slice 3).
 
-    Pure, so the precedence rules are testable without a model. The rules:
+    Pure, so the precedence rules are testable without a model.
 
-    * A deterministic hit always wins. It is exact, free, and survives the
-      talker being down.
-    * No verdict, or an unsure one, changes nothing — a classifier outage
-      degrades to exactly the behaviour of slice 2.
-    * A verdict naming a verb is trusted only because `classify.parse_verdict`
-      already rejected anything outside the manifest.
-    * "capability, but no verb" becomes the honest refusal.
-    * "chat" overrides a deterministic `unsupported`. That is the slice 2
-      stopgap being subsumed: when the model has an opinion, the rule on
-      sentence shape no longer gets a vote.
+    **The classifier may only ever promote to a named verb.** It cannot turn a
+    refusal into chat, and it cannot invent a refusal. That is not caution for
+    its own sake — it is what the first shadow run measured. Against the
+    fixture, `jarvis-local` was good at naming a verb (6 of the 7 phrasings the
+    regexes miss, including "anything broken?" and "did anything break
+    overnight?") and bad at the capability/chat boundary when no verb fits: it
+    called "take a look at the flux error logs", "is flux in sync?" and
+    "what's the latest backup of the cluster?" ordinary chat. Letting it
+    demote wiped out six honest refusals and made the whole slice a wash,
+    39/64 either way.
+
+    So each side keeps what it is good at. `is_house_request` owns "nothing
+    serves this subject", which is a fact about the manifest rather than a
+    guess. The model owns "which verb did he mean", which no list of patterns
+    was ever going to cover.
     """
     if deterministic.label not in (CHAT, UNSUPPORTED):
         return deterministic
     if verdict is None:
         return deterministic
 
-    kind = getattr(verdict, "kind", None)
     verb = getattr(verdict, "verb", None)
-    confidence = float(getattr(verdict, "confidence", 0.0) or 0.0)
-
-    if verb:
-        cap = MANIFEST.get(verb)
-        if cap is None:  # belt and braces; parse_verdict already checked
-            return deterministic
-        floor = min_confidence_write if cap.klass == "confirm" else min_confidence
-        if confidence < floor:
-            return deterministic
-        if cap.backend != "hands":
-            return Route(verb, verb_class=cap.klass)
-        args = None
-        if cap.klass == "confirm":
-            # main.py asks for a target when this comes back empty.
-            args, _err = parse_confirm_args(verb, text)
-        return Route(verb, verb_class=cap.klass, args=args)
-
-    if confidence < min_confidence:
+    if not verb or verb not in CLASSIFIER_PROMOTABLE:
         return deterministic
-    if kind == "capability":
-        return Route(UNSUPPORTED)
-    if kind == CHAT:
-        return Route(CHAT)
-    return deterministic
+
+    cap = MANIFEST.get(verb)
+    if cap is None:  # belt and braces; parse_verdict already checked
+        return deterministic
+
+    confidence = float(getattr(verdict, "confidence", 0.0) or 0.0)
+    floor = min_confidence_write if cap.klass == "confirm" else min_confidence
+    if confidence < floor:
+        return deterministic
+
+    if cap.backend != "hands":
+        return Route(verb, verb_class=cap.klass)
+    args = None
+    if cap.klass == "confirm":
+        # main.py asks for a target when this comes back empty.
+        args, _err = parse_confirm_args(verb, text)
+    return Route(verb, verb_class=cap.klass, args=args)
 
 
 # --- telling "a capability I lack" apart from small talk -------------------

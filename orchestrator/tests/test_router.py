@@ -45,6 +45,12 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 #       dropping the three chat false-positives. The rest is label precision —
 #       memory.candidate / .forget_all / .remember_ref are distinct outcomes
 #       and the coarse buckets had been scoring them against the wrong name.
+#
+# This gate scores the DETERMINISTIC pass only — no network in unit tests, so
+# the classifier is not represented here. It is therefore a floor: the number
+# JARVIS manages with the local model unavailable. The classifier's own score
+# comes from `python -m app.score_router` against the same fixture, and was
+# 47/64 on 2026-09-21.
 BASELINE_CAPABILITY_PASSES = 39
 
 

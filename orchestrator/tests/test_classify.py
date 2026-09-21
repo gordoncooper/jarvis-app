@@ -117,14 +117,38 @@ class CombineTest(unittest.TestCase):
         self.assertEqual(high.label, "apps.restart_deploy")
         self.assertEqual(high.args, {"namespace": "inference", "name": "piper"})
 
-    def test_capability_without_a_verb_becomes_an_honest_refusal(self) -> None:
-        out = combine("x", Route(CHAT), Verdict("capability", None, 0.9), **self.FLOORS)
+    def test_a_verbless_capability_verdict_cannot_invent_a_refusal(self) -> None:
+        # Measured: the model answered "everything green?" with
+        # capability/no-verb, which would have denied a cluster.health
+        # question outright. A miss is recoverable; a false denial is not.
+        out = combine("everything green?", Route(CHAT),
+                      Verdict("capability", None, 0.9), **self.FLOORS)
+        self.assertEqual(out.label, CHAT)
+
+    def test_a_chat_verdict_cannot_demote_an_honest_refusal(self) -> None:
+        # Measured: the model called "take a look at the flux error logs",
+        # "is flux in sync?" and "what's the latest backup of the cluster?"
+        # ordinary chat. Letting it demote cost six honest refusals and made
+        # the slice a wash. is_house_request keeps the subject question.
+        out = combine("is flux in sync?", Route(UNSUPPORTED),
+                      Verdict("chat", None, 0.9), **self.FLOORS)
         self.assertEqual(out.label, UNSUPPORTED)
 
-    def test_chat_overrides_the_slice_2_stopgap(self) -> None:
-        # The rule on sentence shape loses its vote once the model has one.
-        out = combine("x", Route(UNSUPPORTED), Verdict("chat", None, 0.9), **self.FLOORS)
-        self.assertEqual(out.label, CHAT)
+    def test_a_verb_still_rescues_a_wrongly_refused_request(self) -> None:
+        # The classifier may always promote, so a genuine false refusal is
+        # still correctable by naming the verb that serves it.
+        out = combine("show me the logs for the orchestrator", Route(UNSUPPORTED),
+                      Verdict("capability", "cluster.health", 0.9), **self.FLOORS)
+        self.assertEqual(out.label, "cluster.health")
+
+    def test_remember_and_forget_are_not_promotable(self) -> None:
+        # Both need a fact from the utterance that the classifier does not
+        # extract; naming one would open a confirm prompt with nothing in it.
+        for verb in ("memory.remember", "memory.forget"):
+            with self.subTest(verb=verb):
+                out = combine("what have I told you to remember?", Route(CHAT),
+                              Verdict("capability", verb, 0.99), **self.FLOORS)
+                self.assertEqual(out.label, CHAT)
 
     def test_memory_verbs_come_back_without_shim_args(self) -> None:
         out = combine("read back my preferences", Route(CHAT),

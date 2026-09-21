@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     #   on     — the verdict decides when the deterministic pass had no answer.
     router_classifier: str = "off"
     classifier_model: str = "jarvis-local"  # local GPU; never a cloud hop
-    classifier_timeout: float = 4.0
+    # A single call runs ~1s on the A1000; it degrades under sustained
+    # back-to-back load, which only a scoring run produces. Generous
+    # enough to survive a burst, short enough not to hold up a reply.
+    classifier_timeout: float = 6.0
     # Below this the verdict is ignored and the deterministic route stands.
     classifier_min_confidence: float = 0.6
     # Writes are confirm-gated anyway, but a misfire still costs Gordon a
