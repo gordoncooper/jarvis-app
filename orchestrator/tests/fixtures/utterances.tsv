@@ -134,14 +134,14 @@ memory.forget_ref	that's wrong, remove it
 # Chasing those with more pattern is the treadmill D-0033 exists to end.
 pods.list	list all the running pods for me
 unsupported	what files do you have listed in the directory?
-unsupported	what's the latest backup of the cluster?
+backup.latest	what's the latest backup of the cluster?
 unsupported	take a look at the flux error logs and tell me what's wrong
 unsupported	show me the logs for the orchestrator
-unsupported	is flux in sync?
+flux.status	is flux in sync?
 storage.free	how much disk is left on data-01?
-unsupported	when did the last backup run?
+backup.latest	when did the last backup run?
 deploy.version	what version of glass is deployed?
-unsupported	did the last deploy succeed?
+flux.status	did the last deploy succeed?
 meta.capabilities	what can you actually do for me?
 meta.capabilities	what are your capabilities?
 
@@ -165,3 +165,15 @@ chat	how does a weather forecast work?
 chat	what is a timezone?
 chat	what does semantic versioning mean?
 chat	how do pods get scheduled?
+
+# --- flux + backups (D-0037) -----------------------------------
+flux.status	is the cluster running what's in git?
+flux.status	flux status
+backup.latest	is there a recent backup?
+backup.latest	are the backups up to date?
+
+# Conceptual questions about the same subjects stay chat.
+chat	what is flux?
+chat	tell me about flux
+chat	how do gitops backups usually work?
+chat	why would a reconciliation fail?

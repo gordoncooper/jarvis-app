@@ -20,8 +20,10 @@ from dataclasses import dataclass, field
 #   memory — promoted sqlite on NFS, orchestrator-owned
 #   prom   — Prometheus, read by the orchestrator directly (D-0012 allows
 #            this; glass never does). Keeps working when Hands is down.
+#   kube   — the Kubernetes API, read-only, via the orchestrator's own
+#            ServiceAccount and a ClusterRole scoped to exactly these reads
 #   local  — answered from this process alone
-BACKENDS = ("hands", "memory", "prom", "local")
+BACKENDS = ("hands", "memory", "prom", "kube", "local")
 
 
 @dataclass(frozen=True)
@@ -150,7 +152,29 @@ MANIFEST: dict[str, Capability] = {
         ),
         desc="node-exporter root filesystem avail/size per node.",
     ),
+    "flux.status": _cap(
+        name="flux.status",
+        klass="trusted",
+        backend="kube",
+        short="whether Flux is in sync",
+        summary="tell you whether Flux has reconciled what git says",
+        examples=(
+            "is flux in sync?",
+            "did the last deploy land?",
+            "is the cluster running what is in git?",
+        ),
+        desc="Kustomization + GitRepository Ready conditions in flux-system.",
+    ),
     # --- Local ---
+    "backup.latest": _cap(
+        name="backup.latest",
+        klass="trusted",
+        backend="local",
+        short="when the last backup ran",
+        summary="tell you when the last backup ran and how big it was",
+        examples=("when did the last backup run?", "is there a recent backup?"),
+        desc="Status document published onto NFS by backup-jarvis.sh.",
+    ),
     "weather.now": _cap(
         name="weather.now",
         klass="trusted",

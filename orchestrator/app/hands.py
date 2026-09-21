@@ -138,6 +138,34 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
         ),
     ),
     (
+        # "is flux in sync" and friends. "tell me about flux" stays chat.
+        "flux.status",
+        re.compile(
+            r"\b("
+            r"flux\s+(status|sync|in\s+sync|state|healthy|ok)|"
+            r"is\s+flux\s+(in\s+sync|ok|healthy|happy)|"
+            r"(did|has)\s+(the\s+)?last\s+deploy\s+(succeed|land|work|go)|"
+            r"reconcil(e|ed|ing|iation)\s+(status|ok|fine)|"
+            r"in\s+sync\s+with\s+git|"
+            r"running\s+what(?:'s|\s+is)\s+in\s+git"
+            r")\b",
+            re.I,
+        ),
+    ),
+    (
+        "backup.latest",
+        re.compile(
+            r"\b("
+            r"(last|latest|recent|newest)\s+backup|"
+            r"backup\s+(status|run|ran|age)|"
+            r"when\s+did\s+.{0,20}backup|"
+            r"(is|was)\s+there\s+a\s+.{0,12}backup|"
+            r"are\s+(we|the)\s+backups?\s+(ok|current|recent|up\s+to\s+date)"
+            r")\b",
+            re.I,
+        ),
+    ),
+    (
         "storage.free",
         re.compile(
             r"\b("

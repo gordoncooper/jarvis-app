@@ -115,7 +115,9 @@ class SelfServedTest(unittest.TestCase):
         from app.local_verbs import HANDLERS
 
         declared = {
-            c.name for c in MANIFEST.values() if c.backend in ("prom", "local")
+            c.name
+            for c in MANIFEST.values()
+            if c.backend in ("prom", "kube", "local")
         }
         # meta.capabilities is answered inline in main.py from the manifest.
         declared.discard("meta.capabilities")
@@ -139,6 +141,48 @@ class SelfServedTest(unittest.TestCase):
         # Nothing here should ever be confirm-class; if one needs a confirm
         # it belongs behind Hands with a blast radius and a Role.
         for cap in MANIFEST.values():
-            if cap.backend in ("prom", "local"):
+            if cap.backend in ("prom", "kube", "local"):
                 with self.subTest(name=cap.name):
                     self.assertEqual(cap.klass, "trusted")
+
+
+class KubeReadTest(unittest.TestCase):
+    """The orchestrator's Kubernetes access is read-only and allowlisted.
+
+    It exists for flux.status alone (D-0037). The ServiceAccount had no RBAC
+    at all before that, so the ClusterRole in
+    cluster/clusters/jarvis/apps/jarvis-orchestrator-rbac.yaml is the entire
+    list of what the product brain may see. These assert the client cannot
+    quietly grow past it.
+    """
+
+    def test_only_flux_reads_are_reachable(self) -> None:
+        from app.kube import READ_PATHS
+
+        self.assertEqual(
+            set(READ_PATHS), {"flux_kustomizations", "flux_gitrepositories"}
+        )
+        for name, path in READ_PATHS.items():
+            with self.subTest(name=name):
+                self.assertIn("fluxcd.io", path)
+                self.assertIn("/namespaces/flux-system/", path)
+
+    def test_a_caller_cannot_pass_an_arbitrary_path(self) -> None:
+        import asyncio
+
+        from app.kube import read
+
+        for attempt in ("/api/v1/secrets", "flux_kustomizations/../secrets", "pods"):
+            with self.subTest(attempt=attempt):
+                with self.assertRaises(ValueError):
+                    asyncio.run(read(attempt))
+
+    def test_the_client_has_no_write_path(self) -> None:
+        import inspect
+
+        from app import kube
+
+        src = inspect.getsource(kube)
+        for verb in (".post(", ".put(", ".patch(", ".delete("):
+            with self.subTest(verb=verb):
+                self.assertNotIn(verb, src)

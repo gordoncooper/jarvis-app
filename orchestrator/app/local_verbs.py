@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from . import __version__
+from . import kube
 from .config import settings
 from .prom import query_series
 from .weather import get_weather
@@ -212,7 +213,117 @@ async def deploy_version() -> tuple[str, dict[str, Any]]:
     )
 
 
+# --- flux.status -----------------------------------------------------------
+
+async def flux_status() -> tuple[str, dict[str, Any]]:
+    """Is what git says actually what the cluster is running?"""
+    ks = await kube.read("flux_kustomizations")
+    if ks is None:
+        return (
+            "I cannot read Flux state just now, sir \u2014 the API did not "
+            "answer, or my read permission is missing.",
+            {},
+        )
+    if not ks:
+        return "Flux has no Kustomizations in flux-system.", {"kustomizations": []}
+
+    entries, unready = [], []
+    for obj in ks:
+        name = (obj.get("metadata") or {}).get("name", "?")
+        status, reason, message = kube.ready_condition(obj)
+        rev = str((obj.get("status") or {}).get("lastAppliedRevision") or "")
+        entry = {
+            "name": name,
+            "ready": status == "True",
+            "reason": reason,
+            "message": message[:300],
+            "revision": rev,
+        }
+        entries.append(entry)
+        if status != "True":
+            unready.append(entry)
+
+    srcs = await kube.read("flux_gitrepositories") or []
+    sources = []
+    for obj in srcs:
+        name = (obj.get("metadata") or {}).get("name", "?")
+        status, reason, message = kube.ready_condition(obj)
+        sources.append({"name": name, "ready": status == "True", "reason": reason})
+    bad_sources = [s for s in sources if not s["ready"]]
+
+    if unready or bad_sources:
+        bits = [f"{e['name']} is not ready ({e['reason']})" for e in unready]
+        bits += [f"source {s['name']} is not ready ({s['reason']})" for s in bad_sources]
+        text = "Flux is out of sync: " + "; ".join(bits) + "."
+        if unready and unready[0]["message"]:
+            text += f" {unready[0]['message']}"
+    else:
+        rev = entries[0]["revision"]
+        short = rev.split(":")[-1][:8] if ":" in rev else rev[:8]
+        n = len(entries)
+        text = (
+            f"Flux is in sync. {n} kustomization{'s' if n != 1 else ''} "
+            f"reconciled"
+            + (f" at revision {short}." if short else ".")
+        )
+    return text, {"kustomizations": entries, "sources": sources}
+
+
+# --- backup.latest ---------------------------------------------------------
+
+# Written by jarvis-infra scripts/backup-jarvis.sh onto the same NFS share the
+# orchestrator already mounts. The backup directory itself is 0750 root, and
+# it stays that way: the producer publishes a status document instead, so
+# nothing has to be loosened to answer "when did the last backup run?".
+BACKUP_STATUS_PATH = "/var/lib/jarvis/backup-status.json"
+
+
+async def backup_latest() -> tuple[str, dict[str, Any]]:
+    import json
+    import os
+
+    try:
+        with open(BACKUP_STATUS_PATH, encoding="utf-8") as fh:
+            body = json.load(fh)
+    except FileNotFoundError:
+        return (
+            "I have no record of a backup, sir. The backup job publishes a "
+            "status file and I do not see one \u2014 which is not the same as "
+            "knowing there has been no backup.",
+            {},
+        )
+    except (OSError, json.JSONDecodeError) as e:
+        return f"The backup status file is unreadable ({type(e).__name__}).", {}
+
+    stamp = str(body.get("stamp") or "?")
+    finished = body.get("finished_at")
+    total = body.get("total_bytes")
+    files = body.get("files") or []
+    ok = body.get("ok", True)
+
+    age = ""
+    if isinstance(finished, (int, float)):
+        hours = (time.time() - float(finished)) / 3600.0
+        age = (
+            f" about {int(hours)} hours ago"
+            if hours >= 1.5
+            else " within the last hour"
+        )
+        if hours > 48:
+            age = f" {int(hours / 24)} days ago"
+
+    text = f"Last backup {stamp}{age}"
+    if isinstance(total, (int, float)):
+        text += f", {_fmt_bytes(float(total))} across {len(files)} archives"
+    text += "." if ok else " \u2014 and it reported a failure."
+    if isinstance(finished, (int, float)) and (time.time() - float(finished)) > 48 * 3600:
+        text += " That is older than two days, sir."
+    return text, body
+
+
 HANDLERS = {
+    "flux.status": flux_status,
+    "backup.latest": backup_latest,
     "pods.list": pods_list,
     "storage.free": storage_free,
     "weather.now": weather_now,

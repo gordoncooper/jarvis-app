@@ -58,7 +58,10 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 #       would reach the talker whenever the classifier is off or unreachable,
 #       where before it at least got an honest refusal. The degraded path is
 #       not allowed to get less honest.
-BASELINE_CAPABILITY_PASSES = 52
+#
+#   56  D-0037 adds flux.status and backup.latest, on a fixture of 78
+#       capability utterances and 34 chat negatives.
+BASELINE_CAPABILITY_PASSES = 56
 
 
 

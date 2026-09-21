@@ -74,7 +74,7 @@ class Route:
         which is when Gordon is most likely to be asking.
         """
         cap = MANIFEST.get(self.label)
-        return bool(cap and cap.backend in ("prom", "local"))
+        return bool(cap and cap.backend in ("prom", "kube", "local"))
 
 
 def route(text: str) -> Route:
@@ -238,9 +238,8 @@ _SELF_ABILITY = re.compile(
 # When a capability lands for one of these, delete its word from here in the
 # same commit. That is the only maintenance this list should ever get.
 _UNSERVED_SUBJECT = re.compile(
-    r"\b(logs?|backups?|files?|directory|folder|"
-    r"flux|in\s+sync|deploy\s+succeed|certificates?|secrets?|volumes?|"
-    r"ingress)\b",
+    r"\b(logs?|files?|directory|folder|"
+    r"certificates?|secrets?|volumes?|ingress)\b",
     re.I,
 )
 
