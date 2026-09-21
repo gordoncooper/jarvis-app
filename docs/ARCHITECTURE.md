@@ -156,7 +156,15 @@ those subjects and you delete its word from that list in the same commit;
 
 **Degradation is deliberate.** A classifier timeout or a malformed reply
 changes nothing — the deterministic route stands. The router keeps working
-with the talker down, which is VISION's "it stays up when it is sick".
+with the talker down, which is VISION's "it stays up when it is sick". The
+same reasoning is why several capabilities are served by the orchestrator
+itself from Prometheus rather than through the shim (D-0036): they still
+answer when Hands is down, which is when the question gets asked.
+
+**The manifest is the list.** Do not enumerate capabilities in prose anywhere,
+including here — ask JARVIS ("what can you do?"), or read
+`orchestrator/app/capabilities.py`. Two copies of that list is how the docs
+started arguing with the cluster in the first place.
 
 **"that" resolves against the previous turn** (D-0035) from a durable
 per-session referent store, and always through the ordinary Confirm/Cancel —
