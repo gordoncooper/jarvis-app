@@ -36,5 +36,16 @@ class Settings(BaseSettings):
 
     hands_base: str = "http://openclaw.agents.svc.cluster.local:4001"
 
+    # D-0012: only the orchestrator may read Prometheus; glass reads /v1/pulse.
+    prometheus_base: str = "http://prometheus.monitoring.svc.cluster.local:9090"
+    prometheus_timeout: float = 3.0
+
+    # Real weather for the CMD header. Unset lat/lon -> chip hidden, never faked.
+    weather_lat: float | None = None
+    weather_lon: float | None = None
+    weather_place: str = ""
+    weather_tz: str = "America/Los_Angeles"
+    weather_timeout: float = 4.0
+
 
 settings = Settings()

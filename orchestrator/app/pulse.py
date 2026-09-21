@@ -16,10 +16,13 @@ import httpx
 
 from .config import settings
 from .hands import health_hands
+from .journal import journal
 from .llm import health_llm
+from .prom import fetch_snapshot
 from .pulse_map import assemble_pulse
 from .stt import health_whisper
 from .tts import health_piper
+from .weather import get_weather
 
 log = logging.getLogger("jarvis.orchestrator.pulse")
 
@@ -58,16 +61,18 @@ async def _ok(fn) -> bool:  # type: ignore[no-untyped-def]
 
 
 async def build_pulse() -> dict[str, Any]:
-    health_verb, gpus_verb, llm_ok, stt_ok, tts_ok, hands_ok = await asyncio.gather(
+    health_verb, gpus_verb, snap, weather, llm_ok, stt_ok, tts_ok, hands_ok = await asyncio.gather(
         _hands_verb("cluster.health"),
         _hands_verb("cluster.gpus"),
+        fetch_snapshot(),
+        get_weather(),
         _ok(health_llm),
         _ok(health_whisper),
         _ok(health_piper),
         _ok(health_hands),
     )
     utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return assemble_pulse(
+    body = assemble_pulse(
         health_verb=health_verb if isinstance(health_verb, dict) else None,
         gpus_verb=gpus_verb if isinstance(gpus_verb, dict) else None,
         llm_ok=bool(llm_ok),
@@ -75,7 +80,17 @@ async def build_pulse() -> dict[str, Any]:
         tts_ok=bool(tts_ok),
         hands_ok=bool(hands_ok),
         utc=utc,
+        prom=snap,
+        weather=weather if isinstance(weather, dict) else None,
     )
+    # Ticker entries are observed transitions, so the journal sees every pulse.
+    body["events"] = journal.observe(
+        nodes=body["nodes"],
+        uptimes=snap.nodes.get("uptime_s", {}),
+        k3s=body.get("k3s"),
+        services={k: bool(body.get(k)) for k in ("talker", "hands", "stt", "tts")},
+    )
+    return body
 
 
 async def get_pulse() -> dict[str, Any]:
