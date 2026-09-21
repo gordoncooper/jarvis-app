@@ -142,6 +142,17 @@ export type TurnHandlers = {
   onError?: (message: string) => void;
 };
 
+/** Marker the orchestrator appends to a reply the operator cut off. Kept in
+ *  sync with INTERRUPTED_SUFFIX in orchestrator/app/main.py so glass can show
+ *  the truncation the instant it aborts, before the session reloads. */
+export const INTERRUPTED_SUFFIX = " \u23f9";
+
+/** An abort is a deliberate barge-in, not a failure — callers should not
+ *  surface it as an error. */
+export function isAbort(e: unknown): boolean {
+  return e instanceof DOMException && e.name === "AbortError";
+}
+
 async function consumeSse(r: Response, handlers: TurnHandlers): Promise<void> {
   if (!r.ok || !r.body) {
     handlers.onError?.(`turn ${r.status}`);
@@ -225,6 +236,7 @@ export async function streamTurn(
   sessionId: string,
   text: string,
   handlers: TurnHandlers,
+  signal?: AbortSignal,
 ): Promise<void> {
   const r = await fetch("/v1/turns?stream=1", {
     method: "POST",
@@ -234,6 +246,7 @@ export async function streamTurn(
       "X-Session-Id": sessionId,
     },
     body: JSON.stringify({ text, session_id: sessionId }),
+    signal,
   });
   await consumeSse(r, handlers);
 }
@@ -242,6 +255,7 @@ export async function streamAudioTurn(
   sessionId: string,
   blob: Blob,
   handlers: TurnHandlers,
+  signal?: AbortSignal,
 ): Promise<void> {
   const form = new FormData();
   form.append("session_id", sessionId);
@@ -253,6 +267,7 @@ export async function streamAudioTurn(
       "X-Session-Id": sessionId,
     },
     body: form,
+    signal,
   });
   await consumeSse(r, handlers);
 }

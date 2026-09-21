@@ -128,7 +128,13 @@ sequenceDiagram
 ```
 
 The theme never sees SSE, `MediaRecorder` or an audio element. It renders
-`messages`, `busy`, `confirm` and calls `send()`.
+`messages`, `busy`, `speaking`, `confirm` and calls `send()`.
+
+`interrupt()` cuts a reply short: it silences the TTS audio, aborts the stream
+via `AbortController`, and marks the partial answer truncated. The orchestrator
+catches the resulting `CancelledError` and persists the same partial with the
+same marker — without that it drops the reply entirely and the session ends up
+holding a question with no answer.
 
 ## Where state lives
 

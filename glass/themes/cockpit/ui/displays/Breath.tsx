@@ -20,10 +20,12 @@ type Props = {
   busy: boolean;
   recording: boolean;
   sttOk: boolean;
+  speaking?: boolean;
   active?: boolean;
   onSubmit: (text: string) => void;
   onPttStart: () => void;
   onPttStop: () => void;
+  onInterrupt?: () => void;
 };
 
 function Steel({ value }: { value: string | null }) {
@@ -39,10 +41,12 @@ export function Breath({
   busy,
   recording,
   sttOk,
+  speaking,
   active = false,
   onSubmit,
   onPttStart,
   onPttStop,
+  onInterrupt,
 }: Props) {
   const [globeOk, setGlobeOk] = useState(false);
   const [hudOn, setHudOn] = useState(false);
@@ -193,10 +197,12 @@ export function Breath({
             busy={busy}
             recording={recording}
             sttOk={sttOk}
+            speaking={speaking}
             placeholder="Speak freely…"
             onSubmit={onSubmit}
             onPttStart={onPttStart}
             onPttStop={onPttStop}
+            onInterrupt={onInterrupt}
           />
         </div>
       </motion.div>

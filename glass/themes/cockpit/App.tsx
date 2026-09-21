@@ -25,15 +25,18 @@ export function App() {
     sttOk: j.status.stt,
     onStart: j.startPtt,
     onStop: j.stopPtt,
+    onInterrupt: j.interrupt,
   });
 
   const turnProps = {
     busy: j.busy,
     recording: j.recording,
     sttOk: j.status.stt,
+    speaking: j.speaking,
     onSubmit: j.send,
     onPttStart: j.startPtt,
     onPttStop: j.stopPtt,
+    onInterrupt: j.interrupt,
   };
 
   return (

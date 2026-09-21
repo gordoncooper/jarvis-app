@@ -4,6 +4,8 @@ type Props = {
   busy: boolean;
   recording: boolean;
   sttOk: boolean;
+  /** True while a TTS reply is playing. */
+  speaking?: boolean;
   prompt?: string;
   placeholder?: string;
   variant?: "stage" | "cmd" | "noc";
@@ -11,12 +13,14 @@ type Props = {
   onSubmit: (text: string) => void;
   onPttStart: () => void;
   onPttStop: () => void;
+  onInterrupt?: () => void;
 };
 
 export function CmdBar({
   busy,
   recording,
   sttOk,
+  speaking = false,
   prompt = "cmd",
   placeholder = "Speak freely…",
   variant = "stage",
@@ -24,7 +28,10 @@ export function CmdBar({
   onSubmit,
   onPttStart,
   onPttStop,
+  onInterrupt,
 }: Props) {
+  // Responding covers both halves: tokens still arriving, or audio still playing.
+  const responding = busy || speaking;
   const local = useRef<HTMLInputElement>(null);
   const input = inputRef ?? local;
 
@@ -46,13 +53,25 @@ export function CmdBar({
         placeholder={placeholder}
         autoComplete="off"
         spellCheck={false}
-        disabled={busy}
       />
       {variant === "noc" ? (
         <span className="ck-cmd-block" aria-hidden="true" />
       ) : (
         <>
-          <button className="ck-send" type="submit" disabled={busy} title="Send">
+          {responding && onInterrupt ? (
+            <button
+              type="button"
+              className="ck-stop"
+              title="Stop JARVIS (Esc)"
+              onClick={onInterrupt}
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+              </svg>
+              {variant === "stage" ? <span className="ck-send-label">Stop</span> : null}
+            </button>
+          ) : null}
+          <button className="ck-send" type="submit" title="Send">
             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
               <path fill="currentColor" d="M3.4 20.6 21 12 3.4 3.4l.1 6.7L15 12 3.5 13.9z" />
             </svg>
@@ -61,7 +80,7 @@ export function CmdBar({
           <button
             type="button"
             className={`ck-mic ${recording ? "is-rec" : ""}`}
-            disabled={busy || !sttOk}
+            disabled={!sttOk}
             title="Hold to talk — or hold the space bar"
             onPointerDown={(ev: PointerEvent) => {
               ev.preventDefault();

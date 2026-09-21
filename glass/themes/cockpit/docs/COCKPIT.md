@@ -277,6 +277,19 @@ Do not teach glass to scrape noc.lan or home.lan.
   prompt revealed by a clip-path wipe. Both respect `prefers-reduced-motion`.
 - Breath HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
+- **Interrupt / barge-in**, added 2026-09-21. JARVIS can be cut off mid-reply
+  three ways: **Esc**, the **Stop** control that appears in the cmd bar while
+  it is responding, and simply **starting to talk or type over it** — holding
+  Space or submitting a turn interrupts first. The cmd input and the mic stay
+  enabled while it is responding, which is what makes talking over it work;
+  they used to be disabled by `busy`.
+  Interrupting stops the TTS audio *and* aborts the SSE stream, and the
+  partial reply is kept and marked with `⏹` rather than dropped — the
+  orchestrator appends the same marker when the socket drops, so reloading the
+  session shows the same truncated text. An interrupt before any token arrived
+  removes the empty bubble instead of leaving a lone marker.
+  Space is still ignored while focus is in a field, so mid-typing you want Esc
+  or the Stop button.
 - **Hold Space** is the keyboard twin of the mic button, added 2026-09-21.
   Bound in the theme (`ui/useHoldToTalk.ts`), not the engine — the engine owns
   what push-to-talk *does*, a theme owns what triggers it. Live in breath, cmd

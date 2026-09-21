@@ -15,6 +15,9 @@ type Options = {
   sttOk: boolean;
   onStart: () => void;
   onStop: () => void;
+  /** Escape cuts JARVIS off. Holding space does too, but via onStart —
+   *  the engine barges in for us. */
+  onInterrupt: () => void;
 };
 
 const KEY = " ";
@@ -28,7 +31,15 @@ function isTyping(target: EventTarget | null): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || el.isContentEditable;
 }
 
-export function useHoldToTalk({ enabled, recording, busy, sttOk, onStart, onStop }: Options): void {
+export function useHoldToTalk({
+  enabled,
+  recording,
+  busy,
+  sttOk,
+  onStart,
+  onStop,
+  onInterrupt,
+}: Options): void {
   // Only release what this hook started, so a key-up cannot cut short a
   // recording the operator began by holding the button.
   const held = useRef(false);
@@ -46,6 +57,12 @@ export function useHoldToTalk({ enabled, recording, busy, sttOk, onStart, onStop
     }
 
     const down = (ev: KeyboardEvent) => {
+      // Escape is the explicit stop, and works from inside the cmd input too —
+      // you may well be typing when you decide you have heard enough.
+      if (ev.key === "Escape" && !ev.defaultPrevented) {
+        onInterrupt();
+        return;
+      }
       if (ev.key !== KEY || ev.defaultPrevented) return;
       if (isTyping(ev.target)) return;
       // keydown autorepeats ~30x/s while held; without this each repeat would
@@ -56,7 +73,8 @@ export function useHoldToTalk({ enabled, recording, busy, sttOk, onStart, onStop
       }
       // Space scrolls the page by default.
       ev.preventDefault();
-      if (held.current || recording || busy || !sttOk) return;
+      // busy is deliberately not a blocker: the engine interrupts first.
+      if (held.current || recording || !sttOk) return;
       held.current = true;
       onStart();
     };
@@ -84,5 +102,5 @@ export function useHoldToTalk({ enabled, recording, busy, sttOk, onStart, onStop
       window.removeEventListener("blur", release);
       document.removeEventListener("visibilitychange", onHidden);
     };
-  }, [enabled, recording, busy, sttOk, onStart, onStop]);
+  }, [enabled, recording, busy, sttOk, onStart, onStop, onInterrupt]);
 }

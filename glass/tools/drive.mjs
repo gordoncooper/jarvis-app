@@ -43,7 +43,13 @@ const chrome = spawn("google-chrome", [
   // real push-to-talk path can be exercised headlessly. Off by default, or it
   // would mask a genuine permission-denied state.
   ...(process.env.FAKE_MEDIA === "1"
-    ? ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
+    ? [
+        "--use-fake-ui-for-media-stream",
+        "--use-fake-device-for-media-stream",
+        // Without this, audio.play() rejects on autoplay policy and the TTS
+        // half of a barge-in can never be observed headlessly.
+        "--autoplay-policy=no-user-gesture-required",
+      ]
     : []),
   `--remote-debugging-port=${PORT}`, "about:blank",
 ], { stdio: "ignore" });

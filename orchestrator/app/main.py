@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -50,6 +51,11 @@ from .tts import health_piper, synthesize
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("jarvis.orchestrator")
+
+# Appended to a reply the operator cut off, so the transcript says what
+# actually happened rather than silently losing the answer. Glass appends the
+# same marker locally the instant it aborts.
+INTERRUPTED_SUFFIX = " \u23f9"
 
 app = FastAPI(title="jarvis-orchestrator", version=__version__)
 store = SessionStore(settings.session_db_path, max_history=settings.max_history)
@@ -616,6 +622,15 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 async for token in chat_stream(messages):
                     chunks.append(token)
                     yield _sse("token", {"text": token})
+            except asyncio.CancelledError:
+                # Barge-in: glass aborted the stream. Without this the whole
+                # reply is dropped and the session shows a question with no
+                # answer at all, so keep exactly what was delivered and mark it
+                # truncated. Cancellation still has to propagate.
+                partial = "".join(chunks).strip()
+                if partial:
+                    store.append(sess.id, "assistant", partial + INTERRUPTED_SUFFIX)
+                raise
             except Exception as e:  # noqa: BLE001 — surface to glass
                 log.exception("turn failed")
                 safe = "llm error"

@@ -37,6 +37,7 @@ type Props = {
   busy: boolean;
   recording: boolean;
   sttOk: boolean;
+  speaking?: boolean;
   live: boolean;
   memoryFacts: number;
   /** epoch ms of the last successful /v1/session fetch, or null. */
@@ -45,6 +46,7 @@ type Props = {
   onSubmit: (text: string) => void;
   onPttStart: () => void;
   onPttStop: () => void;
+  onInterrupt?: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -76,6 +78,7 @@ export function Cmd({
   busy,
   recording,
   sttOk,
+  speaking,
   live,
   memoryFacts,
   sessionAt,
@@ -83,6 +86,7 @@ export function Cmd({
   onSubmit,
   onPttStart,
   onPttStop,
+  onInterrupt,
   onConfirm,
   onCancel,
 }: Props) {
@@ -419,10 +423,12 @@ export function Cmd({
                 busy={busy}
                 recording={recording}
                 sttOk={sttOk}
+                speaking={speaking}
                 inputRef={channelInput}
                 onSubmit={onSubmit}
                 onPttStart={onPttStart}
                 onPttStop={onPttStop}
+                onInterrupt={onInterrupt}
               />
             </>
           )}

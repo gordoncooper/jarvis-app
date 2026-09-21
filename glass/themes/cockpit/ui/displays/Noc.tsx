@@ -15,10 +15,12 @@ type Props = {
   busy: boolean;
   recording: boolean;
   sttOk: boolean;
+  speaking?: boolean;
   live: boolean;
   onSubmit: (text: string) => void;
   onPttStart: () => void;
   onPttStop: () => void;
+  onInterrupt?: () => void;
 };
 
 function Bar({ value }: { value: number | null | undefined }) {
@@ -42,10 +44,12 @@ export function Noc({
   busy,
   recording,
   sttOk,
+  speaking,
   live,
   onSubmit,
   onPttStart,
   onPttStop,
+  onInterrupt,
 }: Props) {
   const [filters, setFilters] = useState<Record<RackFilter, boolean>>({
     CTRL: true,
@@ -358,10 +362,12 @@ export function Noc({
         busy={busy}
         recording={recording}
         sttOk={sttOk}
+        speaking={speaking}
         inputRef={cmdInput}
         onSubmit={onSubmit}
         onPttStart={onPttStart}
         onPttStop={onPttStop}
+        onInterrupt={onInterrupt}
       />
     </div>
   );

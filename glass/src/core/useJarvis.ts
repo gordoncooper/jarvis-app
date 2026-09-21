@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  INTERRUPTED_SUFFIX,
+  isAbort,
   type ConfirmPayload,
   type HealthPayload,
   type PulsePayload,
@@ -49,6 +51,12 @@ export type Jarvis = {
   lastTurn: LastTurn | null;
   /** epoch ms of the last successful /v1/session fetch, or null. */
   sessionAt: number | null;
+  /** True while a TTS reply is actually playing. */
+  speaking: boolean;
+  /** Cut JARVIS off: stop the audio, abort the stream, truncate the reply.
+   *  No-op when nothing is in flight. send() and startPtt() call it first, so
+   *  a theme only needs it for an explicit stop control. */
+  interrupt: () => void;
   send: (text: string) => void;
   startPtt: () => void;
   stopPtt: () => void;
@@ -80,6 +88,7 @@ export function useJarvis(): Jarvis {
   const [pulse, setPulse] = useState<PulsePayload | null>(null);
   const [lastTurn, setLastTurn] = useState<LastTurn | null>(null);
   const [sessionAt, setSessionAt] = useState<number | null>(null);
+  const [speaking, setSpeaking] = useState(false);
 
   const sessionId = useRef<string | null>(localStorage.getItem(SESSION_KEY));
   const busyRef = useRef(false);
@@ -87,6 +96,13 @@ export function useJarvis(): Jarvis {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
+  // Bumped on every interrupt and every new turn, so a TTS clip that finishes
+  // rendering after the operator cut in is discarded instead of played.
+  const turnSeqRef = useRef(0);
+  // Which assistant message the live stream is filling, so an interrupt can
+  // mark that one truncated rather than guessing at the tail of the list.
+  const activeAsstRef = useRef<string | null>(null);
 
   const talker = !unreachable && health?.llm !== false && health?.degraded !== true;
   const hands = !unreachable && health?.hands !== false;
@@ -171,30 +187,82 @@ export function useJarvis(): Jarvis {
     };
   }, [loadSession]);
 
-  const speak = useCallback(async (text: string) => {
-    if (!ttsOkRef.current || !text.trim()) return;
-    try {
-      const url = await fetchTtsObjectUrl(text);
-      if (!url) return;
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-        audioRef.current = null;
-      }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        if (audioRef.current === audio) audioRef.current = null;
-      };
-      await audio.play();
-    } catch {
-      // The reply is already on screen; losing audio is not an error worth showing.
-    }
+  const stopSpeaking = useCallback(() => {
+    const audio = audioRef.current;
+    audioRef.current = null;
+    setSpeaking(false);
+    if (!audio) return;
+    audio.pause();
+    const url = audio.src;
+    audio.src = "";
+    if (url.startsWith("blob:")) URL.revokeObjectURL(url);
   }, []);
+
+  const speak = useCallback(
+    async (text: string) => {
+      if (!ttsOkRef.current || !text.trim()) return;
+      const turn = turnSeqRef.current;
+      try {
+        const url = await fetchTtsObjectUrl(text);
+        if (!url) return;
+        // The operator may have cut in while Piper was still rendering.
+        if (turn !== turnSeqRef.current) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        stopSpeaking();
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          if (audioRef.current === audio) {
+            audioRef.current = null;
+            setSpeaking(false);
+          }
+        };
+        await audio.play();
+        setSpeaking(true);
+      } catch {
+        // The reply is already on screen; losing audio is not worth surfacing.
+      }
+    },
+    [stopSpeaking],
+  );
+
+  /** Cut JARVIS off mid-reply: silence the audio, abort the stream, and mark
+   *  the partial answer truncated so the transcript matches what was heard.
+   *  The orchestrator persists the same marker when the socket drops. */
+  const interrupt = useCallback(() => {
+    turnSeqRef.current += 1;
+    stopSpeaking();
+    const ctrl = abortRef.current;
+    abortRef.current = null;
+    if (ctrl) ctrl.abort();
+    const id = activeAsstRef.current;
+    activeAsstRef.current = null;
+    if (id) {
+      setMessages((prev) =>
+        prev.flatMap((m) => {
+          if (m.id !== id) return [m];
+          const body = m.content.trimEnd();
+          // Nothing was said yet — drop the empty bubble rather than leave a
+          // marker floating on its own.
+          return body ? [{ ...m, content: body + INTERRUPTED_SUFFIX }] : [];
+        }),
+      );
+      setLastTurn((prev) =>
+        prev && prev.assistant.trim()
+          ? { ...prev, assistant: prev.assistant.trimEnd() + INTERRUPTED_SUFFIX }
+          : prev,
+      );
+    }
+    busyRef.current = false;
+    setBusy(false);
+  }, [stopSpeaking]);
 
   /** Shared bookkeeping for both the typed and the spoken path. */
   const beginTurn = useCallback((userText: string) => {
+    turnSeqRef.current += 1;
     busyRef.current = true;
     setBusy(true);
     setConfirm(null);
@@ -206,12 +274,15 @@ export function useJarvis(): Jarvis {
       { id: userId, role: "user", content: userText },
       { id: asstId, role: "assistant", content: "" },
     ]);
+    activeAsstRef.current = asstId;
     return { userId, asstId };
   }, []);
 
   const endTurn = useCallback(() => {
     busyRef.current = false;
     setBusy(false);
+    abortRef.current = null;
+    activeAsstRef.current = null;
   }, []);
 
   const setAsst = useCallback((id: string, update: (prev: string) => string) => {
@@ -220,8 +291,13 @@ export function useJarvis(): Jarvis {
 
   const runText = useCallback(
     async (text: string) => {
-      if (!text || !sessionId.current || busyRef.current) return;
+      if (!text || !sessionId.current) return;
+      // Talking over JARVIS cuts it off rather than being ignored.
+      if (busyRef.current || audioRef.current) interrupt();
       const { asstId } = beginTurn(text);
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      try {
       await streamTurn(sessionId.current, text, {
         onMeta: (id) => {
           sessionId.current = id;
@@ -245,13 +321,22 @@ export function useJarvis(): Jarvis {
           setAsst(asstId, () => `Error: ${message}`);
           endTurn();
         },
-      });
+      }, ctrl.signal);
+      } catch (e) {
+        // interrupt() has already truncated the reply and cleared busy.
+        if (!isAbort(e)) {
+          setAsst(asstId, () => "Error: turn failed");
+          endTurn();
+        }
+      }
     },
-    [beginTurn, endTurn, setAsst, speak],
+    [beginTurn, endTurn, interrupt, setAsst, speak],
   );
 
   const startPtt = useCallback(async () => {
-    if (busyRef.current || !sessionId.current) return;
+    if (!sessionId.current) return;
+    // Barge-in: reaching for the mic while JARVIS is talking stops it.
+    if (busyRef.current || audioRef.current) interrupt();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
@@ -265,7 +350,7 @@ export function useJarvis(): Jarvis {
     } catch {
       setMicDenied(true);
     }
-  }, []);
+  }, [interrupt]);
 
   const stopPtt = useCallback(async () => {
     const rec = recRef.current;
@@ -282,11 +367,14 @@ export function useJarvis(): Jarvis {
     if (!sessionId.current || blob.size < 1000) return;
 
     const { userId, asstId } = beginTurn("…");
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     const applyTranscript = (transcript: string) => {
       setLastTurn((prev) => (prev ? { ...prev, user: transcript } : { user: transcript, assistant: "" }));
       setMessages((prev) => prev.map((m) => (m.id === userId ? { ...m, content: transcript } : m)));
     };
 
+    try {
     await streamAudioTurn(sessionId.current, blob, {
       onMeta: (id, transcript) => {
         sessionId.current = id;
@@ -312,8 +400,14 @@ export function useJarvis(): Jarvis {
         setAsst(asstId, () => `Error: ${message}`);
         endTurn();
       },
-    });
-  }, [beginTurn, endTurn, setAsst, speak]);
+    }, ctrl.signal);
+    } catch (e) {
+      if (!isAbort(e)) {
+        setAsst(asstId, () => "Error: turn failed");
+        endTurn();
+      }
+    }
+  }, [beginTurn, endTurn, interrupt, setAsst, speak]);
 
   return {
     greeting,
@@ -339,9 +433,11 @@ export function useJarvis(): Jarvis {
     micDenied,
     lastTurn,
     sessionAt,
+    speaking,
     send: (text: string) => void runText(text),
     startPtt: () => void startPtt(),
     stopPtt: () => void stopPtt(),
+    interrupt,
     refetchSession: () => void loadSession(),
     // yes / cancel are themselves turns (D-0023 confirm gate).
     answerConfirm: (accept: boolean) => void runText(accept ? "yes" : "cancel"),
