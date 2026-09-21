@@ -29,12 +29,17 @@ A dated decision outranks any prose here or there.
   cut is **v0.6.0** (D-0021)
 - Glass talks only to the orchestrator — no direct product wiring to LiteLLM,
   Open WebUI, or OpenClaw (D-0012)
-- Product glass is React + TypeScript under `glass/src/cockpit/**` (D-0031 /
-  D-0032). Creating display files there is the job, not a violation. Production
+- Product glass is React + TypeScript. The theme-agnostic engine is
+  `glass/src/core/**`; the UI is `glass/themes/<name>/**` (D-0031 / D-0032).
+  Creating display files in a theme is the job, not a violation. Production
   packer: esbuild → static nginx. Vite as a bastion-only glass dev server is
   allowed. motion, SVG topology, and uPlot/canvas are allowed. Do not scaffold
-  factory apps, App Builder previews, or theme chat.lan. Product pack is
-  `cockpit`; `godseye` / `mark-hud` / `archive-gold` are archived.
+  factory apps, App Builder previews, or theme chat.lan.
+- One theme per image, selected by `JARVIS_THEME` from `VERSION`. The only
+  theme is `cockpit`; `godseye` / `mark-hud` / `archive-gold` were deleted in
+  v0.6.44. Theme contract: docs/THEMES.md. Core must not import a theme, and a
+  theme must not call the orchestrator directly — it goes through `useJarvis()`.
+  The build asserts both.
 - Cockpit spec: docs/COCKPIT.md (copy of the builder brief). Law stays here
   and in jarvis-infra DECISIONS.md.
 - Do not extend `jarvis-core` (D-0003). Do not put Flux manifests in this repo

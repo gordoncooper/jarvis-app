@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ConfirmPayload, PulsePayload } from "../../api.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { ConfirmCard } from "../chrome/ConfirmCard.js";
 import {
@@ -16,8 +15,17 @@ import {
   IconPulse,
   LiveDot,
 } from "../chrome/Marks.js";
-import { type ChatMsg, dayOfYear } from "../mock.js";
-import { capCopy, capLines, parseBriefing, sessionPollLabel, type SessionBriefing } from "../state/session.js";
+import {
+  capCopy,
+  capLines,
+  dayOfYear,
+  parseBriefing,
+  sessionPollLabel,
+  type ChatMsg,
+  type ConfirmPayload,
+  type PulsePayload,
+  type SessionBriefing,
+} from "@core";
 
 type Props = {
   greeting: string;

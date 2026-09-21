@@ -1,11 +1,12 @@
-import type { SessionBriefing } from "./cockpit/state/session.js";
+/** Raw wire shape. session.ts refines it; core must not depend on a theme. */
+export type BriefingPayload = Record<string, unknown>;
 
 export type SessionPayload = {
   session_id: string;
   messages: Array<{ role: string; content: string }>;
   greeting: string;
   briefing_blurb: string;
-  briefing?: SessionBriefing | Record<string, unknown>;
+  briefing?: BriefingPayload;
   confirm?: ConfirmPayload;
 };
 

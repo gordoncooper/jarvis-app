@@ -1,17 +1,17 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import type { ConfirmPayload, HealthPayload, PulsePayload } from "../../api.js";
 import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { ConcRing, LiveDot } from "../chrome/Marks.js";
-import { type EarthToast, pulseGpuChips, pulseText } from "../state/pulse.js";
+import { pulseText, type ConfirmPayload, type HealthPayload, type LastTurn, type PulsePayload } from "@core";
+import { pulseGpuChips } from "../rack.js";
 import { StageEarth, stageWebglOk } from "../StageEarth.js";
 
 type Props = {
   health: HealthPayload | null;
   unreachable: boolean;
   pulse: PulsePayload | null;
-  toast: EarthToast | null;
+  toast: LastTurn | null;
   confirm: ConfirmPayload | null;
   busy: boolean;
   recording: boolean;
@@ -64,7 +64,7 @@ export function Stage({
     return () => window.clearTimeout(id);
   }, [active]);
 
-  const showToast = toast != null && !!(toast.user || toast.asst);
+  const showToast = toast != null && !!(toast.user || toast.assistant);
 
   return (
     <div className="ck-stage">
@@ -166,7 +166,7 @@ export function Stage({
         {showToast && toast ? (
           <div className="ck-stage-toast" aria-live="polite">
             {toast.user ? <p className="ck-toast-user">{toast.user}</p> : null}
-            {toast.asst ? <p className="ck-toast-asst">{toast.asst}</p> : <p className="ck-toast-asst is-empty">…</p>}
+            {toast.assistant ? <p className="ck-toast-asst">{toast.assistant}</p> : <p className="ck-toast-asst is-empty">…</p>}
           </div>
         ) : null}
 

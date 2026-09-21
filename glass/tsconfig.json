@@ -7,7 +7,25 @@
     "noEmit": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@core": [
+        "src/core/index.ts"
+      ],
+      "@core/*": [
+        "src/core/*"
+      ]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "themes/**/*.ts",
+    "themes/**/*.tsx"
+  ]
 }

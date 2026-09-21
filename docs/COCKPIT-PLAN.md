@@ -174,7 +174,7 @@ Topology = SVG. Tiles select a node and filter the ticker. No 3D rack.
 ## App shape
 
 ```
-glass/src/cockpit/
+glass/themes/cockpit/
   App.tsx
   Shell.tsx
   deck/Deck.tsx              horizontal snap, ← →, swipe, BRIEF|ASK|APPLY

@@ -51,7 +51,8 @@ Slide order left→right. Arrow keys / drag. No center-chat on Earth.
 ## Pack / build
 
 - Product pack: `cockpit` (`JARVIS_THEME=cockpit`).
-- Archived (rebuildable, not served): `godseye`, `mark-hud`, `archive-gold`.
+- `cockpit` is the only theme. `godseye` / `mark-hud` / `archive-gold` were
+  deleted in v0.6.44 (CSS packs with no entry point). See docs/THEMES.md.
 - Production: esbuild → static nginx. Vite only if the operator asks for bastion HMR.
 - Allowed: React, three / R3F / drei / postprocessing (Earth only), motion, SVG,
   uPlot or canvas. Out: shadcn, Tailwind-as-theme, Recharts, React Flow, chat.lan

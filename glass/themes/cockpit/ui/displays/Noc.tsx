@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ConfirmPayload, PulsePayload } from "../../api.js";
 import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { LiveDot } from "../chrome/Marks.js";
-import { RACK_IDS, pulseText, rackFilter, rackRoleLabel, steelNum, type RackFilter } from "../state/pulse.js";
+import { formatRate, pulseText, steelNum, type ConfirmPayload, type PulsePayload } from "@core";
+import { RACK_IDS, rackFilter, rackRoleLabel, type RackFilter } from "../rack.js";
 import { Ring } from "../viz/Rings.js";
 import { Spark } from "../viz/Spark.js";
 import { TopologySvg } from "../viz/TopologySvg.js";
@@ -31,14 +31,6 @@ function Bar({ value }: { value: number | null | undefined }) {
 }
 
 /** Bytes/s the nodes actually reported. Null stays null — no zero placeholder. */
-function formatRate(bps: number | null): string | null {
-  if (bps == null || !Number.isFinite(bps)) return null;
-  if (bps >= 1e9) return `${(bps / 1e9).toFixed(1)} GB/s`;
-  if (bps >= 1e6) return `${(bps / 1e6).toFixed(1)} MB/s`;
-  if (bps >= 1e3) return `${(bps / 1e3).toFixed(1)} kB/s`;
-  return `${Math.round(bps)} B/s`;
-}
-
 function envBar(value: number | null | undefined, max: number): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return Math.min(100, Math.max(0, (value / max) * 100));

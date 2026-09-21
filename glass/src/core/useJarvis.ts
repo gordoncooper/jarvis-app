@@ -9,24 +9,64 @@ import {
   fetchTtsObjectUrl,
   streamAudioTurn,
   streamTurn,
-} from "../api.js";
-import { Deck, type Slide } from "./deck/Deck.js";
-import { Cmd } from "./displays/Cmd.js";
-import { Earth } from "./displays/Earth.js";
-import { Login } from "./displays/Login.js";
-import { Noc } from "./displays/Noc.js";
-import { type ChatMsg } from "./mock.js";
-import { parseBriefing, SESSION_POLL_MS, type SessionBriefing } from "./state/session.js";
-import { type EarthToast } from "./state/pulse.js";
+} from "./api.js";
+import { type ChatMsg, nextMsgId } from "./chat.js";
+import { SESSION_POLL_MS, parseBriefing, type SessionBriefing } from "./session.js";
 
 const SESSION_KEY = "jarvis.session_id";
+const HEALTH_POLL_MS = 8_000;
+const PULSE_POLL_MS = 2_000;
 
-function nextId(): string {
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
+/** The last exchange, for themes that surface it outside the transcript
+ *  (the cockpit draws it as a two-line toast over the globe). */
+export type LastTurn = { user: string; assistant: string };
 
-export function App() {
-  const [slide, setSlide] = useState<Slide>(0);
+export type JarvisStatus = {
+  /** Orchestrator answered and the talker is usable. */
+  live: boolean;
+  unreachable: boolean;
+  degraded: boolean;
+  reason: string | null;
+  talker: boolean;
+  hands: boolean;
+  stt: boolean;
+  tts: boolean;
+  memoryFacts: number;
+};
+
+export type Jarvis = {
+  greeting: string;
+  blurb: string;
+  briefing: SessionBriefing | null;
+  messages: ChatMsg[];
+  health: HealthPayload | null;
+  pulse: PulsePayload | null;
+  confirm: ConfirmPayload | null;
+  status: JarvisStatus;
+  busy: boolean;
+  recording: boolean;
+  micDenied: boolean;
+  lastTurn: LastTurn | null;
+  /** epoch ms of the last successful /v1/session fetch, or null. */
+  sessionAt: number | null;
+  send: (text: string) => void;
+  startPtt: () => void;
+  stopPtt: () => void;
+  /** Refetch the session. No navigation side effects — the theme routes. */
+  refetchSession: () => void;
+  answerConfirm: (accept: boolean) => void;
+};
+
+/**
+ * Every theme gets the same data and the same verbs from here.
+ *
+ * This is the whole product behaviour — session, health and pulse polling,
+ * streamed turns, TTS playback, push-to-talk capture, confirm handling — with
+ * no opinion about layout, navigation, or how many displays exist. Themes
+ * render it. Before this existed each theme carried its own copy, so a second
+ * theme meant a second implementation of the same SSE and MediaRecorder code.
+ */
+export function useJarvis(): Jarvis {
   const [greeting, setGreeting] = useState("…");
   const [blurb, setBlurb] = useState("");
   const [briefing, setBriefing] = useState<SessionBriefing | null>(null);
@@ -38,7 +78,7 @@ export function App() {
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [micDenied, setMicDenied] = useState(false);
   const [pulse, setPulse] = useState<PulsePayload | null>(null);
-  const [toast, setToast] = useState<EarthToast | null>(null);
+  const [lastTurn, setLastTurn] = useState<LastTurn | null>(null);
   const [sessionAt, setSessionAt] = useState<number | null>(null);
 
   const sessionId = useRef<string | null>(localStorage.getItem(SESSION_KEY));
@@ -48,12 +88,11 @@ export function App() {
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
 
-  const talkerOk = !unreachable && health?.llm !== false && health?.degraded !== true;
-  const handsOk = !unreachable && health?.hands !== false;
-  const sttOk = !unreachable && health?.stt !== false;
-  const ttsOk = !unreachable && health?.tts !== false;
-  ttsOkRef.current = ttsOk;
-  const live = talkerOk && !unreachable;
+  const talker = !unreachable && health?.llm !== false && health?.degraded !== true;
+  const hands = !unreachable && health?.hands !== false;
+  const stt = !unreachable && health?.stt !== false;
+  const tts = !unreachable && health?.tts !== false;
+  ttsOkRef.current = tts;
 
   const applyHealth = useCallback((next: HealthPayload | null, down = false) => {
     setUnreachable(down);
@@ -71,7 +110,7 @@ export function App() {
       }
     };
     void poll();
-    const id = window.setInterval(() => void poll(), 8000);
+    const id = window.setInterval(() => void poll(), HEALTH_POLL_MS);
     return () => {
       alive = false;
       window.clearInterval(id);
@@ -85,7 +124,7 @@ export function App() {
       if (alive) setPulse(next);
     };
     void poll();
-    const id = window.setInterval(() => void poll(), 2000);
+    const id = window.setInterval(() => void poll(), PULSE_POLL_MS);
     return () => {
       alive = false;
       window.clearInterval(id);
@@ -101,11 +140,12 @@ export function App() {
       setBlurb(session.briefing_blurb);
       setBriefing(parseBriefing(session.briefing));
       setSessionAt(Date.now());
+      // A poll landing mid-stream must not clobber the live transcript.
       if (!busyRef.current) {
         const restored: ChatMsg[] = [];
         for (const m of session.messages) {
           if (m.role === "user" || m.role === "assistant") {
-            restored.push({ id: nextId(), role: m.role, content: m.content });
+            restored.push({ id: nextMsgId(), role: m.role, content: m.content });
           }
         }
         setMessages(restored);
@@ -117,10 +157,6 @@ export function App() {
     }
   }, []);
 
-  // The CMD header claims "Auto-refresh ON", so the briefing has to actually
-  // refresh. build_cluster_briefing is ten Prometheus queries, so this is a
-  // 5 minute poll, not the 2s pulse cadence. loadSession skips messages and
-  // confirm while a turn is streaming.
   useEffect(() => {
     let alive = true;
     const poll = async () => {
@@ -153,64 +189,68 @@ export function App() {
       };
       await audio.play();
     } catch {
-      // text already shown
+      // The reply is already on screen; losing audio is not an error worth showing.
     }
+  }, []);
+
+  /** Shared bookkeeping for both the typed and the spoken path. */
+  const beginTurn = useCallback((userText: string) => {
+    busyRef.current = true;
+    setBusy(true);
+    setConfirm(null);
+    setLastTurn({ user: userText, assistant: "" });
+    const userId = nextMsgId();
+    const asstId = nextMsgId();
+    setMessages((prev) => [
+      ...prev,
+      { id: userId, role: "user", content: userText },
+      { id: asstId, role: "assistant", content: "" },
+    ]);
+    return { userId, asstId };
+  }, []);
+
+  const endTurn = useCallback(() => {
+    busyRef.current = false;
+    setBusy(false);
+  }, []);
+
+  const setAsst = useCallback((id: string, update: (prev: string) => string) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: update(m.content) } : m)));
   }, []);
 
   const runText = useCallback(
     async (text: string) => {
       if (!text || !sessionId.current || busyRef.current) return;
-      busyRef.current = true;
-      setBusy(true);
-      setConfirm(null);
-      setToast({ user: text, asst: "" });
-      const userId = nextId();
-      const asstId = nextId();
-      setMessages((prev) => [
-        ...prev,
-        { id: userId, role: "user", content: text },
-        { id: asstId, role: "assistant", content: "" },
-      ]);
-
+      const { asstId } = beginTurn(text);
       await streamTurn(sessionId.current, text, {
         onMeta: (id) => {
           sessionId.current = id;
           localStorage.setItem(SESSION_KEY, id);
         },
         onToken: (t) => {
-          setToast((prev) => (prev ? { ...prev, asst: prev.asst + t } : prev));
-          setMessages((prev) =>
-            prev.map((m) => (m.id === asstId ? { ...m, content: m.content + t } : m)),
-          );
+          setLastTurn((prev) => (prev ? { ...prev, assistant: prev.assistant + t } : prev));
+          setAsst(asstId, (c) => c + t);
         },
         onDone: (reply, _transcript, nextConfirm) => {
           if (reply) {
-            setToast((prev) => (prev ? { ...prev, asst: reply } : prev));
-            setMessages((prev) =>
-              prev.map((m) => (m.id === asstId ? { ...m, content: reply } : m)),
-            );
+            setLastTurn((prev) => (prev ? { ...prev, assistant: reply } : prev));
+            setAsst(asstId, () => reply);
           }
-          busyRef.current = false;
-          setBusy(false);
+          endTurn();
           if (nextConfirm) setConfirm(nextConfirm);
           void speak(reply);
         },
         onError: (message) => {
-          setToast((prev) => (prev ? { ...prev, asst: `Error: ${message}` } : prev));
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === asstId ? { ...m, content: `Error: ${message}` } : m,
-            ),
-          );
-          busyRef.current = false;
-          setBusy(false);
+          setLastTurn((prev) => (prev ? { ...prev, assistant: `Error: ${message}` } : prev));
+          setAsst(asstId, () => `Error: ${message}`);
+          endTurn();
         },
       });
     },
-    [speak],
+    [beginTurn, endTurn, setAsst, speak],
   );
 
-  const startRec = useCallback(async () => {
+  const startPtt = useCallback(async () => {
     if (busyRef.current || !sessionId.current) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -227,7 +267,7 @@ export function App() {
     }
   }, []);
 
-  const stopRec = useCallback(async () => {
+  const stopPtt = useCallback(async () => {
     const rec = recRef.current;
     if (!rec || rec.state === "inactive") return;
     recRef.current = null;
@@ -241,106 +281,69 @@ export function App() {
     chunksRef.current = [];
     if (!sessionId.current || blob.size < 1000) return;
 
-    busyRef.current = true;
-    setBusy(true);
-    setConfirm(null);
-    setToast({ user: "…", asst: "" });
-    const userId = nextId();
-    const asstId = nextId();
-    setMessages((prev) => [
-      ...prev,
-      { id: userId, role: "user", content: "…" },
-      { id: asstId, role: "assistant", content: "" },
-    ]);
+    const { userId, asstId } = beginTurn("…");
+    const applyTranscript = (transcript: string) => {
+      setLastTurn((prev) => (prev ? { ...prev, user: transcript } : { user: transcript, assistant: "" }));
+      setMessages((prev) => prev.map((m) => (m.id === userId ? { ...m, content: transcript } : m)));
+    };
 
     await streamAudioTurn(sessionId.current, blob, {
       onMeta: (id, transcript) => {
         sessionId.current = id;
         localStorage.setItem(SESSION_KEY, id);
-        if (transcript) {
-          setToast((prev) => (prev ? { ...prev, user: transcript } : { user: transcript, asst: "" }));
-          setMessages((prev) =>
-            prev.map((m) => (m.id === userId ? { ...m, content: transcript } : m)),
-          );
-        }
+        if (transcript) applyTranscript(transcript);
       },
       onToken: (t) => {
-        setToast((prev) => (prev ? { ...prev, asst: prev.asst + t } : prev));
-        setMessages((prev) =>
-          prev.map((m) => (m.id === asstId ? { ...m, content: m.content + t } : m)),
-        );
+        setLastTurn((prev) => (prev ? { ...prev, assistant: prev.assistant + t } : prev));
+        setAsst(asstId, (c) => c + t);
       },
       onDone: (reply, transcript, nextConfirm) => {
-        if (transcript) {
-          setToast((prev) => (prev ? { ...prev, user: transcript } : { user: transcript, asst: reply }));
-          setMessages((prev) =>
-            prev.map((m) => (m.id === userId ? { ...m, content: transcript } : m)),
-          );
-        }
+        if (transcript) applyTranscript(transcript);
         if (reply) {
-          setToast((prev) => (prev ? { ...prev, asst: reply } : prev));
-          setMessages((prev) =>
-            prev.map((m) => (m.id === asstId ? { ...m, content: reply } : m)),
-          );
+          setLastTurn((prev) => (prev ? { ...prev, assistant: reply } : prev));
+          setAsst(asstId, () => reply);
         }
-        busyRef.current = false;
-        setBusy(false);
+        endTurn();
         if (nextConfirm) setConfirm(nextConfirm);
         void speak(reply);
       },
       onError: (message) => {
-        setToast((prev) => (prev ? { ...prev, asst: `Error: ${message}` } : prev));
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === asstId ? { ...m, content: `Error: ${message}` } : m,
-          ),
-        );
-        busyRef.current = false;
-        setBusy(false);
+        setLastTurn((prev) => (prev ? { ...prev, assistant: `Error: ${message}` } : prev));
+        setAsst(asstId, () => `Error: ${message}`);
+        endTurn();
       },
     });
-  }, [speak]);
+  }, [beginTurn, endTurn, setAsst, speak]);
 
-  const turnProps = {
+  return {
+    greeting,
+    blurb,
+    briefing,
+    messages,
+    health,
+    pulse,
+    confirm,
+    status: {
+      live: talker && !unreachable,
+      unreachable,
+      degraded: health?.degraded === true,
+      reason: health?.reason ?? null,
+      talker,
+      hands,
+      stt: stt && !micDenied,
+      tts,
+      memoryFacts: health?.memory_facts ?? 0,
+    },
     busy,
     recording,
-    sttOk: sttOk && !micDenied,
-    onSubmit: (text: string) => void runText(text),
-    onPttStart: () => void startRec(),
-    onPttStop: () => void stopRec(),
+    micDenied,
+    lastTurn,
+    sessionAt,
+    send: (text: string) => void runText(text),
+    startPtt: () => void startPtt(),
+    stopPtt: () => void stopPtt(),
+    refetchSession: () => void loadSession(),
+    // yes / cancel are themselves turns (D-0023 confirm gate).
+    answerConfirm: (accept: boolean) => void runText(accept ? "yes" : "cancel"),
   };
-
-  return (
-    <Deck index={slide} onIndex={setSlide}>
-      <Login onEnter={() => setSlide(1)} active={slide === 0} />
-      <Earth
-        health={health}
-        unreachable={unreachable}
-        pulse={pulse}
-        toast={toast}
-        confirm={confirm}
-        active={slide === 1}
-        {...turnProps}
-      />
-      <Cmd
-        greeting={greeting}
-        blurb={blurb}
-        briefing={briefing}
-        messages={messages}
-        confirm={confirm}
-        pulse={pulse}
-        live={live}
-        memoryFacts={health?.memory_facts ?? 0}
-        sessionAt={sessionAt}
-        onRefetchSession={() => {
-          setSlide(2);
-          void loadSession();
-        }}
-        onConfirm={() => void runText("yes")}
-        onCancel={() => void runText("cancel")}
-        {...turnProps}
-      />
-      <Noc live={live} pulse={pulse} confirm={confirm} {...turnProps} />
-    </Deck>
-  );
 }

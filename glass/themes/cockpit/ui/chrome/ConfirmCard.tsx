@@ -1,4 +1,4 @@
-import type { ConfirmPayload } from "../../api.js";
+import type { ConfirmPayload } from "@core";
 
 type Props = {
   confirm: ConfirmPayload;

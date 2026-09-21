@@ -72,10 +72,11 @@ Type: IBM Plex Sans for chrome, IBM Plex Mono for numbers and cmd. Accent on ≤
 
 ## 3. File map to create / replace
 
-Implement under `glass/src/cockpit/` as the product entry (keep old `hud/` / `godseye` themes archived, do not delete unless asked):
+Implement under `glass/themes/cockpit/` (the tree moved in v0.6.44; data and
+behaviour now come from `glass/src/core/` via `useJarvis()` — see docs/THEMES.md):
 
 ```
-glass/src/cockpit/
+glass/themes/cockpit/
   main.tsx
   App.tsx                 deck index 0=login 1=earth 2=cmd 3=noc
   Shell.tsx

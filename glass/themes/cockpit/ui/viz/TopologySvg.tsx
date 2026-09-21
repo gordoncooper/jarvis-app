@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import type { PulseNode } from "../../api.js";
 import { LiveDot } from "../chrome/Marks.js";
-import { RACK_IDS, rackFilter, rackRoleLabel, steelNum, type RackFilter } from "../state/pulse.js";
+import { formatRate, steelNum, type PulseNode } from "@core";
+import { RACK_IDS, rackFilter, rackRoleLabel, type RackFilter } from "../rack.js";
 
 type Props = {
   nodes: PulseNode[];
@@ -75,13 +75,6 @@ function buildTraces(boxes: Array<Box | null>, frame: Box): { traces: Trace[]; j
   }
 
   return { traces, joints };
-}
-
-function formatRate(bps: number | null | undefined): string {
-  if (typeof bps !== "number" || !Number.isFinite(bps)) return "—";
-  if (bps >= 1e6) return `${(bps / 1e6).toFixed(1)} MB/s`;
-  if (bps >= 1e3) return `${(bps / 1e3).toFixed(1)} kB/s`;
-  return `${Math.round(bps)} B/s`;
 }
 
 function Meter({ label, value, suffix = "%" }: { label: string; value: number | null | undefined; suffix?: string }) {

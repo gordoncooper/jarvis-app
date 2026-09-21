@@ -1,36 +1,52 @@
-# jarvis-glass — themed static HUD (D-0020 / D-0030)
+# glass
 
-TypeScript compiles to static assets. **No Vite.** Look-and-feel is a pack under
-`themes/<name>/`. Product shell is React + R3F (`src/hud/`) for `godseye`.
-`mark-hud` / `archive-gold` keep the frozen DOM shell in `src/main.ts`.
+One engine, one theme, chosen at build time. The engine (`src/core/`) is the
+same for every theme; the theme owns the entire UI/UX.
 
-## Packs
+Contract and how to add a theme: [`docs/THEMES.md`](../docs/THEMES.md).
 
-| Pack | Notes |
-| --- | --- |
-| `godseye` | Product. Globe-as-stage (D-0030). |
-| `mark-hud` | Archived 3-column cockpit. Rebuildable. |
-| `archive-gold` | Previous sterile/gold column. Rebuildable. |
-
-Each pack: required `theme.css`. Optional `static/` is copied to `dist/theme-static/`.
-Visual contract: [`DESIGN.md`](DESIGN.md).
-
-## Rebuild / swap
-
-```bash
-# local dist only
-cd ~/jarvis-app/glass
-JARVIS_THEME=godseye npm run build
-
-# ship: pin pack + image tag, then import
-# VERSION: JARVIS_THEME=godseye   IMAGE_GLASS_TAG=v0.6.xx
-./scripts/install-images.sh
+```
+src/core/        the engine — api, useJarvis(), parsers, formatters
+assets/globe/    shared asset library, served at /globe/*
+themes/<name>/   theme.json + main.tsx + css + ui/
+tools/           bastion-only screenshot and CDP driver
+devserve.mjs     bastion-only static server with /v1 proxy
 ```
 
-`godseye` styles overlay classes (`.hud-overlay`, `.hud-ribbon`, `.hud-channel`,
-`.hud-console`, `.hud-arc`, `.pip`, `.confirm-row`). Legacy packs still target
-the 3-column classes in `src/main.ts`. Pin `JARVIS_THEME`, bump the glass image
-tag, install, Flux recreate glass.
+## Themes
 
-Override without editing VERSION: `JARVIS_THEME=mark-hud npm run build`.
-LAN still follows VERSION when `install-images.sh` runs.
+| Theme | Status |
+| --- | --- |
+| `cockpit` | Product pack (D-0031 / D-0032). Four displays: login, earth, cmd, noc. |
+
+## Build
+
+`VERSION` in the repo root is the source of truth for both the theme and the
+image tag; `scripts/install-images.sh` sources it.
+
+```bash
+cd ~/jarvis-app/glass
+export PATH="$HOME/.local/node-v22.14.0-linux-x64/bin:$PATH"
+JARVIS_THEME=cockpit npm run build     # -> dist/
+npm run typecheck                      # covers src/ and themes/
+```
+
+The build refuses an unknown theme rather than falling back, and asserts the
+two boundary rules from `docs/THEMES.md` before compiling: core may not import
+a theme, and a theme may not touch the transport.
+
+`dist/build.json` records the theme, tag and build time, so a running image can
+say what it is:
+
+```bash
+curl -sk https://jarvis.lan/build.json
+```
+
+## Image
+
+```bash
+docker build -t jarvis-glass:dev .          # expects dist/ to exist
+```
+
+Nginx in the image proxies `/health` and `/v1/` to
+`jarvis-orchestrator.apps.svc.cluster.local:8080`.

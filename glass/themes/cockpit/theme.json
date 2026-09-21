@@ -1,0 +1,10 @@
+{
+  "name": "cockpit",
+  "title": "Cockpit",
+  "description": "Four-display horizontal deck: Fort Knox login, night Earth stage, AM briefing desk, ortho rack NOC.",
+  "entry": "main.tsx",
+  "css": ["tokens.css", "theme.css"],
+  "static": "static",
+  "displays": ["login", "earth", "cmd", "noc"],
+  "reference": "docs/reference"
+}

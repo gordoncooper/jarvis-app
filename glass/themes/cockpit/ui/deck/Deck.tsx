@@ -6,7 +6,7 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { hashFor, parseHash, SLIDES, type Slide } from "../state/deck.js";
+import { hashFor, parseHash, SLIDES, type Slide } from "./routes.js";
 
 export type { Slide };
 

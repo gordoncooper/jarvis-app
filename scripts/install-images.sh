@@ -21,7 +21,7 @@ ORCH_TAG="${IMAGE_ORCHESTRATOR_TAG:-$TAG}"
 NODE_BIN="${NODE_BIN:-$HOME/.local/node-v22.14.0-linux-x64/bin}"
 
 echo "== paths =="
-echo "ROOT=$ROOT HOST=$HOST GLASS_TAG=$TAG ORCH_TAG=$ORCH_TAG THEME=${JARVIS_THEME:-godseye}"
+echo "ROOT=$ROOT HOST=$HOST GLASS_TAG=$TAG ORCH_TAG=$ORCH_TAG THEME=${JARVIS_THEME:-<unset>}"
 test -f "$ROOT/orchestrator/Dockerfile"
 test -f "$ROOT/glass/Dockerfile"
 test -f "$ROOT/glass/nginx.conf"
@@ -32,12 +32,23 @@ command -v node >/dev/null || {
   echo "FATAL: node not on PATH (expected under $NODE_BIN)." >&2
   exit 1
 }
-THEME="${JARVIS_THEME:-godseye}"
+# Sourced from VERSION. No default: shipping a different theme than the one
+# that was asked for is worse than refusing to build.
+THEME="${JARVIS_THEME:-}"
+if [ -z "$THEME" ]; then
+  echo "FATAL: JARVIS_THEME unset (expected from VERSION)." >&2
+  exit 1
+fi
+if [ ! -f "$ROOT/glass/themes/$THEME/theme.json" ]; then
+  echo "FATAL: unknown theme '$THEME' — no glass/themes/$THEME/theme.json." >&2
+  ls -1 "$ROOT/glass/themes" >&2
+  exit 1
+fi
 echo "THEME=$THEME"
 (
   cd "$ROOT/glass"
   if [ ! -d node_modules ]; then npm ci; fi
-  JARVIS_THEME="$THEME" npm run build
+  JARVIS_THEME="$THEME" JARVIS_APP_TAG="$TAG" npm run build
 )
 
 echo "== docker on $HOST =="
@@ -53,7 +64,7 @@ rm -rf /tmp/jarvis-orch-build
 mkdir -p /tmp/jarvis-orch-build
 tar -C /tmp/jarvis-orch-build -xzf /tmp/jarvis-orch-src.tgz
 cd /tmp/jarvis-orch-build
-docker build -t "jarvis-orchestrator:${TAG}" .
+docker build --build-arg "JARVIS_VERSION=${TAG}" -t "jarvis-orchestrator:${TAG}" .
 docker save "jarvis-orchestrator:${TAG}" | k3s ctr images import -
 k3s ctr images ls | grep jarvis-orchestrator || true
 rm -rf /tmp/jarvis-orch-build /tmp/jarvis-orch-src.tgz

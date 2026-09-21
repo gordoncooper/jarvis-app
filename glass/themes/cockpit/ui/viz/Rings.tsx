@@ -1,4 +1,4 @@
-import { steelNum } from "../state/pulse.js";
+import { steelNum } from "@core";
 
 /** Donut gauge. A null reading draws the track only — never a zero-looking arc. */
 export function Ring({

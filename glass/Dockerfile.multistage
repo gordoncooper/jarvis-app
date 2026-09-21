@@ -7,7 +7,8 @@ COPY tsconfig.json esbuild.mjs ./
 COPY public ./public
 COPY src ./src
 COPY themes ./themes
-ARG JARVIS_THEME=godseye
+COPY assets ./assets
+ARG JARVIS_THEME=cockpit
 ENV JARVIS_THEME=$JARVIS_THEME
 RUN npm run build
 
