@@ -65,6 +65,13 @@ chat negatives pushes it past 70% with no routing improvement at all. The two
 numbers that mean something are **chat false-positives (absolute count)** and
 **capability recall on the 64 capability utterances**.
 
+**The gate uses 25/64, not 26.** One of those 26 was `remember that` scoring as
+a pass *because of* the bug — it "succeeded" by storing the word "that". Slice 0
+turned it into an honest "which part, sir?", which the scorer counts as a miss
+until slice 4 resolves the referent properly. So the number slice 1 must not
+fall below is **25/64, measured on shipped code**, and chat false-positives
+still **3**. Counting a bug as a pass is exactly how a gate rots.
+
 **36 of 89 capability requests reach the toolless talker**, which then invents
 an answer. Verbatim from the live host:
 
@@ -273,8 +280,9 @@ route to `chat`. A pytest that scores it and asserts two things:
 - **chat false-positives = 0**, as an absolute count on the chat subset
   (protects what already works — and note this fails *today* at 3, so slice 1
   starts by narrowing the `gpu` regex)
-- **capability recall ≥ 41%**, measured on the capability subset only
-  (26/64 today). Never on the mixed 89, which moves when negatives are added.
+- **capability recall ≥ 25/64**, measured on the capability subset only,
+  against shipped code. Never on the mixed 89, which moves when negatives are
+  added.
 
 Gordon sees one table per slice, and the two numbers moving in opposite
 directions is the evidence that the router got better rather than louder.
