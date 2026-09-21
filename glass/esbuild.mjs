@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -91,6 +91,11 @@ if (themeViolations.length) {
 }
 
 // ---------------------------------------------------------------------------
+// Wipe first. cpSync only adds, so dist accumulated files that had been
+// deleted from the theme — themes/cockpit/static/login.jpg was removed from
+// the repo and still shipped in the image. Worse, building theme B over a
+// theme A dist would have produced an image containing both.
+rmSync(outdir, { recursive: true, force: true });
 mkdirSync(outdir, { recursive: true });
 cpSync(join(root, "public", "index.html"), join(outdir, "index.html"));
 
@@ -103,23 +108,35 @@ if (manifest.static) {
   if (existsSync(extra)) cpSync(extra, join(outdir, "theme-static"), { recursive: true });
 }
 
-// Shared asset library — available to any theme at /globe/*.
-const assets = join(root, "assets", "globe");
-if (existsSync(assets)) cpSync(assets, join(outdir, "globe"), { recursive: true });
+// Assets the theme declares. `from` is resolved theme-relative first, then
+// glass-relative, so two themes can share one copy of something big without
+// either of them owning it. Nothing is copied that a theme did not ask for.
+for (const asset of manifest.assets ?? []) {
+  if (!asset.from || !asset.to) throw new Error(`themes/${theme}/theme.json: asset needs "from" and "to"`);
+  const themeLocal = join(packDir, asset.from);
+  const glassLocal = join(root, asset.from);
+  const src = existsSync(themeLocal) ? themeLocal : glassLocal;
+  if (!existsSync(src)) throw new Error(`theme asset missing: ${asset.from} (looked in ${relative(root, themeLocal)} and ${asset.from})`);
+  cpSync(src, join(outdir, asset.to), { recursive: true });
+}
 
-const fontsOut = join(outdir, "fonts");
-mkdirSync(fontsOut, { recursive: true });
-const fontPairs = [
-  ["ibm-plex-sans", "ibm-plex-sans-latin-400-normal.woff2", "plex-sans-400.woff2"],
-  ["ibm-plex-sans", "ibm-plex-sans-latin-500-normal.woff2", "plex-sans-500.woff2"],
-  ["ibm-plex-sans", "ibm-plex-sans-latin-600-normal.woff2", "plex-sans-600.woff2"],
-  ["ibm-plex-mono", "ibm-plex-mono-latin-400-normal.woff2", "plex-mono-400.woff2"],
-  ["ibm-plex-mono", "ibm-plex-mono-latin-500-normal.woff2", "plex-mono-500.woff2"],
-  ["ibm-plex-mono", "ibm-plex-mono-latin-600-normal.woff2", "plex-mono-600.woff2"],
-];
-for (const [pkg, file, dest] of fontPairs) {
-  const from = join(root, "node_modules", "@fontsource", pkg, "files", file);
-  if (existsSync(from)) cpSync(from, join(fontsOut, dest));
+// Fonts the theme declares, pulled from @fontsource. The latin subset and the
+// output filename used to be hardcoded here while theme.css referenced the
+// output names — the manifest now carries the name so the coupling is visible.
+const FONT_SUBSET = "latin";
+if (manifest.fonts?.length) mkdirSync(join(outdir, "fonts"), { recursive: true });
+for (const font of manifest.fonts ?? []) {
+  if (!font.pkg || !font.weight || !font.as) {
+    throw new Error(`themes/${theme}/theme.json: font needs "pkg", "weight" and "as"`);
+  }
+  const file = `${font.pkg}-${FONT_SUBSET}-${font.weight}-normal.woff2`;
+  const from = join(root, "node_modules", "@fontsource", font.pkg, "files", file);
+  // A declared font that is not installed used to be skipped silently and you
+  // got unstyled text. Same class of failure as a missing stylesheet.
+  if (!existsSync(from)) {
+    throw new Error(`font not installed: @fontsource/${font.pkg} ${font.weight} (add it to package.json)`);
+  }
+  cpSync(from, join(outdir, "fonts", font.as));
 }
 
 await esbuild.build({
@@ -130,7 +147,9 @@ await esbuild.build({
   target: "es2022",
   jsx: "automatic",
   minify: true,
-  sourcemap: true,
+  // 4.4MB of sourcemap has no business in the runtime image; install-images.sh
+  // sets this to 0. Local builds keep maps for debugging.
+  sourcemap: process.env.JARVIS_SOURCEMAP !== "0",
   alias: { "@core": join(coreDir, "index.ts") },
 });
 

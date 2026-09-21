@@ -40,7 +40,9 @@ A dated decision outranks any prose here or there.
   v0.6.44. Theme contract: docs/THEMES.md. Core must not import a theme, and a
   theme must not call the orchestrator directly — it goes through `useJarvis()`.
   The build asserts both.
-- Cockpit spec: docs/COCKPIT.md (copy of the builder brief). Law stays here
+- A theme owns its own spec, visual contract and reference frames:
+  glass/themes/cockpit/docs/{COCKPIT,COCKPIT-PLAN,DESIGN}.md and docs/reference/.
+  The engine/theme contract is docs/THEMES.md. Law stays here
   and in jarvis-infra DECISIONS.md.
 - Do not extend `jarvis-core` (D-0003). Do not put Flux manifests in this repo
 - Factory apps JARVIS builds later get their **own** repos; do not dump them here

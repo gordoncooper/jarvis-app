@@ -1,2 +1,2 @@
 node_modules/
-dist/
+# dist/ is NOT ignored: Dockerfile COPYs it (it is built on the bastion first).

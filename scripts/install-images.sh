@@ -48,7 +48,8 @@ echo "THEME=$THEME"
 (
   cd "$ROOT/glass"
   if [ ! -d node_modules ]; then npm ci; fi
-  JARVIS_THEME="$THEME" JARVIS_APP_TAG="$TAG" npm run build
+  # No sourcemap in the runtime image (4.4MB); local builds keep theirs.
+  JARVIS_THEME="$THEME" JARVIS_APP_TAG="$TAG" JARVIS_SOURCEMAP=0 npm run build
 )
 
 echo "== docker on $HOST =="

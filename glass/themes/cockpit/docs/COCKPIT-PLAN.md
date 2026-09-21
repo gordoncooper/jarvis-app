@@ -5,8 +5,8 @@ Repos: jarvis-app (product), jarvis-infra (law), jarvis-cluster (Flux YAML, Gite
 Surface: jarvis.lan — four slideable displays
 Authority this plan fulfills: D-0020, D-0012, D-0030, D-0031, D-0032
 
-Spec, not law. Builder “what to type”: `docs/COCKPIT.md`. Visual contract:
-`glass/DESIGN.md`.
+Spec, not law. Builder “what to type”: `COCKPIT.md`. Visual contract:
+`DESIGN.md`.
 
 This is the locked visual + architecture plan for the four frames:
 

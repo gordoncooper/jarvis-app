@@ -3,8 +3,8 @@
 jarvis.lan is the product four-display deck. Not a centered chat column.
 Not noc.lan. Not home.lan. Not chat.lan.
 
-Locked tokens and rooms come from `docs/COCKPIT-PLAN.md`. Builder steps:
-`docs/COCKPIT.md`.
+Locked tokens and rooms come from `COCKPIT-PLAN.md`. Builder steps:
+`COCKPIT.md`.
 
 ## Tokens (locked)
 

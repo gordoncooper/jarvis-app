@@ -2,7 +2,7 @@
 
 Spec for the builder session. **Not law.** Law is `AGENTS.md` here and
 jarvis-infra `docs/DECISIONS.md` (D-0031 / D-0032). Visual contract:
-`glass/DESIGN.md`. Architecture detail: `docs/COCKPIT-PLAN.md`.
+`DESIGN.md`. Architecture detail: `COCKPIT-PLAN.md`.
 
 Drop this entire file into Cursor, Claude Code, Grok Build, or any coding agent.
 Build exactly this. Do not invent a fifth product. Do not theme chat.lan.
@@ -18,7 +18,7 @@ Reference frames (match these, do not “improve” them into SaaS):
 - CMD: dossier | AM briefing | channel drawer + four bottom pills
 - NOC: 2×3 ortho rack, rings, ticker, node table, cmd
 
-Read `docs/COCKPIT-PLAN.md` if present. If both exist, the plan wins on architecture; this brief wins on “what to type.”
+Read `COCKPIT-PLAN.md` if present. If both exist, the plan wins on architecture; this brief wins on “what to type.”
 
 ---
 

@@ -63,7 +63,7 @@ cd ~/jarvis-app/glass && JARVIS_THEME=cockpit npm run build && node devserve.mjs
 ```
 
 Screenshot one display, or drive it with real input events and catch console
-errors (see `docs/reference/*.jpg` for what each display should look like):
+errors (see the theme's own `docs/reference/*.jpg` for what each display should look like):
 
 ```bash
 BASE=http://127.0.0.1:5173/ tools/shot.sh '#noc' /tmp/noc.png
