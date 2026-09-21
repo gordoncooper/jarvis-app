@@ -50,6 +50,34 @@ export LITELLM_API_KEY=…   # from cluster secret, not git
 export TALKER_MODEL=jarvis-local
 ```
 
+## Glass dev + visual validation (bastion only)
+
+Never in the image; `tools/` and `devserve.mjs` exist so a change can be seen
+before it is tagged. Node lives at `~/.local/node-v22.14.0-linux-x64/bin`.
+
+```bash
+# real data behind the UI without a rebuild/deploy cycle
+kubectl -n apps port-forward svc/jarvis-orchestrator 18080:8080 &
+cd ~/jarvis-app/glass && JARVIS_THEME=cockpit npm run build && node devserve.mjs
+# http://127.0.0.1:5173/#login|#earth|#cmd|#noc
+```
+
+Screenshot one display, or drive it with real input events and catch console
+errors (see `docs/reference/*.jpg` for what each display should look like):
+
+```bash
+BASE=http://127.0.0.1:5173/ tools/shot.sh '#noc' /tmp/noc.png
+node tools/drive.mjs 'http://127.0.0.1:5173/#cmd' /tmp/cmd.png \
+  '[{"wait":4000},{"type":[".ck-channel input","status cluster"]},{"key":"Enter","code":13},{"wait":5000}]'
+```
+
+Point `ORCH` at a closed port to render the degraded state — every panel has a
+null path and they are easy to break without noticing:
+
+```bash
+PORT=5174 ORCH=http://127.0.0.1:19999 node devserve.mjs
+```
+
 ## Glass image
 
 ```bash
