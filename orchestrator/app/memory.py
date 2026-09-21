@@ -100,9 +100,40 @@ _STOP = frozenset(
 )
 
 
+# "remember that" / "forget that" carry no fact — they point at something
+# said earlier. The capture group happily swallows the bare demonstrative,
+# which is how the literal fact "that" reached the production store, and how
+# `forget that` came to substring-match every fact containing the word.
+# Resolving the referent needs conversation state the orchestrator does not
+# keep yet, so for now say so instead of storing or matching garbage.
+_REFERENT_WORDS = frozenset(
+    {
+        "bit",
+        "it",
+        "last",
+        "one",
+        "part",
+        "so",
+        "stuff",
+        "that",
+        "the",
+        "these",
+        "thing",
+        "this",
+        "those",
+    }
+)
+
+
+def _is_referent(fact: str) -> bool:
+    """True when the "fact" is only a pointer back at an earlier turn."""
+    words = re.findall(r"[a-z]+", (fact or "").lower())
+    return bool(words) and all(w in _REFERENT_WORDS for w in words)
+
+
 @dataclass
 class MemoryHit:
-    kind: str  # remember | forget | forget_all | list | none
+    kind: str  # remember | remember_ref | forget | forget_ref | forget_all | list | none
     fact: str
 
 
@@ -114,6 +145,8 @@ def parse_memory_intent(text: str) -> MemoryHit:
     m = _REMEMBER.match(t)
     if m:
         fact = _normalize_fact(m.group(1))
+        if fact and _is_referent(fact):
+            return MemoryHit("remember_ref", "")
         if fact:
             return MemoryHit("remember", fact)
     if _FORGET_ALL.match(t):
@@ -121,6 +154,8 @@ def parse_memory_intent(text: str) -> MemoryHit:
     m = _FORGET.match(t)
     if m:
         fact = _normalize_fact(m.group(1))
+        if fact and _is_referent(fact):
+            return MemoryHit("forget_ref", "")
         if fact:
             return MemoryHit("forget", fact)
     return MemoryHit("none", "")

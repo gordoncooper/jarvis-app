@@ -2,6 +2,10 @@
 # Build jarvis-orchestrator + jarvis-glass on apps-01 and import into k3s containerd.
 # Required BEFORE Flux schedules the Deployments (imagePullPolicy: Never).
 # Run on bastion as agent. Tag from VERSION unless JARVIS_APP_TAG is set.
+# SKIP_ORCH=1 / SKIP_GLASS=1 build only the other half. Use them when a slice
+# touches one image: rebuilding the other at its existing tag is a retag, and
+# imagePullPolicy: Never means a reused tag silently serves whichever layers
+# the node already had.
 set -euo pipefail
 
 echo "== who =="
@@ -26,6 +30,9 @@ test -f "$ROOT/orchestrator/Dockerfile"
 test -f "$ROOT/glass/Dockerfile"
 test -f "$ROOT/glass/nginx.conf"
 
+if [ "${SKIP_GLASS:-}" = "1" ]; then
+  echo "== skip glass (SKIP_GLASS=1) =="
+else
 echo "== build glass dist on bastion =="
 export PATH="$NODE_BIN:$PATH"
 command -v node >/dev/null || {
@@ -52,6 +59,8 @@ echo "THEME=$THEME"
   JARVIS_THEME="$THEME" JARVIS_APP_TAG="$TAG" JARVIS_SOURCEMAP=0 npm run build
 )
 
+fi
+
 echo "== docker on $HOST =="
 ssh -n -o BatchMode=yes "$HOST" 'command -v docker >/dev/null && command -v k3s >/dev/null'
 
@@ -75,6 +84,9 @@ else
 echo "== skip orchestrator (SKIP_ORCH=1) =="
 fi
 
+if [ "${SKIP_GLASS:-}" = "1" ]; then
+echo "== skip glass image (SKIP_GLASS=1) =="
+else
 echo "== upload + build glass =="
 tar -C "$ROOT/glass" -czf /tmp/jarvis-glass-src.tgz Dockerfile nginx.conf dist
 scp -o BatchMode=yes /tmp/jarvis-glass-src.tgz "$HOST:/tmp/jarvis-glass-src.tgz"
@@ -90,9 +102,10 @@ k3s ctr images ls | grep jarvis-glass || true
 rm -rf /tmp/jarvis-glass-build /tmp/jarvis-glass-src.tgz
 EOF
 rm -f /tmp/jarvis-glass-src.tgz
+fi
 
 echo "OK  docker.io/library/jarvis-orchestrator:${ORCH_TAG}"
-echo "OK  docker.io/library/jarvis-glass:${TAG}"
+if [ "${SKIP_GLASS:-}" != "1" ]; then echo "OK  docker.io/library/jarvis-glass:${TAG}"; fi
 echo "Flux: clusters/jarvis/apps/jarvis-orchestrator.yaml + jarvis-glass.yaml"
 echo "Secret (once): kubectl -n apps create secret generic jarvis-orchestrator --from-file=LITELLM_API_KEY=\$HOME/.litellm-master.key"
 echo "Cutover: after Flux is healthy, scale jarvis-core to 0 and delete its Ingress."

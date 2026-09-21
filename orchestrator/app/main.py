@@ -466,6 +466,24 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         facts = mem().active_facts(200)
         return _reply(format_list_reply(facts), extra={"memory": "list"})
 
+    # "remember that" / "forget that" with nothing after the pronoun. The
+    # referent is in the previous turn, which this orchestrator does not track
+    # yet. Say so — the old behaviour stored the word "that" as a fact, and
+    # matched it against every stored fact on the way back out.
+    if intent.kind == "remember_ref":
+        return _reply(
+            "I am not sure which part you would like me to keep, sir. "
+            "Say it again with the fact in it \u2014 "
+            "\u201cremember that I take my coffee black\u201d.",
+            extra={"memory": "remember"},
+        )
+    if intent.kind == "forget_ref":
+        return _reply(
+            "I am not sure which memory you mean, sir. "
+            "Say \u201clist memories\u201d and name the one to drop.",
+            extra={"memory": "forget"},
+        )
+
     if intent.kind == "remember":
         if intent.fact and fact_already_known(
             intent.fact, mem().active_facts(200)

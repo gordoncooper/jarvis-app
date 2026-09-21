@@ -24,6 +24,11 @@ CATALOG: dict[str, dict[str, str]] = {
     "apps.restart_deploy": {"class": "confirm", "desc": "Patch Deployment restartedAt to bounce pods."},
 }
 
+# Write-verb namespace allowlist (D-0023). Mirrors WRITE_NS in the OpenClaw
+# shim, which re-validates server-side — this copy exists so a bad namespace is
+# refused before it costs a round-trip. Widening either one is a decision.
+ALLOW_NS = frozenset({"apps", "inference", "agents", "monitoring"})
+
 # Speech aliases → real Deployment / short name keys in SHORT_NAMES.
 _NAME_ALIASES: dict[str, str] = {
     "orchestrator": "jarvis-orchestrator",
