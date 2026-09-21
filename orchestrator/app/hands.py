@@ -27,32 +27,44 @@ CATALOG: dict[str, dict[str, str]] = hands_catalog()
 # refused before it costs a round-trip. Widening either one is a decision.
 ALLOW_NS = frozenset({"apps", "inference", "agents", "monitoring"})
 
-# Speech aliases → real Deployment / short name keys in SHORT_NAMES.
+# Speech aliases → real Deployment names in SHORT_NAMES.
 _NAME_ALIASES: dict[str, str] = {
     "orchestrator": "jarvis-orchestrator",
     "glass": "jarvis-glass",
-    "home": "jarvis-home",
+    "home": "homepage",
+    "noc": "jarvis-noc",
     "webui": "open-webui",
     "chat": "open-webui",
+    "whisper": "jarvis-whisper",
 }
 
 # Bare short name → (namespace, resource kind for default verb).
+#
+# These are *write* targets, so a wrong row is not a missed match — it is a
+# confirm prompt offering to restart something that does not exist, or worse
+# something that does in the wrong namespace. This drifted: piper was listed
+# under inference when it runs in apps, whisper was listed as "whisper" when
+# the Deployment is jarvis-whisper, and jarvis-home / speaches /
+# openedai-speech / nvidia-gpu-exporter no longer exist as Deployments at all.
+# Corrected against the live cluster 2026-09-21. Verify with:
+#
+#   for ns in apps inference agents monitoring; do kubectl -n $ns get deploy; done
 SHORT_NAMES: dict[str, tuple[str, str]] = {
-    "jarvis-glass": ("apps", "deploy"),
-    "jarvis-orchestrator": ("apps", "deploy"),
-    "jarvis-home": ("apps", "deploy"),
     "homepage": ("apps", "deploy"),
+    "jarvis-core": ("apps", "deploy"),
+    "jarvis-glass": ("apps", "deploy"),
+    "jarvis-noc": ("apps", "deploy"),
+    "jarvis-orchestrator": ("apps", "deploy"),
     "open-webui": ("apps", "deploy"),
-    "openclaw": ("agents", "deploy"),
-    "ollama": ("inference", "deploy"),
+    "piper": ("apps", "deploy"),
+    "jarvis-whisper": ("inference", "deploy"),
     "litellm": ("inference", "deploy"),
-    "speaches": ("inference", "deploy"),
-    "openedai-speech": ("inference", "deploy"),
-    "piper": ("inference", "deploy"),
-    "whisper": ("inference", "deploy"),
-    "prometheus": ("monitoring", "deploy"),
+    "ollama": ("inference", "deploy"),
+    "ollama-embed": ("inference", "deploy"),
+    "openclaw": ("agents", "deploy"),
     "grafana": ("monitoring", "deploy"),
-    "nvidia-gpu-exporter": ("monitoring", "deploy"),
+    "kube-state-metrics": ("monitoring", "deploy"),
+    "prometheus": ("monitoring", "deploy"),
 }
 
 _AFFIRM = re.compile(
@@ -74,8 +86,8 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
             r"(restart|bounce)\s+(the\s+)?[\w-]+\s+deploy(ment)?\b|"
             r"deploy(ment)?\s+(restart|bounce|recycle)\b|"
             r"(restart|bounce|recycle)\s+(the\s+)?"
-            r"(jarvis-)?(orchestrator|glass|home|open-?webui|openclaw|"
-            r"ollama|litellm|piper|whisper|prometheus|grafana)\b"
+            r"(jarvis-)?(orchestrator|glass|noc|home|homepage|open-?webui|"
+            r"openclaw|ollama|litellm|piper|whisper|prometheus|grafana)\b"
             r")",
             re.I,
         ),

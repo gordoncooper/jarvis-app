@@ -115,7 +115,9 @@ class CombineTest(unittest.TestCase):
         self.assertEqual(low.label, CHAT, "0.7 is under the write floor")
         high = combine(text, Route(CHAT), Verdict("capability", "apps.restart_deploy", 0.9), **self.FLOORS)
         self.assertEqual(high.label, "apps.restart_deploy")
-        self.assertEqual(high.args, {"namespace": "inference", "name": "piper"})
+        # piper runs in apps. This test asserted "inference" until the day
+        # SHORT_NAMES was checked against the live cluster and found wrong.
+        self.assertEqual(high.args, {"namespace": "apps", "name": "piper"})
 
     def test_a_verbless_capability_verdict_cannot_invent_a_refusal(self) -> None:
         # Measured: the model answered "everything green?" with

@@ -37,3 +37,37 @@ class ConfirmArgsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ShortNameTest(unittest.TestCase):
+    """Write targets must name things that exist.
+
+    A wrong row here is not a missed match — it is a confirm prompt offering
+    to restart a Deployment that is not there, or one in the wrong namespace.
+    Checked against the live cluster on 2026-09-21, which is the only way to
+    check it; these assertions just pin what was found so a silent edit shows
+    up in review.
+    """
+
+    def test_namespaces_are_all_writable(self) -> None:
+        from app.hands import ALLOW_NS, SHORT_NAMES
+
+        for name, (ns, _kind) in SHORT_NAMES.items():
+            with self.subTest(name=name):
+                self.assertIn(ns, ALLOW_NS)
+
+    def test_aliases_resolve_to_a_real_short_name(self) -> None:
+        from app.hands import SHORT_NAMES, _NAME_ALIASES
+
+        for alias, real in _NAME_ALIASES.items():
+            with self.subTest(alias=alias):
+                self.assertIn(real, SHORT_NAMES)
+
+    def test_the_rows_that_had_drifted(self) -> None:
+        from app.hands import SHORT_NAMES
+
+        self.assertEqual(SHORT_NAMES["piper"][0], "apps")
+        self.assertIn("jarvis-whisper", SHORT_NAMES)
+        for gone in ("jarvis-home", "speaches", "openedai-speech", "whisper"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, SHORT_NAMES)

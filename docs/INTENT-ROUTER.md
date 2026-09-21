@@ -13,8 +13,8 @@ in circulation; D-0033 is the durable record, and the code is the rest.
 | 0 — live bugs | **shipped** 2026-09-21, orchestrator v0.6.27 |
 | 1 — eval fixture + gate | **shipped** 2026-09-21, orchestrator v0.6.28 |
 | 2 — manifest + honest refusal | **shipped** 2026-09-21, orchestrator v0.6.30 |
-| 3 — local classifier (shadow → on) | next |
-| 4 — conversational referents | |
+| 3 — local classifier (shadow → on) | **shipped** 2026-09-21, orchestrator v0.6.33 (**D-0034**) |
+| 4 — conversational referents | next |
 
 The measurements below were taken against live `jarvis.lan` on 2026-09-21,
 orchestrator `v0.6.26` — i.e. **before** slice 0, which is why the numbers in
@@ -343,19 +343,12 @@ It is tuned for precision and **it expires at slice 3** — see D-0033, which
 carries the three constraints. Do not extend it with more patterns; record
 the miss in the fixture instead.
 
-**Slice 3 — the classifier.** Stage 2 against `jarvis-local`, catalog-injected,
-validated. Ship behind `ROUTER_CLASSIFIER=off|shadow|on`:
-
-- `shadow` logs the classifier's answer beside the regex decision without
-  acting on it, so a day of Gordon's real traffic scores the model before it
-  can affect a turn.
-- Promote to `on` only when the fixture passes with chat false-positives at 0.
-
-**Slice 4 — referents.** The referent stack, confirm-gated. Fixes `remember
-that`, `delete that last one`, `scratch that`.
-
-There is no slice 5. New verbs are later work (§3), and by then the manifest
-makes them a row plus a decision entry rather than a router change.
+**Slice 3 — the classifier. ✅ shipped (orchestrator v0.6.33).** See
+**D-0034** for what shadow mode measured and why the classifier ended up
+promotion-only. Short version: turning it on naively would have been a wash at
+39/64, because the 7B is good at naming a verb and bad at deciding whether an
+unnamed thing is a capability at all. Constrained to promotion only, it took
+the router to **47/64** with every one of its eight changes correct.
 
 ### The fork in slice 3 — and why it stays local
 
