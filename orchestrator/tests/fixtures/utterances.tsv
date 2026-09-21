@@ -10,10 +10,9 @@
 #   * chat false-positives must be 0
 #   * capability passes must be >= the recorded baseline
 #
-# Recorded 2026-09-21 on orchestrator v0.6.28: 0 chat false-positives (was 3),
-# 28 of 52 capability utterances routed. The 12 'uncovered' lines are counted
-# separately — they have no verb behind them, so they are slice 2's honest
-# refusal, not a recall failure.
+# Recorded 2026-09-21 on orchestrator v0.6.29: 0 chat false-positives, 0 false
+# refusals, 40 of 64 capability utterances routed. 'unsupported' is a correct
+# outcome, not a failure — it means JARVIS said so instead of inventing.
 #
 # A label here is what JARVIS *should* do, not what it does today. The misses
 # are the roadmap.
@@ -123,20 +122,25 @@ memory.forget	drop the memory about dark mode
 memory.forget_all	forget everything
 memory.forget_ref	that's wrong, remove it
 
-# --- uncovered -----------------------------------------------------
-# Capability-shaped, but no verb covers it. Must be an honest
-# refusal naming what JARVIS *can* do — never a talker guess. These are
-# the hallucinations measured on 2026-09-21; answering them is slice 2's
-# job, so they score as misses until then, on purpose.
-uncovered	list all the running pods for me
-uncovered	what files do you have listed in the directory?
-uncovered	what's the latest backup of the cluster?
-uncovered	take a look at the flux error logs and tell me what's wrong
-uncovered	show me the logs for the orchestrator
-uncovered	is flux in sync?
-uncovered	how much disk is left on data-01?
-uncovered	when did the last backup run?
-uncovered	what version of glass is deployed?
-uncovered	did the last deploy succeed?
-uncovered	what can you actually do for me?
-uncovered	what are your capabilities?
+# --- unsupported -----------------------------------------------------
+# Capability-shaped, but nothing in the manifest covers it. Answered
+# from the manifest — "I have no verb for that, here is what I do have" — never
+# handed to the talker, which is where the invented answers came from. Two of
+# these turned out to be meta.capabilities questions and moved up a group.
+#
+# Known miss, left alone deliberately: "is flux in sync?" and friends are
+# caught by the house-shape rule, but any phrasing that is neither imperative
+# nor deictic will still reach the talker until the slice 3 classifier lands.
+# Chasing those with more pattern is the treadmill D-0033 exists to end.
+unsupported	list all the running pods for me
+unsupported	what files do you have listed in the directory?
+unsupported	what's the latest backup of the cluster?
+unsupported	take a look at the flux error logs and tell me what's wrong
+unsupported	show me the logs for the orchestrator
+unsupported	is flux in sync?
+unsupported	how much disk is left on data-01?
+unsupported	when did the last backup run?
+unsupported	what version of glass is deployed?
+unsupported	did the last deploy succeed?
+meta.capabilities	what can you actually do for me?
+meta.capabilities	what are your capabilities?

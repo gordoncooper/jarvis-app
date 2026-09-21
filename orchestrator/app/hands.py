@@ -9,20 +9,18 @@ from typing import Any
 
 import httpx
 
+from .capabilities import hands_catalog
 from .config import settings
 
 log = logging.getLogger("jarvis.orchestrator.hands")
 
 CONFIRM_TTL_SEC = 90.0
 
-# Gordon-named verbs (D-0022 trusted / D-0023 confirm).
-CATALOG: dict[str, dict[str, str]] = {
-    "cluster.health": {"class": "trusted", "desc": "Node Ready / non-Running pods snapshot."},
-    "cluster.gpus": {"class": "trusted", "desc": "GPU temperature and memory from Prometheus."},
-    "lab.map": {"class": "trusted", "desc": "Canonical lab URLs plus live node list."},
-    "apps.recycle_pod": {"class": "confirm", "desc": "Delete one named pod (recreate via controller)."},
-    "apps.restart_deploy": {"class": "confirm", "desc": "Patch Deployment restartedAt to bounce pods."},
-}
+# Gordon-named verbs (D-0022 trusted / D-0023 confirm). Derived from the one
+# manifest (D-0033) so the shim-facing catalog cannot drift from what JARVIS
+# tells Gordon he can do. Hands verbs only — memory and local capabilities
+# must never be posted to the shim.
+CATALOG: dict[str, dict[str, str]] = hands_catalog()
 
 # Write-verb namespace allowlist (D-0023). Mirrors WRITE_NS in the OpenClaw
 # shim, which re-validates server-side — this copy exists so a bad namespace is

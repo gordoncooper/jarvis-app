@@ -6,6 +6,9 @@ Scores `app.router.route` — the real router, not a copy of it — against
   * chat false-positives must be 0. This protects the thing that already
     works. Widening a regex to catch one more phrasing usually steals a
     general question, and that trade is never worth it.
+  * false refusals must be 0 — no ordinary question may be answered with
+    "I cannot do that". Slice 2 decides that with a rule rather than a model,
+    and a rule on English is exactly what needs a guard around it.
   * capability passes must not drop below the recorded baseline.
 
 Absolute counts, deliberately, not rates: a rate over the mixed set climbs
@@ -17,7 +20,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from app.router import CHAT, route
+from app.router import CHAT, UNSUPPORTED, route
 
 FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 
@@ -25,6 +28,9 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 # genuinely improves recall; never lower it to make a build pass.
 #
 # History, so the number is auditable rather than folklore:
+#   40  slice 2. The 10 'unsupported' and 2 'meta.capabilities' utterances now
+#       route correctly instead of reaching the talker, which is the whole
+#       point of the slice — an honest refusal is a right answer.
 #   26  pre-slice-0, coarse labels — but one was `remember that` "passing"
 #       by storing the word "that", i.e. a bug counted as a pass
 #   25  post-slice-0, same coarse labels
@@ -33,12 +39,9 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 #       dropping the three chat false-positives. The rest is label precision —
 #       memory.candidate / .forget_all / .remember_ref are distinct outcomes
 #       and the coarse buckets had been scoring them against the wrong name.
-BASELINE_CAPABILITY_PASSES = 28
+BASELINE_CAPABILITY_PASSES = 40
 
-# Capabilities with no verb behind them yet. Slice 2 answers these from the
-# manifest instead of letting the talker invent something; until then they are
-# expected misses and are not counted against recall.
-UNCOVERED = "uncovered"
+
 
 
 def load_cases() -> list[tuple[str, str]]:
@@ -75,11 +78,21 @@ class RouterGateTest(unittest.TestCase):
             + "\n".join(f"  {u!r} -> {g}" for u, g in stolen),
         )
 
+    def test_no_ordinary_question_is_refused(self) -> None:
+        refused = [
+            utt for exp, got, utt in self.scored
+            if exp == CHAT and got == UNSUPPORTED
+        ]
+        self.assertEqual(
+            refused,
+            [],
+            "ordinary conversation was answered with a refusal:\n"
+            + "\n".join(f"  {u!r}" for u in refused),
+        )
+
     def test_capability_recall_has_not_regressed(self) -> None:
         passes = sum(
-            1
-            for exp, got, _ in self.scored
-            if exp not in (CHAT, UNCOVERED) and got == exp
+            1 for exp, got, _ in self.scored if exp != CHAT and got == exp
         )
         self.assertGreaterEqual(
             passes,
@@ -88,20 +101,19 @@ class RouterGateTest(unittest.TestCase):
             f"{BASELINE_CAPABILITY_PASSES}",
         )
 
-    def test_uncovered_capabilities_do_not_pretend_to_be_verbs(self) -> None:
-        # They reach the talker today, which is the bug slice 2 fixes. What
-        # must never happen is one of them matching the *wrong* verb and
-        # acting on the rack.
-        wrong = [
+    def test_an_unsupported_request_never_acts_on_the_rack(self) -> None:
+        # The worst outcome is not a refusal or a guess — it is a request
+        # JARVIS cannot serve matching the wrong verb and touching the cluster.
+        acted = [
             (utt, got)
             for exp, got, utt in self.scored
-            if exp == UNCOVERED and got != CHAT
+            if exp == UNSUPPORTED and got not in (UNSUPPORTED, CHAT)
         ]
         self.assertEqual(
-            wrong,
+            acted,
             [],
-            "an unsupported request matched a real verb:\n"
-            + "\n".join(f"  {u!r} -> {g}" for u, g in wrong),
+            "a request with no capability matched a real verb:\n"
+            + "\n".join(f"  {u!r} -> {g}" for u, g in acted),
         )
 
 

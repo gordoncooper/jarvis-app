@@ -12,8 +12,8 @@ in circulation; D-0033 is the durable record, and the code is the rest.
 | --- | --- |
 | 0 — live bugs | **shipped** 2026-09-21, orchestrator v0.6.27 |
 | 1 — eval fixture + gate | **shipped** 2026-09-21, orchestrator v0.6.28 |
-| 2 — manifest + honest refusal | next |
-| 3 — local classifier (shadow → on) | |
+| 2 — manifest + honest refusal | **shipped** 2026-09-21, orchestrator v0.6.29 |
+| 3 — local classifier (shadow → on) | next |
 | 4 — conversational referents | |
 
 The measurements below were taken against live `jarvis.lan` on 2026-09-21,
@@ -295,7 +295,10 @@ route to `chat`. A pytest that scores it and asserts two things:
 
 - **chat false-positives = 0**, as an absolute count on the chat subset
   (protects what already works)
-- **capability passes ≥ 28**, as an absolute count, not a rate. Absolute so
+- **false refusals = 0** — no ordinary question may be met with "I cannot do
+  that". Added in slice 2, because that slice decides refusals with a rule
+  rather than a model.
+- **capability passes ≥ 40**, as an absolute count, not a rate. Absolute so
   that adding cases can only ever make the gate stricter; a rate over the mixed
   set climbs when you add negatives, which lets a gate rot while looking
   healthier.
@@ -303,23 +306,30 @@ route to `chat`. A pytest that scores it and asserts two things:
 Gordon sees one table per slice, and the two numbers moving in opposite
 directions is the evidence that the router got better rather than louder.
 
-**Slice 2 — the manifest and the honest refusal.** Extract `CATALOG` into a
-real manifest with descriptions, examples and arg schemas. Add
-`meta.capabilities`. Add stage 3a: a capability-shaped question with no verb
-gets the manifest-derived refusal instead of the talker.
+**Slice 2 — the manifest and the honest refusal. ✅ shipped (orchestrator
+v0.6.29).** `app/capabilities.py` is the one manifest; `hands.CATALOG` derives
+from it, so the set JARVIS offers cannot drift from the set he can run.
+`meta.capabilities` answers "what can you do?". A request plainly about this
+house with nothing to serve it gets the manifest-derived refusal instead of
+the talker.
 
-> **Open problem, surfaced by slice 1 — resolve before starting.** Stage 3a
-> was specified as triggering on the classifier's `kind: "capability"`, but
-> that field does not exist until slice 3. Today `chat` does double duty: it
-> means both "genuine small talk" and "a capability I have no verb for", and
-> `test_uncovered_capabilities_do_not_pretend_to_be_verbs` pins all 12
-> uncovered utterances to `chat` precisely because nothing can yet tell them
-> apart. So slice 2 must either grow its own way to spot
-> capability-shaped-but-unmatched — a cheap signal, e.g. lab nouns
-> (pod/flux/backup/log/disk/node) in an utterance that matched no verb — or
-> swap order with slice 3 and let the classifier make the distinction. The
-> first keeps the no-model-call property that makes slice 2 attractive; the
-> second is less code. Pick deliberately; do not discover it halfway in.
+The open problem this slice surfaced — stage 3a was specified to trigger on
+the classifier's verdict, which does not exist yet — was resolved by deciding
+it with a rule on **sentence shape**, not vocabulary. Vocabulary cannot make
+the call: 11 of the 25 plain-chat utterances mention pods, flux, nodes or
+GPUs, and a lab-noun rule would have refused *explain what a pod is*. What
+separates them is whether the sentence is about the idea or about this rack:
+
+```
+explain what a pod is              → the idea      → talker
+show me how a pod works            → the idea      → talker   (imperative, still conceptual)
+list all the running pods for me   → this rack     → refusal
+how much disk is left on data-01?  → this rack     → refusal
+```
+
+It is tuned for precision and **it expires at slice 3** — see D-0033, which
+carries the three constraints. Do not extend it with more patterns; record
+the miss in the fixture instead.
 
 **Slice 3 — the classifier.** Stage 2 against `jarvis-local`, catalog-injected,
 validated. Ship behind `ROUTER_CLASSIFIER=off|shadow|on`:

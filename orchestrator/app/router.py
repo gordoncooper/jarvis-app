@@ -13,12 +13,19 @@ deterministic pass below returns `chat`.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
+from .capabilities import MANIFEST
 from .hands import CATALOG, match_verb
 from .memory import parse_memory_candidate, parse_memory_intent
 
 CHAT = "chat"
+# Asked for something that is plainly about this house, but no capability
+# covers it. Answered from the manifest, never by the talker — that path is
+# where "the last update I recall was from yesterday" came from.
+UNSUPPORTED = "unsupported"
+META_CAPABILITIES = "meta.capabilities"
 
 # Memory labels. `.remember_ref` / `.forget_ref` are utterances that point at
 # an earlier turn ("remember that") and carry no fact of their own.
@@ -86,4 +93,83 @@ def route(text: str) -> Route:
     if hit is not None:
         return Route(hit.name, verb_class=hit.klass, args=hit.args)
 
+    # After the verbs, so "what can you tell me about the cluster" is still
+    # cluster.health rather than a recital of the manifest.
+    if _META_ASK.search(text or ""):
+        return Route(META_CAPABILITIES, verb_class="trusted")
+
+    if is_house_request(text):
+        return Route(UNSUPPORTED)
+
     return Route(CHAT)
+
+
+# --- telling "a capability I lack" apart from small talk -------------------
+#
+# Slice 2 needs this distinction before the slice 3 classifier exists, so it
+# is a rule — and rules on English are what D-0033 exists to remove. It is
+# therefore written to be *conservative*: refuse only when the utterance is
+# plainly about this house. A miss leaves the status quo (the talker answers,
+# possibly badly); a false refusal breaks ordinary conversation, which is the
+# one thing that already works. The asymmetry decides every judgement call
+# below, and `test_router.py` asserts false refusals stay at zero.
+#
+# Vocabulary does not separate the two. 11 of the 25 plain-chat utterances in
+# the fixture mention pods, flux, nodes or GPUs. What separates them is
+# whether the sentence is about the *idea* or about *this rack*.
+
+# Nouns that exist in this lab. Necessary but nowhere near sufficient.
+_LAB_NOUN = re.compile(
+    r"\b(pods?|flux|backups?|nodes?|disks?|logs?|cluster|namespaces?|"
+    r"deploy(?:ment)?s?|deployed|gpus?|prometheus|grafana|kubernetes|k3s|"
+    r"glass|orchestrator|rack|directory|files?|images?|certificates?|"
+    r"secrets?|volumes?|ingress)\b",
+    re.I,
+)
+
+# Asking about the idea, not the instance. Deliberately NOT anchored to the
+# start: "show me how a pod works" is conceptual despite the imperative, and
+# an anchored version refused it.
+_CONCEPTUAL = re.compile(
+    r"\b(what\s+is\s+an?\b|what\s+are\s+(?!your\b)|explain|"
+    r"tell\s+me\s+about|an?\s+example\s+of|how\s+(a|an|do|does)\s+\w+\s+work|"
+    r"how\s+(do|does)\s+(a|an|people|you\s+usually)|difference\s+between|"
+    r"why\s+(do|does)|should\s+i\b|better\s+than|used\s+for|"
+    r"like\s+i'?m\s+five|in\s+general|what\s+does\s+an?\b)",
+    re.I,
+)
+
+# An instruction, or a reference to state that exists only here and now.
+_HOUSE = re.compile(
+    r"^\s*(list|show|check|get|tail|fetch|take\s+a\s+look|give\s+me)\b|"
+    r"\b(for\s+me|right\s+now|today|currently|latest|last\s+(backup|deploy|run)|"
+    r"in\s+sync|is\s+deployed|did\s+the\s+last|how\s+much\s+\w+\s+is\s+left|"
+    r"data-0\d|apps-0\d|gpu-0\d|ctrl-0\d)\b",
+    re.I,
+)
+
+# "can you …", "do you have …" — a question about JARVIS's own abilities.
+# Only meaningful alongside a lab noun: "can you tell me a joke" is chat.
+_SELF_ABILITY = re.compile(
+    r"\b(can\s+you|could\s+you|do\s+you\s+have|are\s+you\s+able\s+to|"
+    r"do\s+you\s+know\s+how\s+to)\b",
+    re.I,
+)
+
+# "what can you do" with no subject attached — answered by meta.capabilities.
+_META_ASK = re.compile(
+    r"\b(what\s+(can|could)\s+you\s+(actually\s+)?do"
+    r"(\s+for\s+me)?|what\s+are\s+your\s+(capabilities|abilities)|"
+    r"what\s+verbs\s+do\s+you\s+have|list\s+your\s+capabilities)\b",
+    re.I,
+)
+
+
+def is_house_request(text: str) -> bool:
+    """True when the utterance plainly asks about *this* lab and nothing can serve it."""
+    t = " ".join((text or "").strip().split())
+    if not t or _CONCEPTUAL.search(t):
+        return False
+    if _HOUSE.search(t):
+        return True
+    return bool(_SELF_ABILITY.search(t) and _LAB_NOUN.search(t))

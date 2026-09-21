@@ -27,7 +27,9 @@ from .memory import (
     new_memory_pending,
     parse_memory_candidate,
 )
+from .capabilities import refusal, spoken_list, talker_note
 from .router import (
+    META_CAPABILITIES,
     MEMORY_CANDIDATE,
     MEMORY_FORGET,
     MEMORY_FORGET_ALL,
@@ -35,6 +37,7 @@ from .router import (
     MEMORY_LIST,
     MEMORY_REMEMBER,
     MEMORY_REMEMBER_REF,
+    UNSUPPORTED,
     route,
 )
 from .session_store import SessionStore
@@ -118,8 +121,8 @@ def system_prompt() -> str:
     parts.append(
         "You have no tools in this turn. Do not invent live cluster numbers; "
         "say you do not know if not in the briefing or promoted memory. "
-        "Cluster health, GPU metrics, and the lab map are handled as declared "
-        "verbs before this talker runs — do not pretend you queried them. "
+        + talker_note()
+        + " "
         "Never say you will remember, have remembered, forgotten, or deleted "
         "a fact — the orchestrator owns confirm and storage. Never list or "
         "enumerate promoted memory (Gordon uses list memories for that). "
@@ -554,6 +557,16 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             f"Shall I remember: {soft_candidate}? Say yes or cancel.",
             confirm=confirm,
         )
+
+    if decision.label == META_CAPABILITIES:
+        return _reply(spoken_list(), verb=META_CAPABILITIES)
+
+    # Plainly about this house, and nothing in the manifest serves it. Answer
+    # from the manifest rather than handing it to a talker with no data — that
+    # path invented "the last update I recall was from yesterday" about a
+    # cluster it cannot see (D-0033).
+    if decision.label == UNSUPPORTED:
+        return _reply(refusal(), extra={"unsupported": True})
 
     if decision.is_verb:
         name = decision.label
