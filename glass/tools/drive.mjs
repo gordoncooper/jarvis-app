@@ -14,9 +14,20 @@ const [url, out, actionsJson] = process.argv.slice(2);
 const actions = JSON.parse(actionsJson || "[]");
 const PORT = 9333 + Math.floor(Math.random() * 400);
 const { spawn } = await import("node:child_process");
-const { writeFileSync, mkdtempSync } = await import("node:fs");
+const { writeFileSync, mkdtempSync, rmSync, readdirSync, statSync } = await import("node:fs");
 const { tmpdir } = await import("node:os");
 const { join } = await import("node:path");
+
+// Sweep profiles from runs that were killed before they could clean up.
+// Without this, aborted runs accumulate ~56MB each until /tmp fills and the
+// next launch dies with "chrome did not come up".
+for (const name of readdirSync(tmpdir())) {
+  if (!name.startsWith("cdp-")) continue;
+  const dir = join(tmpdir(), name);
+  try {
+    if (Date.now() - statSync(dir).mtimeMs > 30 * 60_000) rmSync(dir, { recursive: true, force: true });
+  } catch {}
+}
 
 const profile = mkdtempSync(join(tmpdir(), "cdp-"));
 const chrome = spawn("google-chrome", [
@@ -26,6 +37,31 @@ const chrome = spawn("google-chrome", [
   "--force-device-scale-factor=1", "--window-size=1920,1080",
   `--remote-debugging-port=${PORT}`, "about:blank",
 ], { stdio: "ignore" });
+
+
+// Each run leaves a ~56MB Chrome profile behind. Fifty aborted runs filled
+// /tmp and the next launch failed with "chrome did not come up", so cleanup
+// has to survive throws, timeouts and Ctrl-C — not just the happy path.
+let cleanedUp = false;
+function cleanup() {
+  if (cleanedUp) return;
+  cleanedUp = true;
+  try { chrome.kill("SIGKILL"); } catch {}
+  try { rmSync(profile, { recursive: true, force: true }); } catch {}
+}
+
+async function cleanupAndWait() {
+  if (cleanedUp) return;
+  const exited = new Promise((r) => chrome.once("exit", r));
+  try { chrome.kill("SIGKILL"); } catch {}
+  await Promise.race([exited, sleep(3000)]);
+  cleanedUp = true;
+  try { rmSync(profile, { recursive: true, force: true }); } catch {}
+}
+process.on("exit", cleanup);
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => { cleanup(); process.exit(130); });
+process.on("uncaughtException", (e) => { cleanup(); console.error(e); process.exit(1); });
+process.on("unhandledRejection", (e) => { cleanup(); console.error(e); process.exit(1); });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let ws, id = 0;
@@ -139,5 +175,5 @@ for (const a of actions) {
 if (out) await shot(out);
 if (logs.length) { console.log("--- console ---"); logs.slice(0, 30).forEach((l) => console.log(l)); }
 else console.log("--- console clean ---");
-chrome.kill();
+await cleanupAndWait();
 process.exit(0);
