@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import unittest
 
+import re
+
 from app.capabilities import BACKENDS, MANIFEST, hands_catalog, refusal, spoken_list
 from app.hands import CATALOG
+from app.router import _UNSERVED_SUBJECT
 
 
 class ManifestShapeTest(unittest.TestCase):
@@ -46,6 +49,29 @@ class ManifestShapeTest(unittest.TestCase):
 
     def test_hands_module_catalog_tracks_the_manifest(self) -> None:
         self.assertEqual(CATALOG, hands_catalog())
+
+
+class RefusalCouplingTest(unittest.TestCase):
+    """The refusal rule and the manifest must not both claim a subject.
+
+    `router._UNSERVED_SUBJECT` lists what nothing can serve. The day a
+    capability lands for one of those words and it is not removed, JARVIS
+    refuses the thing he has just started advertising — the same
+    self-contradiction that shipped as v0.6.29 and had to be pulled. The
+    comment in `router.py` says to delete the word in the same commit; this
+    is what makes that a rule rather than a hope.
+    """
+
+    def test_no_capability_describes_a_subject_marked_unserved(self) -> None:
+        for cap in MANIFEST.values():
+            for word in re.findall(r"[a-z]+", f"{cap.short} {cap.summary}".lower()):
+                with self.subTest(name=cap.name, word=word):
+                    self.assertIsNone(
+                        _UNSERVED_SUBJECT.search(word),
+                        f"{cap.name} offers {word!r}, which the refusal rule "
+                        f"still treats as unserved \u2014 remove it from "
+                        f"router._UNSERVED_SUBJECT",
+                    )
 
 
 class SpokenOutputTest(unittest.TestCase):
