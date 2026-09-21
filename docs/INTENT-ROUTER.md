@@ -286,14 +286,15 @@ Interim behaviour, since referents do not exist until slice 4: a bare
 like me to remember, sir — say it again?"* rather than storing garbage. Slice 4
 makes it resolve.
 
-**Slice 1 — the eval fixture, against today's code.** The gate for everything
-after it. `orchestrator/tests/fixtures/utterances.yaml` — every utterance with
+**Slice 1 — the eval fixture, against today's code. ✅ shipped
+(orchestrator v0.6.28).** The gate for everything after it, and
+`scripts/install-images.sh` now runs the suite before it builds, so a failing
+gate stops the ship rather than waiting for someone to remember `pytest`. `orchestrator/tests/fixtures/utterances.yaml` — every utterance with
 its expected route, including a large block of plain-chat negatives that must
 route to `chat`. A pytest that scores it and asserts two things:
 
 - **chat false-positives = 0**, as an absolute count on the chat subset
-  (protects what already works — and note this fails *today* at 3, so slice 1
-  starts by narrowing the `gpu` regex)
+  (protects what already works)
 - **capability passes ≥ 28**, as an absolute count, not a rate. Absolute so
   that adding cases can only ever make the gate stricter; a rate over the mixed
   set climbs when you add negatives, which lets a gate rot while looking
@@ -305,8 +306,20 @@ directions is the evidence that the router got better rather than louder.
 **Slice 2 — the manifest and the honest refusal.** Extract `CATALOG` into a
 real manifest with descriptions, examples and arg schemas. Add
 `meta.capabilities`. Add stage 3a: a capability-shaped question with no verb
-gets the manifest-derived refusal instead of the talker. Router still regex —
-this slice adds **no** model call and still removes every hallucination in §1.
+gets the manifest-derived refusal instead of the talker.
+
+> **Open problem, surfaced by slice 1 — resolve before starting.** Stage 3a
+> was specified as triggering on the classifier's `kind: "capability"`, but
+> that field does not exist until slice 3. Today `chat` does double duty: it
+> means both "genuine small talk" and "a capability I have no verb for", and
+> `test_uncovered_capabilities_do_not_pretend_to_be_verbs` pins all 12
+> uncovered utterances to `chat` precisely because nothing can yet tell them
+> apart. So slice 2 must either grow its own way to spot
+> capability-shaped-but-unmatched — a cheap signal, e.g. lab nouns
+> (pod/flux/backup/log/disk/node) in an utterance that matched no verb — or
+> swap order with slice 3 and let the classifier make the distinction. The
+> first keeps the no-model-call property that makes slice 2 attractive; the
+> second is less code. Pick deliberately; do not discover it halfway in.
 
 **Slice 3 — the classifier.** Stage 2 against `jarvis-local`, catalog-injected,
 validated. Ship behind `ROUTER_CLASSIFIER=off|shadow|on`:

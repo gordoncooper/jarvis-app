@@ -6,6 +6,9 @@
 # touches one image: rebuilding the other at its existing tag is a retag, and
 # imagePullPolicy: Never means a reused tag silently serves whichever layers
 # the node already had.
+# The orchestrator suite runs first and a failure stops the ship — it carries
+# the D-0033 router gate, whose whole job is catching a widened regex that
+# steals a general question. SKIP_TESTS=1 is the deliberate escape hatch.
 set -euo pipefail
 
 echo "== who =="
@@ -23,6 +26,27 @@ HOST="${1:-apps-01}"
 TAG="${JARVIS_APP_TAG:-${IMAGE_GLASS_TAG:-$GIT_TAG}}"
 ORCH_TAG="${IMAGE_ORCHESTRATOR_TAG:-$TAG}"
 NODE_BIN="${NODE_BIN:-$HOME/.local/node-v22.14.0-linux-x64/bin}"
+
+if [ "${SKIP_TESTS:-}" = "1" ]; then
+  echo "== skip orchestrator tests (SKIP_TESTS=1) =="
+else
+  echo "== orchestrator tests (router gate: D-0033) =="
+  if [ -x "$ROOT/orchestrator/.venv/bin/python" ]; then
+    PYTEST_PY="$ROOT/orchestrator/.venv/bin/python"
+  elif python3 -c "import pytest" 2>/dev/null; then
+    PYTEST_PY="python3"
+  else
+    echo "FATAL: no pytest. Create the venv:" >&2
+    echo "  cd $ROOT/orchestrator && python3 -m venv .venv \\" >&2
+    echo "    && .venv/bin/pip install -r requirements.txt pytest" >&2
+    echo "  (or re-run with SKIP_TESTS=1 if you mean to ship untested)" >&2
+    exit 1
+  fi
+  ( cd "$ROOT/orchestrator" && "$PYTEST_PY" -m pytest -q ) || {
+    echo "FATAL: orchestrator tests failed — not shipping." >&2
+    exit 1
+  }
+fi
 
 echo "== paths =="
 echo "ROOT=$ROOT HOST=$HOST GLASS_TAG=$TAG ORCH_TAG=$ORCH_TAG THEME=${JARVIS_THEME:-<unset>}"
