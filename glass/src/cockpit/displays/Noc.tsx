@@ -30,6 +30,15 @@ function Bar({ value }: { value: number | null | undefined }) {
   );
 }
 
+/** Bytes/s the nodes actually reported. Null stays null — no zero placeholder. */
+function formatRate(bps: number | null): string | null {
+  if (bps == null || !Number.isFinite(bps)) return null;
+  if (bps >= 1e9) return `${(bps / 1e9).toFixed(1)} GB/s`;
+  if (bps >= 1e6) return `${(bps / 1e6).toFixed(1)} MB/s`;
+  if (bps >= 1e3) return `${(bps / 1e3).toFixed(1)} kB/s`;
+  return `${Math.round(bps)} B/s`;
+}
+
 function envBar(value: number | null | undefined, max: number): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return Math.min(100, Math.max(0, (value / max) * 100));
@@ -55,7 +64,6 @@ export function Noc({
   const [selected, setSelected] = useState<string | null>(null);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [gpuHist, setGpuHist] = useState<Array<{ a: number | null; b: number | null }>>([]);
   const cmdInput = useRef<HTMLInputElement>(null);
 
   const nodes = pulse?.nodes ?? [];
@@ -67,9 +75,27 @@ export function Noc({
   useEffect(() => {
     if (!pulse) return;
     setSyncedAt(Date.now());
-    if (t1 == null && t2 == null) return;
-    setGpuHist((prev) => [...prev, { a: t1, b: t2 }].slice(-24));
+  }, [pulse]);
+
+  // Prometheus already holds the window; the client only appends the newest read.
+  const gpuHist = useMemo(() => {
+    const series = pulse?.series?.gpu_temp ?? {};
+    const a = series["gpu-01"] ?? [];
+    const b = series["gpu-02"] ?? [];
+    const len = Math.max(a.length, b.length);
+    const rows: Array<{ a: number | null; b: number | null }> = [];
+    for (let i = 0; i < len; i += 1) {
+      rows.push({ a: a[i] ?? null, b: b[i] ?? null });
+    }
+    if (t1 != null || t2 != null) rows.push({ a: t1, b: t2 });
+    return rows;
   }, [pulse, t1, t2]);
+
+  const windowLabel = useMemo(() => {
+    const secs = pulse?.series?.window_s;
+    if (typeof secs !== "number" || !Number.isFinite(secs) || secs <= 0) return null;
+    return secs >= 3600 ? `${Math.round(secs / 3600)}h` : `${Math.round(secs / 60)}m`;
+  }, [pulse]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -87,9 +113,14 @@ export function Noc({
   const k3s = pulseText(pulse?.k3s);
   const utc = pulseText(pulse?.utc);
   const syncAge = syncedAt == null ? "—" : Math.max(0, (now - syncedAt) / 1000).toFixed(3);
-  const air = pulse?.env?.air_c;
-  const hum = pulse?.env?.hum;
-  const pwr = pulse?.env?.pwr;
+  const cpuC = pulse?.env?.cpu_c;
+  const fan = pulse?.env?.fan;
+  const vram = pulse?.env?.vram;
+  const netBps = nodes.reduce<number | null>((sum, n) => {
+    const v = n.net_bps;
+    if (typeof v !== "number" || !Number.isFinite(v)) return sum;
+    return (sum ?? 0) + v;
+  }, null);
 
   function onApply() {
     if (confirm) {
@@ -163,6 +194,25 @@ export function Noc({
               </label>
             ))}
           </div>
+          <h3>CLUSTER</h3>
+          <dl className="ck-noc-dl">
+            <div>
+              <dt>NODES</dt>
+              <dd>{k3s ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>UPTIME</dt>
+              <dd className="ck-col-tight">{pulse?.uptime?.trim() || "—"}</dd>
+            </div>
+            <div>
+              <dt>EVENTS</dt>
+              <dd>{pulse?.events?.length ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>SOURCE</dt>
+              <dd>/v1/pulse</dd>
+            </div>
+          </dl>
           <p className="ck-sync">
             LAST SYNC {syncAge}s <LiveDot on={pulse != null} />
           </p>
@@ -174,53 +224,88 @@ export function Noc({
             <span>{nodes.length ? `${nodes.length} NODES` : "6 NODES"} · 3U LOGICAL</span>
           </header>
           <div className="ck-topo-wrap">
-            <TopologySvg nodes={nodes} filters={filters} selected={selected} onSelect={setSelected} />
+            <TopologySvg nodes={nodes} filters={filters} selected={selected} onSelect={(id) => setSelected((prev) => (prev === id ? null : id))} />
           </div>
         </section>
 
         <aside className="ck-panel ck-noc-right">
           <h2>SYSTEM RINGS // LIVE</h2>
           <div className="ck-rings">
-            <Ring label="CPU" value={pulse?.rings?.cpu} />
-            <Ring label="MEM" value={pulse?.rings?.mem} />
-            <Ring label="NET" value={pulse?.rings?.net} />
-            <Ring label="IO" value={pulse?.rings?.io} />
+            <Ring label="CPU" value={pulse?.rings?.cpu} sub="busy" />
+            <Ring label="MEM" value={pulse?.rings?.mem} sub="used" />
+            <Ring label="NET" value={pulse?.rings?.net} sub={formatRate(netBps)} />
+            <Ring label="IO" value={pulse?.rings?.io} sub="busy" />
           </div>
           <h2>VOICE CHANNEL // LIVE</h2>
           <Waveform active={recording} />
-          <h2>GPU TEMP // LIVE</h2>
+          <h2>GPU TEMP // LAST {windowLabel ?? "—"}</h2>
           <Spark
             history={gpuHist}
             labelA={`GPU-01 ${t1 == null ? "—" : `${steelNum(t1)}°C`}`}
             labelB={`GPU-02 ${t2 == null ? "—" : `${steelNum(t2)}°C`}`}
           />
-          <h2>ENVIRONMENT</h2>
+          <div className="ck-noc-foot">
+          <h2>RACK THERMALS // LIVE</h2>
           <div className="ck-env">
             <label>
-              <span>AIR {air == null ? "—" : `${steelNum(air, 1)}°C`}</span>
-              <Bar value={envBar(air, 40)} />
+              <span>CPU PKG</span>
+              <Bar value={envBar(cpuC, 90)} />
+              <em>{cpuC == null ? "—" : `${steelNum(cpuC, 1)}°C`}</em>
             </label>
             <label>
-              <span>HUM {hum == null ? "—" : `${steelNum(hum)}%`}</span>
-              <Bar value={hum} />
+              <span>GPU FAN</span>
+              <Bar value={fan} />
+              <em>{fan == null ? "—" : `${steelNum(fan)}%`}</em>
             </label>
             <label>
-              <span>PWR {pwr == null ? "—" : `${steelNum(pwr)}%`}</span>
-              <Bar value={pwr} />
+              <span>VRAM</span>
+              <Bar value={vram} />
+              <em>{vram == null ? "—" : `${steelNum(vram)}%`}</em>
             </label>
+          </div>
+
+          <h2 className="ck-noc-sub">SERVICE PLANE</h2>
+          <ul className="ck-svc">
+            {(
+              [
+                ["TALKER", pulse?.talker],
+                ["HANDS", pulse?.hands],
+                ["STT", pulse?.stt],
+                ["TTS", pulse?.tts],
+              ] as Array<[string, boolean | null | undefined]>
+            ).map(([name, ok]) => (
+              <li key={name} className={ok === false ? "is-down" : ok ? "is-up" : ""}>
+                <LiveDot on={ok === true} />
+                <span>{name}</span>
+                <em>{ok == null ? "—" : ok ? "LIVE" : "DOWN"}</em>
+              </li>
+            ))}
+          </ul>
           </div>
         </aside>
       </div>
 
       <div className="ck-ticker">
-        <strong>EVENT TICKER // TAIL -20</strong>
-        <div className="ck-ticker-line">
-          {events.length === 0 ? <span>no events</span> : null}
-          {events.map((e, i) => (
-            <span key={`${e.ts}-${e.src}-${e.msg}-${i}`}>
-              {(e.ts || "—").replace("T", " ").replace("Z", "")} · {e.src || "—"} · {e.msg || "—"}
-            </span>
-          ))}
+        <strong>
+          EVENT TICKER // TAIL -{events.length}
+          {selected ? <em> · filtered {selected}</em> : null}
+        </strong>
+        <div className="ck-ticker-view">
+          {events.length === 0 ? (
+            <span className="ck-ticker-empty">no transitions observed since this orchestrator started</span>
+          ) : (
+            <div className="ck-ticker-line">
+              {[0, 1].map((copy) =>
+                events.map((e, i) => (
+                  <span key={`${copy}-${e.ts}-${e.src}-${e.msg}-${i}`} className={`is-${e.level || "info"}`}>
+                    <i>{(e.ts || "—").replace("T", " ").replace("Z", "")}</i>
+                    <b>{e.src || "—"}</b>
+                    {e.msg || "—"}
+                  </span>
+                )),
+              )}
+            </div>
+          )}
         </div>
         <span className="ck-ticker-arrow">▾</span>
       </div>
@@ -237,6 +322,8 @@ export function Noc({
               <th>RAM</th>
               <th>DISK</th>
               <th>LOAD</th>
+              <th>TEMP</th>
+              <th>UPTIME</th>
             </tr>
           </thead>
           <tbody>
@@ -256,7 +343,15 @@ export function Noc({
                   <td>
                     <Bar value={n?.disk} /> {steelNum(n?.disk)}%
                   </td>
-                  <td>{steelNum(n?.load, 1)}</td>
+                  <td>{steelNum(n?.load, 2)}</td>
+                  <td>
+                    {typeof n?.temp_c === "number"
+                      ? `${steelNum(n.temp_c)}°C`
+                      : typeof n?.cpu_c === "number"
+                        ? `${steelNum(n.cpu_c)}°C`
+                        : "—"}
+                  </td>
+                  <td className="ck-col-dim">{n?.uptime?.trim() || "—"}</td>
                 </tr>
               );
             })}

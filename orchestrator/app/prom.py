@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -58,12 +59,23 @@ SCALAR_QUERIES: dict[str, str] = {
 }
 
 
+# Range queries back the NOC sparklines, so a fresh page load already shows
+# history instead of waiting minutes to accumulate client-side samples.
+HISTORY_WINDOW_SEC = 1800
+HISTORY_STEP_SEC = 60
+
+RANGE_QUERIES: dict[str, str] = {
+    "gpu_temp": "max by(instance)(nvidia_smi_temperature_gpu)",
+}
+
+
 @dataclass
 class PromSnapshot:
     """Query name -> {node: value} for vectors, plus name -> value for scalars."""
 
     nodes: dict[str, dict[str, float]] = field(default_factory=dict)
     scalars: dict[str, float] = field(default_factory=dict)
+    series: dict[str, dict[str, list[float | None]]] = field(default_factory=dict)
 
     def node_value(self, metric: str, node: str) -> float | None:
         return self.nodes.get(metric, {}).get(node)
@@ -73,7 +85,7 @@ class PromSnapshot:
 
     @property
     def ok(self) -> bool:
-        return bool(self.nodes or self.scalars)
+        return bool(self.nodes or self.scalars or self.series)
 
 
 def _finite(raw: Any) -> float | None:
@@ -108,6 +120,32 @@ def _scalar(payload: Any) -> float | None:
     return _finite((result[0].get("value") or [None, None])[1])
 
 
+def _matrix(payload: Any, start: float, step: int, buckets: int) -> dict[str, list[float | None]]:
+    """Align each series onto a fixed grid; gaps stay None so the line breaks."""
+    out: dict[str, list[float | None]] = {}
+    if not isinstance(payload, dict) or payload.get("status") != "success":
+        return out
+    for row in (payload.get("data") or {}).get("result") or []:
+        instance = (row.get("metric") or {}).get("instance")
+        if not instance:
+            continue
+        slots: list[float | None] = [None] * buckets
+        for pair in row.get("values") or []:
+            try:
+                ts = float(pair[0])
+            except (TypeError, ValueError, IndexError):
+                continue
+            value = _finite(pair[1] if len(pair) > 1 else None)
+            if value is None:
+                continue
+            idx = int(round((ts - start) / step))
+            if 0 <= idx < buckets:
+                slots[idx] = value
+        if any(v is not None for v in slots):
+            out[instance] = slots
+    return out
+
+
 async def _query(client: httpx.AsyncClient, base: str, expr: str) -> Any:
     try:
         r = await client.post(f"{base}/api/v1/query", data={"query": expr})
@@ -120,6 +158,23 @@ async def _query(client: httpx.AsyncClient, base: str, expr: str) -> Any:
         return None
 
 
+async def _query_range(
+    client: httpx.AsyncClient, base: str, expr: str, start: float, end: float, step: int
+) -> Any:
+    try:
+        r = await client.post(
+            f"{base}/api/v1/query_range",
+            data={"query": expr, "start": f"{start:.0f}", "end": f"{end:.0f}", "step": str(step)},
+        )
+        if r.status_code >= 400:
+            log.info("prometheus range %s -> HTTP %s", expr[:48], r.status_code)
+            return None
+        return r.json()
+    except Exception:  # noqa: BLE001
+        log.info("prometheus range unreachable for %s", expr[:48])
+        return None
+
+
 async def fetch_snapshot() -> PromSnapshot:
     """One round-trip batch of instant queries. Failure yields an empty snapshot."""
     base = settings.prometheus_base.rstrip("/")
@@ -127,23 +182,37 @@ async def fetch_snapshot() -> PromSnapshot:
         return PromSnapshot()
     node_keys = list(NODE_QUERIES)
     scalar_keys = list(SCALAR_QUERIES)
+    range_keys = list(RANGE_QUERIES)
+    end = time.time()
+    buckets = HISTORY_WINDOW_SEC // HISTORY_STEP_SEC + 1
+    start = end - HISTORY_WINDOW_SEC
     try:
         async with httpx.AsyncClient(timeout=settings.prometheus_timeout) as client:
             payloads = await asyncio.gather(
                 *(_query(client, base, NODE_QUERIES[k]) for k in node_keys),
                 *(_query(client, base, SCALAR_QUERIES[k]) for k in scalar_keys),
+                *(
+                    _query_range(client, base, RANGE_QUERIES[k], start, end, HISTORY_STEP_SEC)
+                    for k in range_keys
+                ),
             )
     except Exception:  # noqa: BLE001
         log.info("prometheus batch failed")
         return PromSnapshot()
 
     snap = PromSnapshot()
-    for key, payload in zip(node_keys, payloads[: len(node_keys)]):
+    cut = len(node_keys)
+    for key, payload in zip(node_keys, payloads[:cut]):
         vec = _vector(payload)
         if vec:
             snap.nodes[key] = vec
-    for key, payload in zip(scalar_keys, payloads[len(node_keys) :]):
+    for key, payload in zip(scalar_keys, payloads[cut : cut + len(scalar_keys)]):
         value = _scalar(payload)
         if value is not None:
             snap.scalars[key] = value
+    cut += len(scalar_keys)
+    for key, payload in zip(range_keys, payloads[cut:]):
+        mat = _matrix(payload, start, HISTORY_STEP_SEC, buckets)
+        if mat:
+            snap.series[key] = mat
     return snap

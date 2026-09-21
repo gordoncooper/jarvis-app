@@ -199,3 +199,44 @@ class JournalTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SeriesTest(unittest.TestCase):
+    def test_range_matrix_aligns_onto_the_bucket_grid_and_keeps_gaps(self) -> None:
+        from app.prom import _matrix
+
+        payload = {
+            "status": "success",
+            "data": {
+                "result": [
+                    {
+                        "metric": {"instance": "gpu-01"},
+                        # t=1000 (bucket 0), t=1120 (bucket 2). Bucket 1 is a real gap.
+                        "values": [[1000, "61"], [1120, "63"]],
+                    },
+                    {"metric": {"instance": "gpu-02"}, "values": [[9999, "70"]]},
+                ]
+            },
+        }
+        out = _matrix(payload, start=1000.0, step=60, buckets=4)
+        self.assertEqual(out["gpu-01"], [61.0, None, 63.0, None])
+        # Out-of-window samples are dropped, and an all-None series is omitted.
+        self.assertNotIn("gpu-02", out)
+
+    def test_series_is_exposed_on_pulse(self) -> None:
+        prom = PromSnapshot(series={"gpu_temp": {"gpu-01": [61.0, 62.0]}})
+        body = assemble_pulse(
+            health_verb=None, gpus_verb=None,
+            llm_ok=True, stt_ok=True, tts_ok=True, hands_ok=True,
+            utc="2026-09-20T20:00:00Z", prom=prom,
+        )
+        self.assertEqual(body["series"]["gpu_temp"], {"gpu-01": [61.0, 62.0]})
+        self.assertEqual(body["series"]["step_s"], 60)
+
+    def test_missing_prometheus_yields_empty_series_not_fake_points(self) -> None:
+        body = assemble_pulse(
+            health_verb=None, gpus_verb=None,
+            llm_ok=True, stt_ok=True, tts_ok=True, hands_ok=True,
+            utc="2026-09-20T20:00:00Z",
+        )
+        self.assertEqual(body["series"]["gpu_temp"], {})

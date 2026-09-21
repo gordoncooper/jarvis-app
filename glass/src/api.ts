@@ -38,6 +38,13 @@ export type PulseNode = {
   load?: number | null;
   temp_c?: number | null;
   ready?: boolean | null;
+  /** Prometheus extras: CPU package temp, link throughput, GPU detail, node uptime. */
+  cpu_c?: number | null;
+  net_bps?: number | null;
+  gpu_util?: number | null;
+  vram?: number | null;
+  fan?: number | null;
+  uptime?: string | null;
 };
 
 export type PulseRings = {
@@ -47,16 +54,35 @@ export type PulseRings = {
   io?: number | null;
 };
 
+/** Rack thermals. This lab has no air or humidity sensor, so the NOC reports
+ *  what the hardware measures: hottest CPU package, GPU fan, GPU memory. */
 export type PulseEnv = {
-  air_c?: number | null;
-  hum?: number | null;
-  pwr?: number | null;
+  cpu_c?: number | null;
+  fan?: number | null;
+  vram?: number | null;
+};
+
+/** Prometheus range data, pre-seeded so sparklines are populated on first paint. */
+export type PulseSeries = {
+  gpu_temp?: Record<string, Array<number | null>> | null;
+  step_s?: number | null;
+  window_s?: number | null;
+};
+
+export type PulseWeather = {
+  temp_c?: number | null;
+  text?: string | null;
+  humidity?: number | null;
+  wind_kmh?: number | null;
+  wind_dir?: string | null;
+  place?: string | null;
 };
 
 export type PulseEvent = {
   ts?: string | null;
   src?: string | null;
   msg?: string | null;
+  level?: "info" | "warn" | "bad" | string | null;
 };
 
 export type PulsePayload = {
@@ -68,6 +94,8 @@ export type PulsePayload = {
   rings?: PulseRings | null;
   env?: PulseEnv | null;
   events?: PulseEvent[] | null;
+  series?: PulseSeries | null;
+  weather?: PulseWeather | null;
   talker?: boolean | null;
   hands?: boolean | null;
   stt?: boolean | null;

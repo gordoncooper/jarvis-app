@@ -11,7 +11,7 @@ import ipaddress
 import math
 from typing import Any
 
-from .prom import PromSnapshot
+from .prom import HISTORY_STEP_SEC, HISTORY_WINDOW_SEC, PromSnapshot
 
 _ROLE_PREFIX = {
     "ctrl": "control-plane",
@@ -239,6 +239,12 @@ def assemble_pulse(
             "vram": _pct(snap.scalar("env_vram")),
         },
         "events": events,
+        # Pre-seeded history so the NOC sparklines are populated on first paint.
+        "series": {
+            "gpu_temp": snap.series.get("gpu_temp") or {},
+            "step_s": HISTORY_STEP_SEC,
+            "window_s": HISTORY_WINDOW_SEC,
+        },
         "weather": weather,
         "talker": bool(llm_ok),
         "hands": bool(hands_ok),
