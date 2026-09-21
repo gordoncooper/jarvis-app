@@ -11,7 +11,7 @@ Spec, not law. Builder “what to type”: `COCKPIT.md`. Visual contract:
 This is the locked visual + architecture plan for the four frames:
 
 - `jarvis-login.jpg` — Fort Knox gate
-- `jarvis.jpg` — Earth stage after login
+- `jarvis.jpg` — the breath room after login (night Earth backdrop)
 - `jarvis-cmd.jpg` — AM briefing + channel
 - `jarvis-noc.jpg` — cluster topology NOC
 
@@ -27,7 +27,7 @@ glass  ──nginx /v1──►  orchestrator
                          /v1/session     greeting, briefing, messages, confirm
                          /v1/turns SSE   talk + verbs + memory confirm
                          /v1/stt /v1/tts
-                         (add) /v1/pulse  rack snapshot for NOC + Earth chips
+                         (add) /v1/pulse  rack snapshot for NOC + breath chips
 ```
 
 Glass never talks to LiteLLM, OpenClaw, Prometheus, or Piper. If NOC needs numbers, orchestrator grows `/v1/pulse`. That keeps D-0012 and still matches `jarvis-noc.jpg`.
@@ -41,13 +41,13 @@ Glass never talks to LiteLLM, OpenClaw, Prometheus, or Piper. If NOC needs numbe
 | App | React 18 + TypeScript | Four stages, one session store, confirm modal |
 | Bundle | esbuild already in `glass/` (Vite only if you explicitly want bastion HMR) | Fast LAN static image behind nginx |
 | Motion | `motion` | Login wordmark, stage HUD fade, deck slide |
-| Earth | three + R3F + drei + postprocessing | Photoreal night Earth, not a CSS sphere |
+| Breath | three + R3F + drei + postprocessing | Photoreal night Earth backdrop, not a CSS sphere |
 | Topology | SVG | `jarvis-noc.jpg` is an ortho schematic |
 | Sparklines | uPlot or a small canvas | NOC GPU traces |
-| Fonts | IBM Plex Sans + Mono, self-hosted | Earth / CMD / NOC |
+| Fonts | IBM Plex Sans + Mono, self-hosted | Breath / CMD / NOC |
 | Login plate | Rack-room still as full-bleed `<img>` + HTML/SVG wordmark | The plate *is* the look |
 
-Use Three on Earth. Use SVG on NOC. Use a photograph on Login. Mixing those is how four different rooms still feel like one house.
+Use Three in Breath. Use SVG on NOC. Use a photograph on Login. Mixing those is how four different rooms still feel like one house.
 
 ---
 
@@ -71,10 +71,10 @@ Use Three on Earth. Use SVG on NOC. Use a photograph on Login. Mixing those is h
 
 Unify:
 
-- Same hex mark, same LIVE pip, same IBM Plex, same accent, same 1px `#1c252e` hairline on Earth / CMD / NOC.
+- Same hex mark, same LIVE pip, same IBM Plex, same accent, same 1px `#1c252e` hairline on Breath / CMD / NOC.
 - Login is cinematic (no pip, no tables). The other three share chrome.
 - Teal on ≤15% of pixels. Body copy is steel. Numbers are mono.
-- Cmd strip is the same component on Earth and NOC. CMD display uses the Channel input with the same glyphs (`>_` + paper plane).
+- Cmd strip is the same component in Breath and NOC. CMD display uses the Channel input with the same glyphs (`>_` + paper plane).
 
 ---
 
@@ -88,13 +88,13 @@ Stage, not a form.
 - Center: extruded “JARVIS” as SVG/HTML with a teal inner glow (keep letters out of the JPG for 4K sharpness).
 - Subline: `HOME-LAB AI CLUSTER COMMAND CENTER`
 - The badge is a lift-open lid (revised 2026-09-20). Click / Enter lifts it and
-  reveals a mocked presence-gate prompt; Authorise slides to Earth.
+  reveals a mocked presence-gate prompt; Authorise slides to Breath.
 - Presence gate, not auth — no credential is checked and the UI says so.
   Real auth later: LAN allowlist + optional PIN to orchestrator.
 
 Motion: badge glows while sealed, springs up and shrinks on open, prompt wipes in.
 
-### 2. Earth — first breath
+### 2. Breath — the first portal you speak to
 
 Talk happens here. Chat does **not** cover the planet.
 
@@ -104,7 +104,7 @@ Talk happens here. Chat does **not** cover the planet.
 [ TRACK/MODE/HOS   ]
 [ LOCK             ]
 
-                    << night Earth, drag, city lights >>
+                 << night Earth backdrop, drag, city lights >>
 
 [ CLUSTER LIVE ] [ UPTIME ]              [ GPU-01 ] [ GPU-02 ]
 [ cmd  Speak freely…                              Hold to talk | Send ]
@@ -147,7 +147,7 @@ Cap briefing at ~8 lines. Orchestrator owns the text.
 - Right: four ring meters, voice waveform, GPU sparklines, env bars
 - Event ticker (one row)
 - Node metrics table
-- `> cmd` at the bottom — same CmdBar as Earth
+- `> cmd` at the bottom — same CmdBar as Breath
 
 `GET /v1/pulse` shape:
 
@@ -188,7 +188,7 @@ glass/themes/cockpit/
     ConfirmCard.tsx
   displays/
     Login.tsx
-    Earth.tsx
+    Breath.tsx
     Cmd.tsx
     Noc.tsx
   state/
@@ -204,7 +204,8 @@ glass/themes/cockpit/
     Rings.tsx
 ```
 
-Deck is the router. Hash optional (`#earth`).
+Deck is the router. Hash `#login|#breath|#cmd|#noc`; retired `#earth`
+resolves to `#breath`.
 
 ---
 
@@ -212,9 +213,9 @@ Deck is the router. Hash optional (`#earth`).
 
 | Input | Where | Effect |
 |---|---|---|
-| Enter / badge | Login | lift the lid, then session + deck→Earth |
-| Type + Send / PTT | Earth, CMD, NOC | `/v1/turns` SSE |
-| Hold to talk | Earth cmd | `streamAudioTurn` |
+| Enter / badge | Login | lift the lid, then session + deck→Breath |
+| Type + Send / PTT | Breath, CMD, NOC | `/v1/turns` SSE |
+| Hold to talk | Breath cmd | `streamAudioTurn` |
 | Arrow keys / drag | any | adjacent display |
 | BRIEF | header | deck→CMD, refetch session |
 | ASK | header | deck→CMD, focus Channel |
@@ -237,7 +238,7 @@ Deck is the router. Hash optional (`#earth`).
 
 1. Tokens + Brand + Deck chrome (empty stages, correct type).
 2. Login plate + Enter.
-3. Earth globe + HUD chrome + CmdBar wired to turns / PTT / TTS.
+3. Breath: Earth globe + HUD chrome + CmdBar wired to turns / PTT / TTS.
 4. CMD layout with real Channel + structured briefing.
 5. NOC SVG + table + ticker against `/v1/pulse`.
 6. ConfirmCard + APPLY path.
@@ -248,7 +249,7 @@ Deck is the router. Hash optional (`#earth`).
 ## Done when
 
 - Login: same room, badge composited as a separate sharp PNG, lid lifts to the prompt.
-- Earth: globe is the hero; instruments on the rim; cmd is a hairline; no center chat.
+- Breath: globe is the backdrop; instruments on the rim; cmd is a hairline; no center chat.
 - CMD: three columns + four pills; Channel is a dock; briefing is the stage.
 - NOC: 2×3 ortho rack, rings, ticker, table, cmd.
 - Same hex, same teal, same plex, same pip. Four rooms, one house, one `/v1`.

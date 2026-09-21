@@ -11,10 +11,12 @@ You are implementing the product surface at **jarvis.lan** in repo **gordoncoope
 Law lives in **gordoncooper/jarvis-infra** `docs/DECISIONS.md` and `AGENTS.md`.
 Flux YAML lives in **gordoncooper/jarvis-cluster** (Gitea is origin; GitHub is a mirror).
 
-Reference frames (match these, do not “improve” them into SaaS):
+The four rooms, and what each is for, are described in
+[README.md](./README.md). Reference frames (match these, do not “improve”
+them into SaaS):
 
 - Login: Fort Knox rack room plate + JARVIS badge as a lift-open lid
-- Earth: night globe, HUD on the rim, cmd bar, dialogue strip above the cmd bar
+- Breath: night Earth as backdrop, HUD on the rim, cmd bar, dialogue strip
 - CMD: dossier | AM briefing | channel drawer + four bottom pills
 - NOC: 2×3 ortho rack, rings, ticker, node table, cmd
 
@@ -38,7 +40,7 @@ Read `COCKPIT-PLAN.md` if present. If both exist, the plan wins on architecture;
 - React 18 + TypeScript
 - Bundler: existing `glass/esbuild.mjs` unless the operator explicitly says Vite
 - `motion` for deck + login
-- `three` + `@react-three/fiber` + `@react-three/drei` + `@react-three/postprocessing` for Earth only
+- `three` + `@react-three/fiber` + `@react-three/drei` + `@react-three/postprocessing` for the Earth globe only
 - SVG for NOC topology
 - uPlot or a tiny canvas for NOC sparklines
 - IBM Plex Sans + IBM Plex Mono from `@fontsource/*` (already in package.json)
@@ -78,7 +80,7 @@ behaviour now come from `glass/src/core/` via `useJarvis()` — see docs/THEMES.
 ```
 glass/themes/cockpit/
   main.tsx
-  App.tsx                 deck index 0=login 1=earth 2=cmd 3=noc
+  App.tsx                 deck index 0=login 1=breath 2=cmd 3=noc
   Shell.tsx
   deck/Deck.tsx           snap translateX, arrow keys, swipe
   chrome/Brand.tsx
@@ -86,7 +88,7 @@ glass/themes/cockpit/
   chrome/LivePip.tsx
   chrome/ConfirmCard.tsx
   displays/Login.tsx
-  displays/Earth.tsx
+  displays/Breath.tsx
   displays/Cmd.tsx
   displays/Noc.tsx
   state/session.ts
@@ -120,12 +122,12 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
   a login prompt underneath.
 - The badge **toggles** — clicking it again lowers the lid and hides the
   prompt. Escape closes it too.
-- **Only Authorise advances to Earth** (Enter inside the field is the same
+- **Only Authorise advances to Breath** (Enter inside the field is the same
   thing, being a form submit). The badge never navigates, and neither does a
   stray Enter with nothing focused. The badge's box is ~858x288 with large
   transparent gaps between the letterforms, so "clicking beside the mark" is
   usually still a badge click — when that used to advance the deck it read as
-  "clicking anywhere takes me to Earth".
+  "clicking anywhere takes me to Breath".
 - The prompt is a presence gate, not authentication. The operator name is fixed
   and the passphrase field is labelled `NOT YET ENFORCED` with the note "no
   credential is checked", because the orchestrator has no auth and the UI must
@@ -135,9 +137,15 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
   let the same Enter that opened the lid produce a keypress on the new input,
   implicitly submitting the form and skipping the prompt.
 
-### Earth (index 1)
+### Breath (index 1)
 
-- Full-viewport R3F night Earth. Drag to spin. Atmosphere limb. City lights.
+The first portal you speak to: one operator, one JARVIS, a 1:1 living
+exchange. The night Earth is the backdrop, not the subject — which is why the
+instruments sit on the rim and the dialogue rises out of the command line.
+Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
+
+- Full-viewport R3F night Earth (`ui/EarthGlobe.tsx`). Drag to spin.
+  Atmosphere limb. City lights.
 - DOM HUD pinned to edges:
   - Top-left: hex + JARVIS + LIVE
   - Top-center: LAN, k3s, UTC from `/v1/pulse`
@@ -200,7 +208,7 @@ ConfirmCard renders inside Channel when `session.confirm` is set. Yes/cancel are
 - Right: four ring meters (cpu/mem/net/io), voice waveform, GPU temp sparks, env bars
 - Full-width event ticker
 - Node metrics table: NODE ROLE IP CPU RAM DISK LOAD
-- Bottom CmdBar (same component as Earth)
+- Bottom CmdBar (same component as Breath)
 
 All numbers from `/v1/pulse` polled every 2s. If pulse is missing, show steel placeholders — do **not** invent cluster numbers in the client.
 
@@ -262,10 +270,12 @@ Do not teach glass to scrape noc.lan or home.lan.
 
 ## 6. Motion and input
 
-- Deck: `translateX(-index * 100%)`, 280–400ms ease. ArrowLeft / ArrowRight. Optional hash `#login|#earth|#cmd|#noc`.
+- Deck: `translateX(-index * 100%)`, 280–400ms ease. ArrowLeft / ArrowRight.
+  Hash `#login|#breath|#cmd|#noc`; the retired `#earth` resolves to `#breath`
+  and rewrites itself.
 - Login badge: slow glow while sealed; spring lift + scale on open, with the
   prompt revealed by a clip-path wipe. Both respect `prefers-reduced-motion`.
-- Earth HUD: fade in 200ms after globe first frame.
+- Breath HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
 - No page reloads.
 
@@ -288,8 +298,8 @@ Do not teach glass to scrape noc.lan or home.lan.
 ## 8. Build order (one PR-sized slice per step)
 
 1. tokens.css + Brand + Deck with four empty stages at the right type
-2. Login plate + Enter → Earth
-3. Earth globe + HUD + CmdBar wired to existing `api.ts`
+2. Login plate + Enter → Breath
+3. Breath: Earth globe + HUD + CmdBar wired to existing `api.ts`
 4. CMD columns + Channel using session.messages + SSE
 5. ConfirmCard
 6. Orchestrator `/v1/pulse` + structured briefing
@@ -302,4 +312,4 @@ Stop after each slice and show the operator. Do not binge all eight in one unatt
 
 ## 9. Acceptance
 
-At 1920×1080, a screenshot of each stage is recognizably the matching reference JPG: same hierarchy, same teal, same plex, same density. Earth has no center modal. Login opens from the badge into the mocked presence gate (revised 2026-09-20). NOC is a schematic, not a globe. CMD is a briefing desk, not a rack.
+At 1920×1080, a screenshot of each stage is recognizably the matching reference JPG: same hierarchy, same teal, same plex, same density. Breath has no center modal. Login opens from the badge into the mocked presence gate (revised 2026-09-20). NOC is a schematic, not a globe. CMD is a briefing desk, not a rack.

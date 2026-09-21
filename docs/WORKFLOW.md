@@ -50,7 +50,7 @@ export PATH="$HOME/.local/node-v22.14.0-linux-x64/bin:$PATH"
 
 kubectl -n apps port-forward svc/jarvis-orchestrator 18080:8080 &
 cd ~/jarvis-app/glass && npm run build && node devserve.mjs
-# http://127.0.0.1:5173/#login | #earth | #cmd | #noc
+# http://127.0.0.1:5173/#login | #breath | #cmd | #noc
 ```
 
 ## Validating a change

@@ -23,7 +23,7 @@ export function rackRoleLabel(role: string | null | undefined, id: string): stri
   return "WORKLOAD";
 }
 
-/** Earth shows two GPU chips in fixed slots; pad so the HUD never reflows. */
+/** Breath shows two GPU chips in fixed slots; pad so the HUD never reflows. */
 export function pulseGpuChips(pulse: PulsePayload | null): Array<{ id: string; tempC: number | null }> {
   const live = gpuChips(pulse);
   return ["GPU-01", "GPU-02"].map((id) => live.find((g) => g.id === id) ?? { id, tempC: null });

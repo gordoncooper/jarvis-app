@@ -5,7 +5,7 @@ import { CmdBar } from "../chrome/CmdBar.js";
 import { ConcRing, LiveDot } from "../chrome/Marks.js";
 import { pulseText, type ChatMsg, type ConfirmPayload, type HealthPayload, type PulsePayload } from "@core";
 import { pulseGpuChips } from "../rack.js";
-import { StageEarth, stageWebglOk } from "../StageEarth.js";
+import { EarthGlobe, earthWebglOk } from "../EarthGlobe.js";
 
 /** Lines of dialogue kept over the globe. The rest lives on the CMD display. */
 const TAIL = 12;
@@ -30,7 +30,7 @@ function Steel({ value }: { value: string | null }) {
   return <span className={value ? "ck-meta-v" : "ck-meta-v is-empty"}>{value ?? "—"}</span>;
 }
 
-export function Stage({
+export function Breath({
   health,
   unreachable,
   pulse,
@@ -63,7 +63,7 @@ export function Stage({
       setHudOn(false);
       return;
     }
-    setGlobeOk(stageWebglOk());
+    setGlobeOk(earthWebglOk());
     const id = window.setTimeout(() => setHudOn(true), 200);
     return () => window.clearTimeout(id);
   }, [active]);
@@ -76,19 +76,19 @@ export function Stage({
   const tail = useMemo(() => messages.filter((m) => m.content.trim()).slice(-TAIL), [messages]);
 
   return (
-    <div className="ck-stage">
-      {active && globeOk ? <StageEarth /> : <div className="ck-stage-earth-fallback" />}
-      <div className="ck-stage-vignette" aria-hidden="true" />
+    <div className="ck-breath">
+      {active && globeOk ? <EarthGlobe /> : <div className="ck-breath-earth-fallback" />}
+      <div className="ck-breath-vignette" aria-hidden="true" />
 
       <motion.div
-        className="ck-stage-hud"
+        className="ck-breath-hud"
         initial={false}
         animate={{ opacity: hudOn ? 1 : 0 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-        <header className="ck-stage-top">
+        <header className="ck-breath-top">
           <Brand live={live} size={22} />
-          <div className="ck-stage-meta">
+          <div className="ck-breath-meta">
             <div className="ck-meta-cell">
               <span className="ck-meta-k">LAN</span>
               <Steel value={lan} />
@@ -104,7 +104,7 @@ export function Stage({
               <Steel value={utc} />
             </div>
           </div>
-          <div className="ck-stage-systems">
+          <div className="ck-breath-systems">
             {(
               [
                 ["TALKER", talker],
@@ -124,7 +124,7 @@ export function Stage({
           </div>
         </header>
 
-        <aside className="ck-stage-dossier">
+        <aside className="ck-breath-dossier">
           <div className="ck-panel-title">
             DOSSIER <LiveDot on={live} />
           </div>
@@ -152,7 +152,7 @@ export function Stage({
           </dl>
         </aside>
 
-        <div className="ck-stage-bottom">
+        <div className="ck-breath-bottom">
           <div className="ck-chip">
             CLUSTER <LiveDot on={live} /> <em className={live ? "" : "is-empty"}>{live ? "LIVE" : "WAIT"}</em>
           </div>
@@ -175,9 +175,9 @@ export function Stage({
         {/* Comms column: the dialogue strip and the cmd bar are one
             bottom-anchored stack, so the strip can never be positioned under
             the cmd bar the way a magic `bottom` offset allowed. */}
-        <div className="ck-stage-comms">
+        <div className="ck-breath-comms">
           {tail.length ? (
-            <div className="ck-stage-toast" aria-live="polite">
+            <div className="ck-breath-toast" aria-live="polite">
               <div className="ck-toast-stack">
                 {tail.map((m) => (
                   <p key={m.id} className={m.role === "user" ? "ck-toast-user" : "ck-toast-asst"}>

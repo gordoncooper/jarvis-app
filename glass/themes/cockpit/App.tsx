@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useJarvis } from "@core";
 import { Deck, type Slide } from "./ui/deck/Deck.js";
 import { Cmd } from "./ui/displays/Cmd.js";
-import { Earth } from "./ui/displays/Earth.js";
+import { Breath } from "./ui/displays/Breath.js";
 import { Login } from "./ui/displays/Login.js";
 import { Noc } from "./ui/displays/Noc.js";
 
@@ -27,7 +27,7 @@ export function App() {
   return (
     <Deck index={slide} onIndex={setSlide}>
       <Login onEnter={() => setSlide(1)} active={slide === 0} />
-      <Earth
+      <Breath
         health={j.health}
         unreachable={j.status.unreachable}
         pulse={j.pulse}

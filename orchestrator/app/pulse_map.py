@@ -75,7 +75,7 @@ def _norm(value: str | None) -> str:
 
 
 def format_uptime(seconds: float | None) -> str | None:
-    """15d 06h 42m 18s — the shape the Earth UPTIME chip expects."""
+    """15d 06h 42m 18s — the shape the breath UPTIME chip expects."""
     if seconds is None or seconds < 0:
         return None
     total = int(seconds)

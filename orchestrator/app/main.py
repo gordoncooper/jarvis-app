@@ -196,7 +196,7 @@ async def health() -> dict[str, Any]:
 
 @app.get("/v1/pulse")
 async def pulse() -> dict[str, Any]:
-    """Rack snapshot for Earth chips + NOC. Unknown fields are null."""
+    """Rack snapshot for the breath chips + NOC. Unknown fields are null."""
     return await get_pulse()
 
 

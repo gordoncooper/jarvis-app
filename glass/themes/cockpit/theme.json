@@ -3,17 +3,54 @@
   "title": "Cockpit",
   "description": "Four-display horizontal deck: Fort Knox login, night Earth stage, AM briefing desk, ortho rack NOC.",
   "entry": "main.tsx",
-  "css": ["tokens.css", "theme.css"],
-  "static": "static",
-  "assets": [{ "from": "assets/globe", "to": "globe" }],
-  "fonts": [
-    { "pkg": "ibm-plex-sans", "weight": 400, "as": "plex-sans-400.woff2" },
-    { "pkg": "ibm-plex-sans", "weight": 500, "as": "plex-sans-500.woff2" },
-    { "pkg": "ibm-plex-sans", "weight": 600, "as": "plex-sans-600.woff2" },
-    { "pkg": "ibm-plex-mono", "weight": 400, "as": "plex-mono-400.woff2" },
-    { "pkg": "ibm-plex-mono", "weight": 500, "as": "plex-mono-500.woff2" },
-    { "pkg": "ibm-plex-mono", "weight": 600, "as": "plex-mono-600.woff2" }
+  "css": [
+    "tokens.css",
+    "theme.css"
   ],
-  "displays": ["login", "earth", "cmd", "noc"],
+  "static": "static",
+  "assets": [
+    {
+      "from": "assets/globe",
+      "to": "globe"
+    }
+  ],
+  "fonts": [
+    {
+      "pkg": "ibm-plex-sans",
+      "weight": 400,
+      "as": "plex-sans-400.woff2"
+    },
+    {
+      "pkg": "ibm-plex-sans",
+      "weight": 500,
+      "as": "plex-sans-500.woff2"
+    },
+    {
+      "pkg": "ibm-plex-sans",
+      "weight": 600,
+      "as": "plex-sans-600.woff2"
+    },
+    {
+      "pkg": "ibm-plex-mono",
+      "weight": 400,
+      "as": "plex-mono-400.woff2"
+    },
+    {
+      "pkg": "ibm-plex-mono",
+      "weight": 500,
+      "as": "plex-mono-500.woff2"
+    },
+    {
+      "pkg": "ibm-plex-mono",
+      "weight": 600,
+      "as": "plex-mono-600.woff2"
+    }
+  ],
+  "displays": [
+    "login",
+    "breath",
+    "cmd",
+    "noc"
+  ],
   "docs": "docs"
 }

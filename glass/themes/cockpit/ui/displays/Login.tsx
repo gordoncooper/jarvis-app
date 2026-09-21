@@ -25,7 +25,7 @@ export function Login({ onEnter, active }: Props) {
   // Focus only once the lid has finished lifting. Focusing synchronously meant
   // the *same* Enter that opened the gate produced a keypress on the freshly
   // focused input, which implicitly submitted the form and skipped the prompt
-  // entirely — one keystroke went from sealed straight to Earth.
+  // entirely — one keystroke went from sealed straight to Breath.
   useEffect(() => {
     if (gate !== "open") return;
     const id = window.setTimeout(() => pinRef.current?.focus(), 520);
@@ -68,7 +68,7 @@ export function Login({ onEnter, active }: Props) {
         aria-label={gate === "sealed" ? "Reveal sign-in" : "Hide sign-in"}
         aria-expanded={gate === "open"}
         // The badge is a lid, so it toggles. It never navigates — reaching
-        // Earth is the Authorise button's job alone.
+        // Breath is the Authorise button's job alone.
         onClick={() => setGate((g) => (g === "sealed" ? "open" : "sealed"))}
         animate={{
           y: gate === "open" ? lift * 92 : 0,

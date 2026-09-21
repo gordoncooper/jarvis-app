@@ -1,4 +1,4 @@
-"""GET /v1/pulse — rack snapshot for Earth chips + NOC (D-0032).
+"""GET /v1/pulse — rack snapshot for the breath chips + NOC (D-0032).
 
 Filled from Hands verbs (cluster.health, cluster.gpus) and health helpers.
 Unknown metrics stay null. Never invent GPU temperatures or node counters.

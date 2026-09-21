@@ -15,7 +15,7 @@ Build/validate/ship loop: [../docs/WORKFLOW.md](../docs/WORKFLOW.md).
 
 | Theme | Status |
 | --- | --- |
-| `cockpit` | Product pack (D-0031 / D-0032). Four displays: login, earth, cmd, noc. Docs in [`themes/cockpit/docs/`](./themes/cockpit/docs/). |
+| `cockpit` | Product pack (D-0031 / D-0032). Four rooms: login, breath, cmd, noc — [what each is for](./themes/cockpit/docs/README.md). |
 
 ## Build
 

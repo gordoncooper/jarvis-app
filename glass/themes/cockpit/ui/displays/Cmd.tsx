@@ -196,7 +196,7 @@ export function Cmd({
   return (
     <div className="ck-cmd">
       <header className="ck-cmd-top">
-        <div className="ck-stage-brand">
+        <div className="ck-panel-brand">
           <HexMark size={22} />
           <span className="ck-brand">JARVIS</span>
           <span className={`ck-live-pill ck-pulse ${live ? "" : "is-down"}`}>

@@ -55,30 +55,6 @@
   }
 }
 
-@keyframes ck-heartbeat {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(1);
-  }
-  14% {
-    opacity: 0.92;
-    transform: scale(1.012);
-  }
-  28% {
-    opacity: 0.62;
-    transform: scale(1);
-  }
-  42% {
-    opacity: 0.88;
-    transform: scale(1.008);
-  }
-  56% {
-    opacity: 0.55;
-    transform: scale(1);
-  }
-}
-
 @keyframes ck-border-breathe {
   0%,
   100% {
@@ -223,7 +199,7 @@ input {
   box-shadow: 0 0 7px color-mix(in oklch, var(--accent) 40%, transparent);
 }
 
-.ck-stage-brand {
+.ck-panel-brand {
   display: flex;
   align-items: center;
   gap: 0.85rem;
@@ -535,7 +511,7 @@ button:disabled {
 
 
 /* —— stage —— */
-.ck-stage {
+.ck-breath {
   position: absolute;
   inset: 0;
   background: var(--bg);
@@ -544,27 +520,27 @@ button:disabled {
   container-name: stage;
 }
 
-.ck-stage-canvas,
-.ck-stage-earth-fallback {
+.ck-breath-canvas,
+.ck-breath-earth-fallback {
   position: absolute;
   inset: 0;
   z-index: 0;
 }
 
-.ck-stage-canvas canvas {
+.ck-breath-canvas canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
 }
 
-.ck-stage-earth-fallback {
+.ck-breath-earth-fallback {
   background:
     radial-gradient(ellipse 55% 50% at 52% 48%, #1a1410 0%, transparent 55%),
     url("/globe/night.jpg") 62% 44% / 150% no-repeat;
   filter: saturate(1.35) contrast(1.1) brightness(0.88) sepia(0.18);
 }
 
-.ck-stage-vignette {
+.ck-breath-vignette {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -574,21 +550,7 @@ button:disabled {
   pointer-events: none;
 }
 
-.ck-stage-heartbeat {
-  position: absolute;
-  inset: -8%;
-  z-index: 1;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse 70% 62% at 50% 48%,
-    color-mix(in oklch, var(--ck-accent-warm) 22%, transparent) 0%,
-    transparent 58%
-  );
-  mix-blend-mode: screen;
-  animation: ck-heartbeat 2.8s ease-in-out infinite;
-}
-
-.ck-stage-top {
+.ck-breath-top {
   position: absolute;
   top: 0;
   left: 0;
@@ -601,7 +563,7 @@ button:disabled {
   padding: clamp(0.7rem, 1.4cqh, 1.1rem) clamp(0.85rem, 1.6cqw, 1.4rem) 0.5rem;
 }
 
-.ck-stage-meta {
+.ck-breath-meta {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -635,7 +597,7 @@ button:disabled {
   align-self: center;
 }
 
-.ck-stage-systems {
+.ck-breath-systems {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -683,18 +645,18 @@ button:disabled {
   color: var(--accent);
 }
 
-.ck-stage-hud {
+.ck-breath-hud {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
 }
 
-.ck-stage-hud .ck-cmdbar {
+.ck-breath-hud .ck-cmdbar {
   pointer-events: auto;
 }
 
-.ck-stage-dossier {
+.ck-breath-dossier {
   position: absolute;
   top: 21%;
   left: clamp(1rem, 2cqw, 1.9rem);
@@ -719,11 +681,11 @@ button:disabled {
   color: var(--ck-ink);
 }
 
-.ck-stage-dossier dl {
+.ck-breath-dossier dl {
   margin: 0;
 }
 
-.ck-stage-dossier dl > div {
+.ck-breath-dossier dl > div {
   display: grid;
   grid-template-columns: 3.6rem 0.7rem 1fr;
   font-size: clamp(0.74rem, 1.1cqw, 0.86rem);
@@ -731,20 +693,20 @@ button:disabled {
   line-height: 1.95;
 }
 
-.ck-stage-dossier dl > div dd:last-child {
+.ck-breath-dossier dl > div dd:last-child {
   color: var(--ck-accent);
 }
 
-.ck-stage-dossier dt {
+.ck-breath-dossier dt {
   color: var(--ck-steel);
 }
 
-.ck-stage-dossier dd {
+.ck-breath-dossier dd {
   margin: 0;
   color: var(--ck-ink);
 }
 
-.ck-stage-dossier dd.is-accent {
+.ck-breath-dossier dd.is-accent {
   color: var(--accent);
 }
 
@@ -755,7 +717,7 @@ button:disabled {
   opacity: 0.7;
 }
 
-.ck-stage-bottom {
+.ck-breath-bottom {
   position: absolute;
   left: clamp(0.85rem, 1.8cqw, 1.5rem);
   right: clamp(0.85rem, 1.8cqw, 1.5rem);
@@ -811,7 +773,7 @@ button:disabled {
    of the stage. Both used to be absolutely positioned against the same edge
    with hand-tuned offsets, and at a short window the strip's bottom landed
    under the cmd bar and clipped the newest line. */
-.ck-stage-comms {
+.ck-breath-comms {
   position: absolute;
   left: clamp(0.85rem, 1.8cqw, 1.5rem);
   right: clamp(0.85rem, 1.8cqw, 1.5rem);
@@ -827,7 +789,7 @@ button:disabled {
 /* Dialogue grows upward out of the cmd bar. Older lines run out under the fade
    at the top. Bottom-aligned with justify-content rather than column-reverse,
    which would silently invert message order. */
-.ck-stage-toast {
+.ck-breath-toast {
   width: 100%;
   /* Grows with the window but stays a readable measure — ch tracks the font
      size below, so the block widens as the type scales up. The 560px is the
@@ -903,7 +865,7 @@ button:disabled {
   }
 }
 
-.ck-stage .ck-cmdbar {
+.ck-breath .ck-cmdbar {
   position: static;
   width: 100%;
   z-index: 3;
@@ -916,13 +878,13 @@ button:disabled {
   box-shadow: none;
 }
 
-.ck-stage .ck-cmdbar input {
+.ck-breath .ck-cmdbar input {
   font-size: 0.95rem;
   color: var(--ink);
 }
 
-.ck-stage .ck-cmdbar .ck-send,
-.ck-stage .ck-cmdbar .ck-mic {
+.ck-breath .ck-cmdbar .ck-send,
+.ck-breath .ck-cmdbar .ck-mic {
   font-size: 0.68rem;
   padding: 0.28rem 0.45rem;
   border-radius: 2px;
@@ -930,7 +892,7 @@ button:disabled {
   border-color: transparent;
 }
 
-.ck-stage .ck-send-label {
+.ck-breath .ck-send-label {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -2258,7 +2220,7 @@ button:disabled {
   .ck-topo-grid {
     grid-template-columns: 1fr 1fr 1fr;
   }
-  .ck-stage-systems {
+  .ck-breath-systems {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: flex-end;

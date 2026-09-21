@@ -125,7 +125,7 @@ export function Noc({
   return (
     <div className="ck-noc">
       <header className="ck-noc-top">
-        <div className="ck-stage-brand">
+        <div className="ck-panel-brand">
           <Brand live={live} size={18} />
           <span className="ck-noc-meta">
             LAN {lan ?? "—"}

@@ -89,7 +89,7 @@ flowchart LR
   "static": "static",
   "assets": [{ "from": "assets/globe", "to": "globe" }],
   "fonts": [{ "pkg": "ibm-plex-sans", "weight": 400, "as": "plex-sans-400.woff2" }],
-  "displays": ["login", "earth", "cmd", "noc"],
+  "displays": ["login", "breath", "cmd", "noc"],
   "docs": "docs"
 }
 ```

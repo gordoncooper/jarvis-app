@@ -8,7 +8,7 @@ import {
   stageAtmoVert,
   stageEarthFrag,
   stageEarthVert,
-} from "./stageEarthShaders.js";
+} from "./earthGlobeShaders.js";
 
 const R = 1.6;
 
@@ -183,10 +183,10 @@ function Scene({ drag }: { drag: React.MutableRefObject<Drag> }) {
   );
 }
 
-export function StageEarth() {
+export function EarthGlobe() {
   const drag = useRef<Drag>({ yaw: 0, pitch: 0, spin: 0, dragging: false });
   return (
-    <div className="ck-stage-canvas">
+    <div className="ck-breath-canvas">
       <Canvas
         dpr={[1, 1.6]}
         gl={{
@@ -204,7 +204,7 @@ export function StageEarth() {
   );
 }
 
-export function stageWebglOk(): boolean {
+export function earthWebglOk(): boolean {
   try {
     const c = document.createElement("canvas");
     return !!(c.getContext("webgl2") || c.getContext("webgl"));

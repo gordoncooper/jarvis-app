@@ -3,6 +3,14 @@
 Product surface for JARVIS: an **orchestrator** (the brain) and **glass** (the
 UI), where glass is an engine plus one swappable **theme**.
 
+The premise is a home lab that answers like Tony Stark's would: you arrive,
+you talk to it, you work with it, and you can open the floor and look at the
+machinery. The `cockpit` theme expresses that as four rooms —
+**login** (the gate), **breath** (the conversation), **cmd** (the desk) and
+**noc** (the rack) — described in
+[the theme's docs](./glass/themes/cockpit/docs/README.md). Rooms belong to a
+theme; a different theme may arrange the same data completely differently.
+
 It runs on **jarvis.lan**. The selected theme and the image tags live in
 [`VERSION`](./VERSION) — this README does not repeat them, so it cannot go stale.
 
@@ -43,7 +51,7 @@ export PATH="$HOME/.local/node-v22.14.0-linux-x64/bin:$PATH"
 # UI against the live orchestrator, no rebuild cycle
 kubectl -n apps port-forward svc/jarvis-orchestrator 18080:8080 &
 cd ~/jarvis-app/glass && npm run build && node devserve.mjs
-# http://127.0.0.1:5173/#login | #earth | #cmd | #noc
+# http://127.0.0.1:5173/#login | #breath | #cmd | #noc
 ```
 
 Orchestrator on its own, with mocked talker:
