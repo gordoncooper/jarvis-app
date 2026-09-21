@@ -158,6 +158,21 @@ async def _query(client: httpx.AsyncClient, base: str, expr: str) -> Any:
         return None
 
 
+async def query_series(expr: str) -> list[dict[str, Any]]:
+    """One instant query, raw series out. For capabilities that ask a question
+    `fetch_snapshot` was not built for (D-0036).
+
+    Returns [] on any failure, because a capability that cannot measure says
+    so rather than reporting a zero.
+    """
+    async with httpx.AsyncClient(timeout=settings.prometheus_timeout) as client:
+        payload = await _query(client, settings.prometheus_base.rstrip("/"), expr)
+    if not isinstance(payload, dict):
+        return []
+    result = (payload.get("data") or {}).get("result")
+    return result if isinstance(result, list) else []
+
+
 async def _query_range(
     client: httpx.AsyncClient, base: str, expr: str, start: float, end: float, step: int
 ) -> Any:

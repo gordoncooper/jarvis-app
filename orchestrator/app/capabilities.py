@@ -18,8 +18,10 @@ from dataclasses import dataclass, field
 # backend: where the work happens.
 #   hands  — OpenClaw shim POST /v1/verbs, under the openclaw-recycle Role
 #   memory — promoted sqlite on NFS, orchestrator-owned
+#   prom   — Prometheus, read by the orchestrator directly (D-0012 allows
+#            this; glass never does). Keeps working when Hands is down.
 #   local  — answered from this process alone
-BACKENDS = ("hands", "memory", "local")
+BACKENDS = ("hands", "memory", "prom", "local")
 
 
 @dataclass(frozen=True)
@@ -122,7 +124,60 @@ MANIFEST: dict[str, Capability] = {
         summary="forget a fact, after checking with you first",
         examples=("forget that I like tea", "forget everything"),
     ),
+    # --- Prometheus, read by the orchestrator (D-0036) ---
+    "pods.list": _cap(
+        name="pods.list",
+        klass="trusted",
+        backend="prom",
+        short="listing the pods",
+        summary="tell you where the pods are and which ones are unhappy",
+        examples=(
+            "list all the running pods",
+            "how many pods are there?",
+            "is anything crash looping?",
+        ),
+        desc="kube-state-metrics phase counts per namespace, plus restarts.",
+    ),
+    "storage.free": _cap(
+        name="storage.free",
+        klass="trusted",
+        backend="prom",
+        short="checking free disk",
+        summary="tell you how much disk each node has left",
+        examples=(
+            "how much disk is left on data-01?",
+            "are we running out of space?",
+        ),
+        desc="node-exporter root filesystem avail/size per node.",
+    ),
     # --- Local ---
+    "weather.now": _cap(
+        name="weather.now",
+        klass="trusted",
+        backend="local",
+        short="the local weather",
+        summary="tell you the weather where the house is",
+        examples=("what's the weather?", "is it cold out?"),
+        desc="open-meteo, the same reading the cockpit header shows.",
+    ),
+    "time.now": _cap(
+        name="time.now",
+        klass="trusted",
+        backend="local",
+        short="the time and date",
+        summary="tell you the time and date",
+        examples=("what time is it?", "what's today's date?"),
+        desc="Orchestrator clock in WEATHER_TZ. The talker has none.",
+    ),
+    "deploy.version": _cap(
+        name="deploy.version",
+        klass="trusted",
+        backend="local",
+        short="which build is deployed",
+        summary="tell you which build of me is deployed",
+        examples=("what version of glass is deployed?", "did the last deploy land?"),
+        desc="Orchestrator __version__ plus the glass build.json.",
+    ),
     "meta.capabilities": _cap(
         name="meta.capabilities",
         short="listing what I can do",

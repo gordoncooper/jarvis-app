@@ -138,6 +138,67 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
         ),
     ),
     (
+        "storage.free",
+        re.compile(
+            r"\b("
+            r"(disk|disc|storage|space)\s+(left|free|available|remaining)|"
+            r"(free|available|remaining)\s+(disk|storage|space)|"
+            r"running\s+out\s+of\s+(disk|space|storage)|"
+            r"how\s+much\s+(disk|space|storage|room)"
+            r")\b",
+            re.I,
+        ),
+    ),
+    (
+        "deploy.version",
+        re.compile(
+            r"\b("
+            r"(what|which)\s+version|"
+            r"version\s+(are|is)\s+(you|deployed|running)|"
+            r"(what|which)\s+build\s+(are|is)"
+            r")\b",
+            re.I,
+        ),
+    ),
+    (
+        "time.now",
+        re.compile(
+            r"\b("
+            r"what\s+time\s+is\s+it|"
+            r"what(?:'s|\s+is)\s+the\s+(time|date)|"
+            r"what(?:'s|\s+is)\s+today'?s?\s+date|"
+            r"what\s+day\s+is\s+it"
+            r")\b",
+            re.I,
+        ),
+    ),
+    (
+        # "how does a weather forecast work?" is chat; the word alone is not
+        # enough, same trap as a bare "gpu".
+        "weather.now",
+        re.compile(
+            r"\b("
+            r"what(?:'s|\s+is)\s+the\s+weather|"
+            r"how(?:'s|\s+is)\s+the\s+weather|"
+            r"weather\s+(like|outside|today)|"
+            r"is\s+it\s+(cold|hot|warm|raining|snowing)\s*(out|outside|today)?"
+            r")\b",
+            re.I,
+        ),
+    ),
+    (
+        "pods.list",
+        re.compile(
+            r"\b("
+            r"(list|show)\s+(me\s+)?(all\s+)?(the\s+)?(running\s+)?pods?\b|"
+            r"how\s+many\s+pods?\b|"
+            r"pods?\s+(are\s+)?running\b|"
+            r"crash\s*loop"
+            r")\b",
+            re.I,
+        ),
+    ),
+    (
         "cluster.health",
         re.compile(
             r"\b("
@@ -147,7 +208,6 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
             r"(is|how'?s?|how\s+is)\s+the\s+(lab|cluster|rack)\b|"
             r"(lab|cluster|rack)\s+(up|healthy|ok|okay|status)|"
             r"pod\s+status|crashing\s+pods?|"
-            r"(list|show|get)\s+(the\s+)?pods?\b|"
             r"pods?\s+in\s+(the\s+)?(lab|cluster|rack|apps)\b|"
             r"status\s+of\s+the\s+(lab|cluster|rack)"
             r")\b",

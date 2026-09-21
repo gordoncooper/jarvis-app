@@ -132,15 +132,36 @@ memory.forget_ref	that's wrong, remove it
 # caught by the house-shape rule, but any phrasing that is neither imperative
 # nor deictic will still reach the talker until the slice 3 classifier lands.
 # Chasing those with more pattern is the treadmill D-0033 exists to end.
-unsupported	list all the running pods for me
+pods.list	list all the running pods for me
 unsupported	what files do you have listed in the directory?
 unsupported	what's the latest backup of the cluster?
 unsupported	take a look at the flux error logs and tell me what's wrong
 unsupported	show me the logs for the orchestrator
 unsupported	is flux in sync?
-unsupported	how much disk is left on data-01?
+storage.free	how much disk is left on data-01?
 unsupported	when did the last backup run?
-unsupported	what version of glass is deployed?
+deploy.version	what version of glass is deployed?
 unsupported	did the last deploy succeed?
 meta.capabilities	what can you actually do for me?
 meta.capabilities	what are your capabilities?
+
+# --- new capabilities (D-0036) ---------------------------------
+# Orchestrator-served: Prometheus and local reads, no OpenClaw round trip.
+pods.list	how many pods are running?
+pods.list	is anything crash looping?
+pods.list	show me the pods
+storage.free	are we running out of disk space?
+storage.free	how much room is left on the nodes?
+weather.now	what's the weather?
+weather.now	is it cold out?
+time.now	what time is it?
+time.now	what's today's date?
+deploy.version	what version are you running?
+
+# --- chat negatives for the new ground -------------------------
+# Same trap as "what is a GPU?": the words overlap, the intent does not.
+chat	why does disk usage grow over time?
+chat	how does a weather forecast work?
+chat	what is a timezone?
+chat	what does semantic versioning mean?
+chat	how do pods get scheduled?

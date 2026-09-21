@@ -51,7 +51,14 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 # JARVIS manages with the local model unavailable. The classifier's own score
 # comes from `python -m app.score_router` against the same fixture, and was
 # 47/64 on 2026-09-21.
-BASELINE_CAPABILITY_PASSES = 42
+#
+#   52  D-0036 adds five capabilities the orchestrator serves itself, and the
+#       fixture grows to 74 capability utterances. Narrow deterministic rules
+#       came with them on purpose: without one, "how much disk is left?"
+#       would reach the talker whenever the classifier is off or unreachable,
+#       where before it at least got an honest refusal. The degraded path is
+#       not allowed to get less honest.
+BASELINE_CAPABILITY_PASSES = 52
 
 
 

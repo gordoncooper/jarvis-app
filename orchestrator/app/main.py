@@ -29,6 +29,7 @@ from .memory import (
 )
 from .capabilities import refusal, spoken_list, talker_note
 from .classify import classify
+from .local_verbs import HANDLERS as LOCAL_VERBS
 from .router import (
     CHAT,
     META_CAPABILITIES,
@@ -688,6 +689,36 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     # cluster it cannot see (D-0033).
     if decision.label == UNSUPPORTED:
         return _reply(refusal(), extra={"unsupported": True})
+
+    # Capabilities the orchestrator serves itself — Prometheus and local
+    # reads (D-0036). No shim round trip, so these still answer when Hands is
+    # down, which is exactly when the question gets asked.
+    if decision.is_self_served:
+        handler = LOCAL_VERBS.get(decision.label)
+        if handler is not None:
+            try:
+                reply, data = await handler()
+                audit_verb(
+                    settings.memory_db_path,
+                    verb=decision.label,
+                    ok=True,
+                    detail=reply[:500],
+                    session_id=sess.id,
+                )
+            except Exception as e:  # noqa: BLE001
+                log.exception("local verb %s failed", decision.label)
+                reply = (
+                    f"I could not answer {decision.label} just now "
+                    f"({type(e).__name__})."
+                )
+                audit_verb(
+                    settings.memory_db_path,
+                    verb=decision.label,
+                    ok=False,
+                    detail=str(e)[:500],
+                    session_id=sess.id,
+                )
+            return _reply(reply, verb=decision.label)
 
     if decision.is_verb:
         name = decision.label

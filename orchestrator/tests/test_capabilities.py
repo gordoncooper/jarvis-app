@@ -101,3 +101,44 @@ class SpokenOutputTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SelfServedTest(unittest.TestCase):
+    """Capabilities the orchestrator answers itself (D-0036).
+
+    They exist partly so the house can still answer when Hands is down, so
+    the coupling that matters is: every one of them has a handler, and none
+    of them quietly routes through the shim.
+    """
+
+    def test_every_self_served_capability_has_a_handler(self) -> None:
+        from app.local_verbs import HANDLERS
+
+        declared = {
+            c.name for c in MANIFEST.values() if c.backend in ("prom", "local")
+        }
+        # meta.capabilities is answered inline in main.py from the manifest.
+        declared.discard("meta.capabilities")
+        self.assertEqual(declared, set(HANDLERS))
+
+    def test_no_handler_exists_for_something_undeclared(self) -> None:
+        from app.local_verbs import HANDLERS
+
+        for name in HANDLERS:
+            with self.subTest(name=name):
+                self.assertIn(name, MANIFEST)
+
+    def test_self_served_capabilities_never_reach_the_shim(self) -> None:
+        from app.local_verbs import HANDLERS
+
+        for name in HANDLERS:
+            with self.subTest(name=name):
+                self.assertNotIn(name, CATALOG)
+
+    def test_they_are_all_reads(self) -> None:
+        # Nothing here should ever be confirm-class; if one needs a confirm
+        # it belongs behind Hands with a blast radius and a Role.
+        for cap in MANIFEST.values():
+            if cap.backend in ("prom", "local"):
+                with self.subTest(name=cap.name):
+                    self.assertEqual(cap.klass, "trusted")

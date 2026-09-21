@@ -66,6 +66,16 @@ class Route:
     def is_memory(self) -> bool:
         return self.label in MEMORY_LABELS
 
+    @property
+    def is_self_served(self) -> bool:
+        """A capability the orchestrator answers itself (D-0036).
+
+        Prometheus and local-only reads. These survive Hands being down,
+        which is when Gordon is most likely to be asking.
+        """
+        cap = MANIFEST.get(self.label)
+        return bool(cap and cap.backend in ("prom", "local"))
+
 
 def route(text: str) -> Route:
     """Classify one utterance. Pure: no session, no sqlite, no network."""
@@ -109,7 +119,7 @@ def route(text: str) -> Route:
 # classifier does not produce, so naming one would fire a confirm prompt with
 # nothing in it. Explicit phrasings still reach them deterministically.
 CLASSIFIER_PROMOTABLE = frozenset(
-    set(CATALOG) | {MEMORY_LIST, META_CAPABILITIES}
+    set(MANIFEST) - {MEMORY_REMEMBER, MEMORY_FORGET}
 )
 
 
@@ -228,9 +238,9 @@ _SELF_ABILITY = re.compile(
 # When a capability lands for one of these, delete its word from here in the
 # same commit. That is the only maintenance this list should ever get.
 _UNSERVED_SUBJECT = re.compile(
-    r"\b(logs?|backups?|disks?|storage|space|files?|directory|folder|"
-    r"flux|in\s+sync|version|deployed|deploy\s+succeed|certificates?|"
-    r"secrets?|volumes?|ingress|uptime)\b",
+    r"\b(logs?|backups?|files?|directory|folder|"
+    r"flux|in\s+sync|deploy\s+succeed|certificates?|secrets?|volumes?|"
+    r"ingress)\b",
     re.I,
 )
 

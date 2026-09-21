@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     piper_model: str = "tts-1"
     piper_voice: str = "alloy"  # → en_GB-northern_english_male-medium (D-0014)
 
+    # Both artifacts describe themselves, so deploy.version reads them rather
+    # than repeating a pin that can go stale (D-0036).
+    glass_build_url: str = "http://jarvis-glass.apps.svc.cluster.local:8080/build.json"
+
     hands_base: str = "http://openclaw.agents.svc.cluster.local:4001"
 
     # D-0012: only the orchestrator may read Prometheus; glass reads /v1/pulse.
