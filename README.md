@@ -22,7 +22,7 @@ It runs on **jarvis.lan**. The selected theme and the image tags live in
 | Build, validate and ship a change | [docs/WORKFLOW.md](./docs/WORKFLOW.md) |
 | Write or modify a theme | [docs/THEMES.md](./docs/THEMES.md) |
 | Know the rules and what outranks what | [AGENTS.md](./AGENTS.md) |
-| Follow the intent-router work | [docs/INTENT-ROUTER.md](./docs/INTENT-ROUTER.md) |
+| Change how JARVIS understands a request | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md#how-a-turn-is-routed) |
 | Work on the cockpit theme specifically | [glass/themes/cockpit/docs/](./glass/themes/cockpit/docs/) |
 
 ## Layout
@@ -35,6 +35,7 @@ glass/
   esbuild.mjs public/    the packer
   devserve.mjs tools/    bastion-only dev server and headless UI driver
 scripts/install-images.sh  build images on apps-01 and import into k3s
+scripts/ask.py             talk to a live orchestrator; shows verb + latency
 docs/                    architecture, workflow, theme contract
 VERSION                  image tags and the selected theme — source of truth
 ```

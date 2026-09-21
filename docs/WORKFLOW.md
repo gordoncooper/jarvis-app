@@ -53,10 +53,43 @@ cd ~/jarvis-app/glass && npm run build && node devserve.mjs
 # http://127.0.0.1:5173/#login | #breath | #cmd | #noc
 ```
 
+## Tools
+
+Three, and the first is the one you will reach for most:
+
+```bash
+# Drive a live orchestrator. Prints the verb that fired and the round trip
+# beside each reply, so "did that match a capability or reach the talker?"
+# needs no pod logs. Turns share a session, so confirm and referent flows
+# work in one command.
+./scripts/ask.py "anything broken?" "what is a GPU?"
+./scripts/ask.py "I like black coffee" "remember that" "yes"
+ORCH=http://127.0.0.1:18080 ./scripts/ask.py -f orchestrator/tests/fixtures/utterances.tsv
+
+# Score the router against the fixture. --offline needs no LiteLLM key and
+# scores the deterministic pass only, so it runs on the bastion.
+cd orchestrator && . .venv/bin/activate
+python -m app.score_router --offline < tests/fixtures/utterances.tsv
+
+# With the real classifier, from inside the pod where the key is. Prints the
+# gate numbers with and without the model, side by side.
+kubectl -n apps exec -i deploy/jarvis-orchestrator -- \
+  python -m app.score_router < orchestrator/tests/fixtures/utterances.tsv
+```
+
+**Run real sentences at the live host.** Every routing bug fixed under D-0033
+was found that way, and none of them by reading the fixture — which agreed
+with the code right up until the live host disagreed with both. A refusal rule
+scored a clean 40/64 while telling Gordon it could not list his memories.
+
 ## Validating a change
 
-Four checks, in the order they catch things:
+Five checks, in the order they catch things:
 
+0. **`python -m pytest`** in `orchestrator/` — the router gate lives here and
+   `install-images.sh` runs it before it builds, so a failure stops the ship
+   rather than reaching jarvis.lan. `SKIP_TESTS=1` is the deliberate way past
+   it.
 1. **`npm run build`** — typecheck, unit tests, and the boundary guards. It
    fails the build; it does not warn. Pure logic with awkward edge cases (the
    sentence splitter must not break `192.168.8.0/24` or `e.g.`) gets a
@@ -101,7 +134,13 @@ flowchart TD
 Rules that bite if ignored:
 
 - **Never retag.** Image tags are immutable; `imagePullPolicy: Never` means a
-  reused tag silently serves the old bits.
+  reused tag silently serves the old bits. There is **no command-line
+  override**: `install-images.sh` sources `VERSION` after reading the
+  environment, so `IMAGE_ORCHESTRATOR_TAG=x ./scripts/install-images.sh` is
+  silently discarded and rebuilds whatever `VERSION` says — a retag. Bump
+  `VERSION`. The only knobs are `SKIP_ORCH`, `SKIP_GLASS` and `SKIP_TESTS`.
+- **One image at a time.** A slice that touches only the orchestrator builds
+  with `SKIP_GLASS=1`; rebuilding glass at its existing tag is a retag.
 - **`VERSION` is the source of truth** for both the tag and the theme.
   `install-images.sh` sources it and refuses to build an unknown theme.
 - **Flux does not watch this repo.** The image pin lives in `~/cluster` → Gitea.

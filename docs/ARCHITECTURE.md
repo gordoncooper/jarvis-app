@@ -103,6 +103,85 @@ Two boundaries the build refuses to cross (asserted in `esbuild.mjs`, so
   `MediaRecorder`, `EventSource`, no relative import into `src/`. If a theme
   needs something, widen `useJarvis()` so the *next* theme gets it too.
 
+## How a turn is routed
+
+Law is jarvis-infra **D-0033 / D-0034 / D-0035**. This is the shape.
+
+Everything JARVIS can do is declared once, in
+`orchestrator/app/capabilities.py`. Four things read that manifest, which is
+why it exists — before it did, each knew a different partial version and
+JARVIS confidently denied having abilities he had:
+
+```mermaid
+flowchart TD
+  MAN["capabilities.py<br/><b>the manifest</b><br/>name · class · backend<br/>summary · examples · args"]
+  MAN --> ROUTE["classifier prompt"]
+  MAN --> TALK["talker's 'do not pretend<br/>you queried this' note"]
+  MAN --> REF["the refusal, and<br/>meta.capabilities"]
+  MAN --> CAT["hands.CATALOG<br/><i>hands-backed entries only</i>"]
+```
+
+A turn resolves in stages, cheapest first. Only a turn that gets past the
+deterministic pass costs a model call:
+
+```mermaid
+flowchart LR
+  U["utterance"] --> P{"pending<br/>confirm?"}
+  P -->|yes| Y["yes / cancel<br/><i>'remember that' counts<br/>as yes</i>"]
+  P -->|no| D{"<b>1. deterministic</b><br/>router.route()<br/><i>pure, no I/O</i>"}
+  D -->|verb| V["execute"]
+  D -->|"chat or<br/>unsupported"| C{"<b>2. classifier</b><br/>jarvis-local<br/><i>may only name a verb</i>"}
+  C -->|names one| V
+  C -->|"no opinion"| K{"<b>3. deterministic<br/>said unsupported?</b>"}
+  K -->|yes| R["honest refusal<br/><i>from the manifest</i>"]
+  K -->|no| T["talker"]
+```
+
+**The talker has no tools, and never will** — that is D-0033's first line and
+VISION's rule, because the 7B fake-called them. The classifier is a separate
+call that returns a *label*; `classify.parse_verdict` rejects any name outside
+the manifest, so an invented `cluster.nuke` becomes nothing.
+
+**The classifier may only promote.** It can name a verb. It cannot turn a
+refusal into chat, and it cannot invent a refusal. That split is measured, not
+assumed: `jarvis-local` is good at "which verb did he mean" and bad at "is
+this a capability at all". Letting it do both made the whole thing a wash
+(D-0034).
+
+**Each side owns what it is good at.** `router.is_house_request` decides
+"nothing serves this subject" from a list of subjects no capability covers —
+a fact about the manifest rather than a guess. Add a capability for one of
+those subjects and you delete its word from that list in the same commit;
+`test_capabilities.py` fails if you forget.
+
+**Degradation is deliberate.** A classifier timeout or a malformed reply
+changes nothing — the deterministic route stands. The router keeps working
+with the talker down, which is VISION's "it stays up when it is sick".
+
+**"that" resolves against the previous turn** (D-0035) from a durable
+per-session referent store, and always through the ordinary Confirm/Cancel —
+an inference about what Gordon meant is never written on its own.
+
+### Changing the router
+
+Adding a phrase to a regex to catch one more sentence is the treadmill this
+was built to end. In order of preference:
+
+1. **Add the utterance to `orchestrator/tests/fixtures/utterances.tsv`** with
+   the label it should get, and leave it failing. That is a recorded miss, not
+   a bug, and it is how the classifier's next evaluation gets a target.
+2. **Add a capability** to the manifest if the thing genuinely cannot be done
+   — a row plus a decision entry. The router picks it up with no router change,
+   which is the point of the manifest.
+3. Only then consider a pattern, and only for a closed set of phrasings that
+   cannot mean anything else (the referent phrases are the example).
+
+The gate in `tests/test_router.py` asserts three absolute counts — plain chat
+captured by a capability, ordinary questions refused, and requests JARVIS
+*can* serve refused — all of which must be **zero**, plus a capability-pass
+floor. `scripts/install-images.sh` runs the suite before it builds, so a
+failing gate stops the ship.
+
 ## A turn, end to end
 
 ```mermaid
@@ -113,10 +192,11 @@ sequenceDiagram
   participant O as orchestrator
   participant L as LiteLLM / Hands
 
-  T->>H: send("status cluster")
+  T->>H: send("anything broken?")
   H->>N: POST /v1/turns (SSE)
   N->>O: proxy
-  O->>L: verb or completion
+  O->>O: route: deterministic, then classifier
+  O->>L: verb, refusal, or completion
   L-->>O: tokens
   O-->>H: event: token ×N
   H-->>T: messages[] grows per token
@@ -147,6 +227,8 @@ holding a question with no answer.
 | State | Owner | Notes |
 | --- | --- | --- |
 | Session, messages, confirm | orchestrator (sqlite on NFS) | survives a pod restart |
+| Referents — what "that" means | orchestrator (sqlite on NFS) | D-0035; cleared per turn when nothing was found |
+| What JARVIS can do | `app/capabilities.py` in git | the manifest; `hands.CATALOG` derives from it |
 | Promoted memory | orchestrator (sqlite on NFS) | explicit remember/forget |
 | Event journal | orchestrator, in-process | reseeds from node boot times |
 | Poll state, stream buffers | engine (`useJarvis`) | per browser tab |
