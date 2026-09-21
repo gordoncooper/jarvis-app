@@ -114,7 +114,8 @@ Talk happens here. Chat does **not** cover the planet.
 - HUD is DOM, pointer-events none except dossier / cmd / pips.
 - Dossier from `/v1/session` + `/v1/pulse`.
 - Pips map `/health`: llm→TALKER, hands→HANDS, stt→STT, tts→TTS.
-- Cmd: text → `streamTurn`. PTT → `streamAudioTurn`. Reply is TTS + a 2-line toast at the cmd bar, not a modal on the globe.
+- Cmd: text → `streamTurn`. PTT → `streamAudioTurn`. Reply is TTS + the dialogue
+  strip at the cmd bar (grows upward, fades out at the top), not a modal.
 - Long thread lives on the CMD display.
 
 ### 3. CMD — daily ops

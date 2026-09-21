@@ -14,7 +14,7 @@ Flux YAML lives in **gordoncooper/jarvis-cluster** (Gitea is origin; GitHub is a
 Reference frames (match these, do not “improve” them into SaaS):
 
 - Login: Fort Knox rack room plate + JARVIS badge as a lift-open lid
-- Earth: night globe, HUD on the rim, cmd bar, no chat modal on the planet
+- Earth: night globe, HUD on the rim, cmd bar, dialogue strip above the cmd bar
 - CMD: dossier | AM briefing | channel drawer + four bottom pills
 - NOC: 2×3 ortho rack, rings, ticker, node table, cmd
 
@@ -138,8 +138,25 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
   - Bottom chips: CLUSTER LIVE, UPTIME, GPU-01 °C, GPU-02 °C
   - Bottom: CmdBar `cmd  Speak freely…` + Send + Hold to talk
 - **Forbidden:** centered chat modal, greeting card over the globe, purple, glassmorphism.
+  The dialogue strip below is not a modal: it is bottom-aligned on the cmd bar,
+  non-interactive, and dissolves into the globe at its top edge.
 
-Turns: `streamTurn` / `streamAudioTurn`. Streamed reply → TTS via `fetchTtsObjectUrl` + a two-line toast above CmdBar. Persist messages in session state for the CMD display.
+Turns: `streamTurn` / `streamAudioTurn`. Streamed reply → TTS via
+`fetchTtsObjectUrl` + the dialogue strip above CmdBar. Persist messages in
+session state for the CMD display.
+
+**Revised 2026-09-20 (operator request), superseding "two-line toast":** the
+strip was clamped to one line per speaker (`-webkit-line-clamp: 1`) and never
+grew. It now grows upward from the cmd bar as the exchange continues, capped at
+`min(38cqh, 24rem)` and the last 12 messages; older lines run out under a
+`mask-image` fade at the top. It is bottom-aligned by `justify-content:
+flex-end` and clips — overflow past a flex start edge is not reachable by
+`scrollTop`, so there is no scroll handling and none is needed. The stack must
+be `flex: 0 0 auto` or it compresses to fit instead of overflowing, and nothing
+ever fades.
+
+The full transcript still lives on the CMD display; the globe keeps only the
+tail so returning to the stage does not bury the planet.
 
 ### CMD (index 2)
 
@@ -237,7 +254,8 @@ Do not teach glass to scrape noc.lan or home.lan.
 
 ## 7. What you will not do
 
-- Do not put a chat transcript on the globe.
+- Do not put a scrolling chat transcript or a modal on the globe. The bounded,
+  fading dialogue strip added 2026-09-20 is the sanctioned form.
 - Do not use noc.lan or home.lan as the product UI.
 - Do not theme chat.lan / grafana.lan / agent.lan.
 - Do not `kubectl apply` product YAML; Flux owns cluster (edit `~/cluster` on the bastion, push Gitea).

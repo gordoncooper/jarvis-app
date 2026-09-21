@@ -807,37 +807,79 @@ button:disabled {
   flex-shrink: 0;
 }
 
+/* Dialogue over the globe. It grows upward from the cmd bar and older lines
+   run out under a fade at the top, rather than being clamped to one line each.
+   Bottom-anchored with justify-content rather than column-reverse, which would
+   silently invert message order. */
 .ck-stage-toast {
   position: absolute;
   left: 50%;
   bottom: clamp(4.1rem, 8.4cqh, 5.1rem);
-  transform: translateX(-50%);
+  translate: -50% 0;
   z-index: 3;
   width: min(52rem, 84cqw);
+  max-height: min(38cqh, 24rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
   pointer-events: none;
   font-family: var(--type-ui);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 100%);
+}
+
+.ck-toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
+  padding-top: 2.5rem;
+  /* Must not shrink: as a flex item it would compress to fit the box instead
+     of overflowing it, so the container never scrolls and nothing ever fades
+     out the top. */
+  flex: 0 0 auto;
 }
 
 .ck-toast-user,
 .ck-toast-asst {
   margin: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  overflow: hidden;
-  line-height: 1.4;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  animation: ck-toast-in 260ms ease both;
 }
 
 .ck-toast-user {
   color: var(--steel);
   font-size: 0.82rem;
-  margin-bottom: 0.2rem;
+  letter-spacing: 0.02em;
+}
+
+.ck-toast-user::before {
+  content: "› ";
+  color: var(--ck-accent);
+  opacity: 0.7;
 }
 
 .ck-toast-asst {
   color: var(--ink);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.85);
+}
+
+.ck-toast-asst + .ck-toast-user {
+  margin-top: 0.45rem;
+}
+
+@keyframes ck-toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ck-toast-user,
+  .ck-toast-asst {
+    animation: none;
+  }
 }
 
 .ck-stage .ck-cmdbar {

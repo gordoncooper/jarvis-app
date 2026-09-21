@@ -13,6 +13,9 @@
 const [url, out, actionsJson] = process.argv.slice(2);
 const actions = JSON.parse(actionsJson || "[]");
 const PORT = 9333 + Math.floor(Math.random() * 400);
+// Viewport override, for checking layouts that depend on container height.
+const VW = Number(process.env.VW || 1920);
+const VH = Number(process.env.VH || 1080);
 const { spawn } = await import("node:child_process");
 const { writeFileSync, mkdtempSync, rmSync, readdirSync, statSync } = await import("node:fs");
 const { tmpdir } = await import("node:os");
@@ -34,7 +37,7 @@ const chrome = spawn("google-chrome", [
   "--headless=new", "--no-sandbox", "--disable-dev-shm-usage",
   `--user-data-dir=${profile}`, "--hide-scrollbars", "--ignore-certificate-errors",
   "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
-  "--force-device-scale-factor=1", "--window-size=1920,1080",
+  "--force-device-scale-factor=1", `--window-size=${VW},${VH}`,
   `--remote-debugging-port=${PORT}`, "about:blank",
 ], { stdio: "ignore" });
 
@@ -101,7 +104,7 @@ ws.onmessage = (ev) => {
   }
 };
 
-await send("Emulation.setDeviceMetricsOverride", { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+await send("Emulation.setDeviceMetricsOverride", { width: VW, height: VH, deviceScaleFactor: 1, mobile: false });
 await send("Page.enable");
 await send("Runtime.enable");
 const logs = [];

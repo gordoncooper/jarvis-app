@@ -1,17 +1,21 @@
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { ConcRing, LiveDot } from "../chrome/Marks.js";
-import { pulseText, type ConfirmPayload, type HealthPayload, type LastTurn, type PulsePayload } from "@core";
+import { pulseText, type ChatMsg, type ConfirmPayload, type HealthPayload, type PulsePayload } from "@core";
 import { pulseGpuChips } from "../rack.js";
 import { StageEarth, stageWebglOk } from "../StageEarth.js";
+
+/** Lines of dialogue kept over the globe. The rest lives on the CMD display. */
+const TAIL = 12;
 
 type Props = {
   health: HealthPayload | null;
   unreachable: boolean;
   pulse: PulsePayload | null;
-  toast: LastTurn | null;
+  /** Full transcript; the stage shows the tail of it above the cmd bar. */
+  messages: ChatMsg[];
   confirm: ConfirmPayload | null;
   busy: boolean;
   recording: boolean;
@@ -30,7 +34,7 @@ export function Stage({
   health,
   unreachable,
   pulse,
-  toast,
+  messages,
   confirm,
   busy,
   recording,
@@ -64,7 +68,12 @@ export function Stage({
     return () => window.clearTimeout(id);
   }, [active]);
 
-  const showToast = toast != null && !!(toast.user || toast.assistant);
+  // The globe keeps its own short tail rather than the whole session, so
+  // coming back to the stage does not bury the planet under yesterday.
+  // No scroll handling: the strip is bottom-aligned and clips, so the newest
+  // line is always the last one and older lines run out under the top fade.
+  // (Overflow past a flex start edge is not reachable by scrollTop anyway.)
+  const tail = useMemo(() => messages.filter((m) => m.content.trim()).slice(-TAIL), [messages]);
 
   return (
     <div className="ck-stage">
@@ -163,10 +172,15 @@ export function Stage({
           </div>
         </div>
 
-        {showToast && toast ? (
+        {tail.length ? (
           <div className="ck-stage-toast" aria-live="polite">
-            {toast.user ? <p className="ck-toast-user">{toast.user}</p> : null}
-            {toast.assistant ? <p className="ck-toast-asst">{toast.assistant}</p> : <p className="ck-toast-asst is-empty">…</p>}
+            <div className="ck-toast-stack">
+              {tail.map((m) => (
+                <p key={m.id} className={m.role === "user" ? "ck-toast-user" : "ck-toast-asst"}>
+                  {m.content || (m.role === "assistant" ? "…" : "")}
+                </p>
+              ))}
+            </div>
           </div>
         ) : null}
 

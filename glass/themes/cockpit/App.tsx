@@ -31,7 +31,7 @@ export function App() {
         health={j.health}
         unreachable={j.status.unreachable}
         pulse={j.pulse}
-        toast={j.lastTurn}
+        messages={j.messages}
         confirm={j.confirm}
         active={slide === 1}
         {...turnProps}
