@@ -16,10 +16,11 @@ in circulation; D-0033 is the durable record, and the code is the rest.
 | 3 — local classifier (shadow → on) | |
 | 4 — conversational referents | |
 
-Measurements were taken against live `jarvis.lan` on 2026-09-21, orchestrator
-`v0.6.26` — i.e. **before** slice 0. The throwaway fixture and scorer that
-produced the baseline are in `~/jarvis-eval-baseline/`; slice 1 promotes them
-into the repo.
+The measurements below were taken against live `jarvis.lan` on 2026-09-21,
+orchestrator `v0.6.26` — i.e. **before** slice 0, which is why the numbers in
+§1 are worse than the recorded gate. The fixture is now committed at
+`orchestrator/tests/fixtures/utterances.tsv` and scored by `test_router.py`;
+re-run it with `python -m pytest -q`.
 
 > **This does not give the talker tools.** The 7B still receives no tool
 > definitions and never emits a tool call. A separate constrained *classifier*
