@@ -50,6 +50,23 @@ _FORGET_ALL = re.compile(
     r")\s*$",
     re.IGNORECASE,
 )
+# Pointing at the previous turn without naming it: "scratch that",
+# "delete that last one". A closed, tiny set — none of these phrases means
+# anything else, which is why they are matched rather than classified. The
+# referent itself is resolved from session state, and the result is still
+# confirm-gated (D-0013: an inference about what Gordon meant is never
+# written on its own).
+_FORGET_REF = re.compile(
+    _PREFIX
+    + r"(?:"
+    r"scratch\s+(?:that|it|this)|"
+    r"undo\s+(?:that|it|the\s+last\s+one)|"
+    r"(?:delete|remove|drop|forget)\s+(?:that|this|the)\s+last\s+one|"
+    r"(?:delete|remove|drop)\s+(?:that|it|this)|"
+    r"that(?:'s|\s+is)\s+wrong[,.]?\s*(?:remove|delete|drop|forget)\s+it"
+    r")\s*[.!?]?\s*$",
+    re.IGNORECASE,
+)
 _LIST = re.compile(
     _PREFIX
     + r"(?:"
@@ -149,6 +166,8 @@ def parse_memory_intent(text: str) -> MemoryHit:
             return MemoryHit("remember_ref", "")
         if fact:
             return MemoryHit("remember", fact)
+    if _FORGET_REF.match(t):
+        return MemoryHit("forget_ref", "")
     if _FORGET_ALL.match(t):
         return MemoryHit("forget_all", "")
     m = _FORGET.match(t)

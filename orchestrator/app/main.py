@@ -382,7 +382,21 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         verb: str | None = None,
         confirm: dict[str, Any] | None = None,
         extra: dict[str, Any] | None = None,
+        candidate: str | None = None,
+        fact: str | None = None,
     ) -> Response:
+        # Record what the next turn's "that" may point at (D-0035). Passing
+        # None clears a key, so last_candidate does not survive a turn that
+        # found nothing — otherwise "remember that" could reach back and grab
+        # something said five exchanges ago.
+        ref: dict[str, Any] = {
+            "last_user_text": text,
+            "last_candidate": candidate,
+            "last_verb": verb,
+        }
+        if fact:
+            ref["last_fact_text"] = fact
+        store.set_referents(sess.id, **ref)
         store.append(sess.id, "assistant", reply)
         payload: dict[str, Any] = {
             "session_id": sess.id,
@@ -406,6 +420,8 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             return StreamingResponse(gen(), media_type="text/event-stream")
         return JSONResponse(payload)
 
+    deterministic = route(text)
+
     # Resolve pending confirm before memory/verbs (yes/cancel).
     raw_pending = store.get_pending(sess.id)
     pending = pending_alive(raw_pending)
@@ -415,7 +431,16 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         return _reply("Nothing pending to confirm or cancel.")
     if pending:
         kind = str(pending.get("kind") or "hands")
-        if is_affirm(text):
+        # "remember that" while a remember confirm is open means yes. Without
+        # this it fell through to "Still waiting: ... say yes or cancel",
+        # which is the exchange that made JARVIS feel obtuse: he had just
+        # offered to remember the thing and then refused to take the answer.
+        affirmed = is_affirm(text) or (
+            kind == "memory"
+            and str(pending.get("action") or "remember") == "remember"
+            and deterministic.label == MEMORY_REMEMBER_REF
+        )
+        if affirmed:
             store.set_pending(sess.id, None)
             if kind == "memory":
                 action = str(pending.get("action") or "remember")
@@ -440,6 +465,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                         f"Noted. I will remember: {fact}",
                         confirm=None,
                         extra={"memory": "remember"},
+                        fact=fact,
                     )
                 return _reply("Nothing to remember.")
             try:
@@ -510,7 +536,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             confirm=confirm,
         )
 
-    decision = await _apply_classifier(text, route(text))
+    decision = await _apply_classifier(text, deterministic)
 
     if decision.label == MEMORY_LIST:
         facts = mem().active_facts(200)
@@ -521,13 +547,58 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     # yet. Say so — the old behaviour stored the word "that" as a fact, and
     # matched it against every stored fact on the way back out.
     if decision.label == MEMORY_REMEMBER_REF:
+        refs = store.get_referents(sess.id)
+        candidate = str(refs.get("last_candidate") or "").strip()
+        if not candidate:
+            # Nothing was spotted at the time, so look again at what he
+            # actually said last. Cheap heuristic first, then the D-0025
+            # extractor — same order, and the same confirm gate, as a fresh
+            # utterance would get.
+            previous = str(refs.get("last_user_text") or "").strip()
+            if previous:
+                candidate = parse_memory_candidate(previous) or ""
+                if not candidate and eligible_for_llm_extract(previous):
+                    candidate = await extract_memory_fact(previous) or ""
+        if not candidate:
+            return _reply(
+                "I am not sure which part you would like me to keep, sir. "
+                "Say it again with the fact in it \u2014 "
+                "\u201cremember that I take my coffee black\u201d.",
+                extra={"memory": "remember"},
+            )
+        if fact_already_known(candidate, mem().active_facts(200)):
+            return _reply(f"Already noted: {candidate}", extra={"memory": "remember"})
+        pending_obj = new_memory_pending(candidate)
+        store.set_pending(sess.id, pending_obj)
         return _reply(
-            "I am not sure which part you would like me to keep, sir. "
-            "Say it again with the fact in it \u2014 "
-            "\u201cremember that I take my coffee black\u201d.",
-            extra={"memory": "remember"},
+            f"Shall I remember: {candidate}? Say yes or cancel.",
+            confirm={
+                "id": pending_obj["id"],
+                "kind": "memory",
+                "verb": "memory.remember",
+                "fact": candidate,
+                "summary": pending_obj["summary"],
+            },
         )
+
     if decision.label == MEMORY_FORGET_REF:
+        refs = store.get_referents(sess.id)
+        target = str(refs.get("last_fact_text") or "").strip()
+        # Only offer it if it is still there — he may have dropped it already.
+        if target and target in mem().active_facts(500):
+            pending_obj = new_memory_pending(target, action="forget", facts=[target])
+            store.set_pending(sess.id, pending_obj)
+            return _reply(
+                format_forget_confirm_ask([target]),
+                confirm={
+                    "id": pending_obj["id"],
+                    "kind": "memory",
+                    "verb": "memory.forget",
+                    "fact": target,
+                    "facts": [target],
+                    "summary": pending_obj["summary"],
+                },
+            )
         return _reply(
             "I am not sure which memory you mean, sir. "
             "Say \u201clist memories\u201d and name the one to drop.",
@@ -545,7 +616,9 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         if decision.fact:
             mem().remember(decision.fact, source_turn=sess.id)
         reply = _memory_reply("remember", decision.fact)
-        return _reply(reply, extra={"memory": "remember"})
+        return _reply(
+            reply, extra={"memory": "remember"}, fact=decision.fact or None
+        )
 
     if decision.label in (MEMORY_FORGET, MEMORY_FORGET_ALL):
         if decision.label == MEMORY_FORGET_ALL:
@@ -594,6 +667,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         return _reply(
             f"Shall I remember: {soft_candidate}? Say yes or cancel.",
             confirm=confirm,
+            candidate=soft_candidate,
         )
 
     if decision.label == META_CAPABILITIES:
@@ -667,11 +741,21 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     for m in sess.messages[-settings.max_history :]:
         messages.append({"role": m["role"], "content": m["content"]})
 
+    def _record_talker_turn(candidate: str | None) -> None:
+        """The talker paths bypass _reply, so they record referents here."""
+        store.set_referents(
+            sess.id,
+            last_user_text=text,
+            last_candidate=candidate,
+            last_verb=None,
+        )
+
     async def _maybe_memory_confirm(reply: str) -> tuple[str, dict[str, Any] | None]:
         """Append memory confirm ask after talker reply (heuristic, then LLM)."""
         candidate = parse_memory_candidate(text)
         if not candidate and eligible_for_llm_extract(text):
             candidate = await extract_memory_fact(text)
+        _record_talker_turn(candidate)
         if not candidate:
             return reply, None
         if fact_already_known(candidate, mem().active_facts(200)):

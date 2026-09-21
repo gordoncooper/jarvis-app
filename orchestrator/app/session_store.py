@@ -16,6 +16,8 @@ class Session:
     created_at: float
     messages: list[dict[str, Any]] = field(default_factory=list)
     pending_confirm: dict[str, Any] | None = None
+    # What "that" points at (D-0035). See SessionStore.set_referents.
+    referents: dict[str, Any] = field(default_factory=dict)
 
 
 class SessionStore:
@@ -56,6 +58,11 @@ class SessionStore:
                   kind TEXT NOT NULL,
                   payload_json TEXT NOT NULL,
                   expires_at REAL NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS referents (
+                  session_id TEXT PRIMARY KEY,
+                  payload_json TEXT NOT NULL,
+                  updated_at REAL NOT NULL
                 );
                 """
             )
@@ -114,11 +121,24 @@ class SessionStore:
                     pending = None
             elif pend:
                 conn.execute("DELETE FROM pending WHERE session_id = ?", (session_id,))
+            ref_row = conn.execute(
+                "SELECT payload_json FROM referents WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            referents: dict[str, Any] = {}
+            if ref_row:
+                try:
+                    loaded = json.loads(ref_row["payload_json"])
+                except json.JSONDecodeError:
+                    loaded = None
+                if isinstance(loaded, dict):
+                    referents = loaded
             return Session(
                 id=row["id"],
                 created_at=float(row["created_at"]),
                 messages=messages,
                 pending_confirm=pending,
+                referents=referents,
             )
 
     def append(self, session_id: str, role: str, content: str) -> None:
@@ -174,3 +194,39 @@ class SessionStore:
     def get_pending(self, session_id: str) -> dict[str, Any] | None:
         with self._lock:
             return self._cache[session_id].pending_confirm
+
+    def set_referents(self, session_id: str, **values: Any) -> None:
+        """Merge into what "that" points at for this session (D-0035).
+
+        Keys in use:
+          last_candidate   — a durable-sounding fact heard in the previous
+                             turn but not written. What "remember that" means.
+          last_user_text   — the previous user utterance, so a candidate can
+                             still be extracted later if none was found then.
+          last_fact_text   — the most recent promoted fact. What "delete that
+                             last one" means.
+          last_verb        — the last capability run.
+
+        Durable alongside pending, on the same NFS sqlite, because a session
+        outlives the pod (D-0024) and "remember that" after a restart should
+        not silently mean something different.
+        """
+        with self._lock:
+            sess = self._cache[session_id]
+            merged = dict(sess.referents)
+            for key, value in values.items():
+                if value is None:
+                    merged.pop(key, None)
+                else:
+                    merged[key] = value
+            sess.referents = merged
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO referents "
+                    "(session_id, payload_json, updated_at) VALUES (?, ?, ?)",
+                    (session_id, json.dumps(merged), time.time()),
+                )
+
+    def get_referents(self, session_id: str) -> dict[str, Any]:
+        with self._lock:
+            return dict(self._cache[session_id].referents)

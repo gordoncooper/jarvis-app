@@ -8,9 +8,15 @@ because the image ships only `app/`, and the number that matters — how well
         python -m app.score_router < tests/fixtures/utterances.tsv
 
 Reads `<label>TAB<utterance>` on stdin, ignores comments, and prints the same
-three gate numbers `test_router.py` asserts — once for the deterministic pass
-alone, once with the classifier folded in — so the cost and benefit of turning
-it on are visible side by side.
+gate numbers `test_router.py` asserts — once for the deterministic pass alone,
+once with the classifier folded in — so the cost and benefit of turning it on
+are visible side by side.
+
+`--offline` skips the model entirely and scores only the deterministic pass,
+which needs no LiteLLM key and so runs on the bastion:
+
+    cd ~/jarvis-app/orchestrator && . .venv/bin/activate
+    python -m app.score_router --offline < tests/fixtures/utterances.tsv
 """
 
 from __future__ import annotations
@@ -56,13 +62,17 @@ def _score(rows: list[tuple[str, str, str]], title: str) -> None:
 
 
 async def main() -> int:
+    offline = "--offline" in sys.argv
     rows = _load(sys.stdin)
     if not rows:
         print("no fixture on stdin", file=sys.stderr)
         return 2
-    print(f"{len(rows)} utterances | model={settings.classifier_model} "
-          f"| floors={settings.classifier_min_confidence}/"
-          f"{settings.classifier_min_confidence_write}")
+    if offline:
+        print(f"{len(rows)} utterances | deterministic only (--offline)")
+    else:
+        print(f"{len(rows)} utterances | model={settings.classifier_model} "
+              f"| floors={settings.classifier_min_confidence}/"
+              f"{settings.classifier_min_confidence_write}")
 
     det_rows, cls_rows = [], []
     latencies: list[float] = []
@@ -72,7 +82,7 @@ async def main() -> int:
         det = route(utt)
         det_rows.append((expected, det.label, utt))
         out = det
-        if det.label in (CHAT, UNSUPPORTED):
+        if not offline and det.label in (CHAT, UNSUPPORTED):
             t0 = time.monotonic()
             verdict = await classify(utt)
             latencies.append(time.monotonic() - t0)
@@ -90,8 +100,9 @@ async def main() -> int:
                 )
         cls_rows.append((expected, out.label, utt))
 
-    _score(det_rows, "deterministic only (shipped behaviour)")
-    _score(cls_rows, "with the local classifier")
+    _score(det_rows, "deterministic only")
+    if not offline:
+        _score(cls_rows, "with the local classifier")
 
     if latencies:
         latencies.sort()

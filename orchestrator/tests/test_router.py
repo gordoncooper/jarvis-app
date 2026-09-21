@@ -51,7 +51,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 # JARVIS manages with the local model unavailable. The classifier's own score
 # comes from `python -m app.score_router` against the same fixture, and was
 # 47/64 on 2026-09-21.
-BASELINE_CAPABILITY_PASSES = 39
+BASELINE_CAPABILITY_PASSES = 42
 
 
 

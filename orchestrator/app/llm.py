@@ -12,12 +12,22 @@ from .config import settings
 
 log = logging.getLogger("jarvis.orchestrator.llm")
 
+# "Refuse ... questions" used to be the last clause, and it swallowed the
+# phrasing Gordon actually uses: "did you know I like black coffee?" is a
+# question in form and a disclosure in content, so nothing was ever extracted
+# from it and "remember that" had nothing to point at (D-0035). Separating
+# the two kinds of question also stopped the extractor returning bare
+# fragments like {"fact":"Sarah"} for "my wife's name is Sarah".
 _EXTRACT_SYSTEM = (
     "You extract at most one durable personal fact about Gordon for long-term "
-    "memory (preferences, identity, habits). Reply with JSON only: "
-    '{"fact":"<one short line>"} or {"fact":null}. '
-    "Refuse secrets, passwords, tokens, live rack/cluster metrics, one-off "
-    "chit-chat, and questions. Never invent facts not in the user text."
+    "memory: preferences, identity, habits, how he wants to be addressed. "
+    'Reply with JSON only: {"fact":"<one short line>"} or {"fact":null}. '
+    "A sentence phrased as a question can still state a fact about Gordon - "
+    '"did you know I like black coffee?" contains the fact "Gordon likes '
+    'black coffee". Extract it. Only refuse a question that ASKS for '
+    'information ("what is a GPU?", "are the nodes up?"). '
+    "Also refuse secrets, passwords, tokens, live rack or cluster metrics, "
+    "and one-off chit-chat. Never invent facts not in the user text."
 )
 
 
