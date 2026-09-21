@@ -130,6 +130,12 @@ sequenceDiagram
 The theme never sees SSE, `MediaRecorder` or an audio element. It renders
 `messages`, `busy`, `speaking`, `confirm` and calls `send()`.
 
+Speech is streamed, not deferred: `useJarvis` splits the reply into sentences
+as tokens arrive (`core/speech.ts`), keeps two Piper renders in flight, and
+plays the clips in order. Rendering is deliberately decoupled from playback —
+a first version only started the next render when the current clip ended,
+which left a render-length silence between every sentence.
+
 `interrupt()` cuts a reply short: it silences the TTS audio, aborts the stream
 via `AbortController`, and marks the partial answer truncated. The orchestrator
 catches the resulting `CancelledError` and persists the same partial with the

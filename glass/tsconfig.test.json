@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/**/*.test.ts",
+    "src/core/**/*.ts"
+  ],
+  "exclude": []
+}

@@ -57,8 +57,11 @@ cd ~/jarvis-app/glass && npm run build && node devserve.mjs
 
 Four checks, in the order they catch things:
 
-1. **`npm run build`** — typecheck plus the boundary guards. It fails the build;
-   it does not warn.
+1. **`npm run build`** — typecheck, unit tests, and the boundary guards. It
+   fails the build; it does not warn. Pure logic with awkward edge cases (the
+   sentence splitter must not break `192.168.8.0/24` or `e.g.`) gets a
+   `*.test.ts` beside it, run by `node --test`; `npm run bundle` skips both
+   checks while iterating.
 2. **Drive it, don't just screenshot it.** `tools/drive.mjs` dispatches real
    input events and reports console errors. Static screenshots have missed a
    global Enter handler that jumped the deck on every message send, and a deck

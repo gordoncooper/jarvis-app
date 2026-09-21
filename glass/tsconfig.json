@@ -27,5 +27,8 @@
     "src/**/*.tsx",
     "themes/**/*.ts",
     "themes/**/*.tsx"
+  ],
+  "exclude": [
+    "**/*.test.ts"
   ]
 }

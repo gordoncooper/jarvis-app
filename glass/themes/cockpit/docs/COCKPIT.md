@@ -277,6 +277,16 @@ Do not teach glass to scrape noc.lan or home.lan.
   prompt revealed by a clip-path wipe. Both respect `prefers-reduced-motion`.
 - Breath HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
+- **Streamed speech**, added 2026-09-21. TTS used to fire once on `done` with
+  the whole reply, so the voice started only after the last token — measured
+  at 20.8s to the first spoken word on a 1497-character answer (12.0s of text
+  plus 8.8s of render). The engine now splits the reply into sentences as it
+  streams, renders them a couple ahead, and plays them in order: **2.6s to the
+  first word, with no gaps between clips.** Piper renders ~8x faster than real
+  time, which is what lets the queue stay ahead of playback.
+  Markdown is stripped before synthesis — Piper reads `**Bastion**` as
+  "asterisk asterisk Bastion" — and list items get a terminator so they are
+  not run together in one breath.
 - **Interrupt / barge-in**, added 2026-09-21. JARVIS can be cut off mid-reply
   three ways: **Esc**, the **Stop** control that appears in the cmd bar while
   it is responding, and simply **starting to talk or type over it** — holding

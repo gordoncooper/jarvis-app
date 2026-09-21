@@ -4,11 +4,13 @@
   "version": "0.6.0-dev",
   "type": "module",
   "scripts": {
-    "build": "npm run typecheck && node esbuild.mjs",
+    "build": "npm run typecheck && npm test && node esbuild.mjs",
     "bundle": "node esbuild.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\""
   },
   "devDependencies": {
+    "@types/node": "^26.6.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/three": "^0.170.0",

@@ -13,11 +13,14 @@ import {
   streamTurn,
 } from "./api.js";
 import { type ChatMsg, nextMsgId } from "./chat.js";
+import { stripForSpeech, takeSentences } from "./speech.js";
 import { SESSION_POLL_MS, parseBriefing, type SessionBriefing } from "./session.js";
 
 const SESSION_KEY = "jarvis.session_id";
 const HEALTH_POLL_MS = 8_000;
 const PULSE_POLL_MS = 2_000;
+/** Concurrent Piper renders. Two keeps the queue ahead without hammering it. */
+const MAX_TTS_IN_FLIGHT = 2;
 
 /** The last exchange, for themes that surface it outside the transcript
  *  (the cockpit draws it as a two-line toast over the globe). */
@@ -97,6 +100,15 @@ export function useJarvis(): Jarvis {
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  // Sentence-at-a-time speech. Text not yet forming a full sentence waits in
+  // pendingRef; queueRef holds sentences waiting their turn to be spoken.
+  const pendingRef = useRef("");
+  /** Sentences not yet handed to Piper. */
+  const textQueueRef = useRef<string[]>([]);
+  /** Renders in flight or finished, in playback order. */
+  const audioQueueRef = useRef<Array<Promise<string | null>>>([]);
+  const inFlightRef = useRef(0);
+  const speakingRef = useRef(false);
   // Bumped on every interrupt and every new turn, so a TTS clip that finishes
   // rendering after the operator cut in is discarded instead of played.
   const turnSeqRef = useRef(0);
@@ -188,6 +200,12 @@ export function useJarvis(): Jarvis {
   }, [loadSession]);
 
   const stopSpeaking = useCallback(() => {
+    pendingRef.current = "";
+    textQueueRef.current = [];
+    // Renders already in flight resolve into nothing: the turn counter has
+    // moved on, so playSpeech drops them and revokes their URLs.
+    audioQueueRef.current = [];
+    speakingRef.current = false;
     const audio = audioRef.current;
     audioRef.current = null;
     setSpeaking(false);
@@ -198,35 +216,83 @@ export function useJarvis(): Jarvis {
     if (url.startsWith("blob:")) URL.revokeObjectURL(url);
   }, []);
 
-  const speak = useCallback(
-    async (text: string) => {
-      if (!ttsOkRef.current || !text.trim()) return;
-      const turn = turnSeqRef.current;
-      try {
-        const url = await fetchTtsObjectUrl(text);
-        if (!url) return;
-        // The operator may have cut in while Piper was still rendering.
+  /** Render sentences as soon as they exist and play them in order.
+   *
+   *  Rendering must not wait on playback. Piper is ~8x faster than real time,
+   *  so keeping a couple of renders in flight means the next clip is ready
+   *  before the current one ends and the speech is continuous. A first
+   *  version only started the next render when the previous clip finished,
+   *  which left a render-length silence between every sentence. */
+  const pumpSpeech = useCallback(() => {
+    const turn = turnSeqRef.current;
+    while (inFlightRef.current < MAX_TTS_IN_FLIGHT && textQueueRef.current.length) {
+      const text = textQueueRef.current.shift() as string;
+      inFlightRef.current += 1;
+      const p = fetchTtsObjectUrl(text)
+        .catch(() => null)
+        .finally(() => {
+          inFlightRef.current -= 1;
+          // Freeing a slot may let the next sentence start rendering.
+          if (turn === turnSeqRef.current) pumpSpeech();
+        });
+      audioQueueRef.current.push(p);
+    }
+  }, []);
+
+  const playSpeech = useCallback(async () => {
+    if (speakingRef.current) return;
+    speakingRef.current = true;
+    const turn = turnSeqRef.current;
+    try {
+      while (audioQueueRef.current.length) {
+        if (turn !== turnSeqRef.current) break;
+        const url = await (audioQueueRef.current.shift() as Promise<string | null>);
+        pumpSpeech();
         if (turn !== turnSeqRef.current) {
-          URL.revokeObjectURL(url);
-          return;
+          if (url) URL.revokeObjectURL(url);
+          break;
         }
-        stopSpeaking();
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          if (audioRef.current === audio) {
-            audioRef.current = null;
-            setSpeaking(false);
-          }
-        };
-        await audio.play();
-        setSpeaking(true);
-      } catch {
-        // The reply is already on screen; losing audio is not worth surfacing.
+        if (!url) continue;
+        await new Promise<void>((resolve) => {
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          const finish = () => {
+            URL.revokeObjectURL(url);
+            if (audioRef.current === audio) audioRef.current = null;
+            resolve();
+          };
+          audio.onended = finish;
+          audio.onerror = finish;
+          void audio.play().then(
+            () => {
+              if (turn === turnSeqRef.current) setSpeaking(true);
+            },
+            finish,
+          );
+        });
       }
+    } finally {
+      speakingRef.current = false;
+      if (turn === turnSeqRef.current && !audioQueueRef.current.length) setSpeaking(false);
+    }
+  }, [pumpSpeech]);
+
+  /** Feed streamed text in; complete sentences start rendering immediately. */
+  const feedSpeech = useCallback(
+    (chunk: string, final = false) => {
+      if (!ttsOkRef.current) return;
+      pendingRef.current += chunk;
+      const { ready, rest } = takeSentences(pendingRef.current, { final });
+      pendingRef.current = rest;
+      for (const sentence of ready) {
+        const spoken = stripForSpeech(sentence);
+        if (spoken) textQueueRef.current.push(spoken);
+      }
+      if (!ready.length) return;
+      pumpSpeech();
+      void playSpeech();
     },
-    [stopSpeaking],
+    [pumpSpeech, playSpeech],
   );
 
   /** Cut JARVIS off mid-reply: silence the audio, abort the stream, and mark
@@ -306,6 +372,7 @@ export function useJarvis(): Jarvis {
         onToken: (t) => {
           setLastTurn((prev) => (prev ? { ...prev, assistant: prev.assistant + t } : prev));
           setAsst(asstId, (c) => c + t);
+          feedSpeech(t);
         },
         onDone: (reply, _transcript, nextConfirm) => {
           if (reply) {
@@ -314,7 +381,8 @@ export function useJarvis(): Jarvis {
           }
           endTurn();
           if (nextConfirm) setConfirm(nextConfirm);
-          void speak(reply);
+          // Speak the tail; the body has been going out sentence by sentence.
+          feedSpeech("", true);
         },
         onError: (message) => {
           setLastTurn((prev) => (prev ? { ...prev, assistant: `Error: ${message}` } : prev));
@@ -330,7 +398,7 @@ export function useJarvis(): Jarvis {
         }
       }
     },
-    [beginTurn, endTurn, interrupt, setAsst, speak],
+    [beginTurn, endTurn, feedSpeech, interrupt, setAsst],
   );
 
   const startPtt = useCallback(async () => {
@@ -384,6 +452,7 @@ export function useJarvis(): Jarvis {
       onToken: (t) => {
         setLastTurn((prev) => (prev ? { ...prev, assistant: prev.assistant + t } : prev));
         setAsst(asstId, (c) => c + t);
+        feedSpeech(t);
       },
       onDone: (reply, transcript, nextConfirm) => {
         if (transcript) applyTranscript(transcript);
@@ -393,7 +462,7 @@ export function useJarvis(): Jarvis {
         }
         endTurn();
         if (nextConfirm) setConfirm(nextConfirm);
-        void speak(reply);
+        feedSpeech("", true);
       },
       onError: (message) => {
         setLastTurn((prev) => (prev ? { ...prev, assistant: `Error: ${message}` } : prev));
@@ -407,7 +476,7 @@ export function useJarvis(): Jarvis {
         endTurn();
       }
     }
-  }, [beginTurn, endTurn, interrupt, setAsst, speak]);
+  }, [beginTurn, endTurn, feedSpeech, interrupt, setAsst]);
 
   return {
     greeting,
