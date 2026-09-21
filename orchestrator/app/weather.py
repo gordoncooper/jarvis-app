@@ -19,6 +19,11 @@ from .config import settings
 log = logging.getLogger("jarvis.orchestrator.weather")
 
 CACHE_TTL_SEC = 600.0
+# A single timeout must not blank the header for a full TTL, so a failed poll
+# keeps serving the last good reading and retries on this shorter interval.
+RETRY_AFTER_SEC = 60.0
+# Past this, a reading we can no longer refresh is dropped rather than shown stale.
+MAX_STALE_SEC = 3 * 3600.0
 ENDPOINT = "https://api.open-meteo.com/v1/forecast"
 
 # WMO weather interpretation codes -> short lowercase text for the header chip.
@@ -57,7 +62,10 @@ _COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
             "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
 
 _lock = asyncio.Lock()
-_cache: tuple[float, dict[str, Any] | None] | None = None
+# (next_attempt_monotonic, last_good_payload, last_good_monotonic)
+_next_attempt: float = 0.0
+_last_good: dict[str, Any] | None = None
+_last_good_at: float = 0.0
 
 
 def _bearing(deg: Any) -> str | None:
@@ -110,17 +118,37 @@ async def _fetch() -> dict[str, Any] | None:
 
 
 async def get_weather() -> dict[str, Any] | None:
-    global _cache
+    """Last good reading, refreshed on a timer. Never a fabricated one."""
+    global _next_attempt, _last_good, _last_good_at
     now = time.monotonic()
-    cached = _cache
-    if cached and now - cached[0] < CACHE_TTL_SEC:
-        return cached[1]
+    if now < _next_attempt:
+        return _fresh_enough(now)
     async with _lock:
-        cached = _cache
         now = time.monotonic()
-        if cached and now - cached[0] < CACHE_TTL_SEC:
-            return cached[1]
+        if now < _next_attempt:
+            return _fresh_enough(now)
         body = await _fetch()
-        # Cache misses too, so a dead endpoint cannot be polled every 2s.
-        _cache = (time.monotonic(), body)
-        return body
+        now = time.monotonic()
+        if body is not None:
+            _last_good = body
+            _last_good_at = now
+            _next_attempt = now + CACHE_TTL_SEC
+        else:
+            # Hold the previous reading and come back sooner than a full TTL.
+            _next_attempt = now + RETRY_AFTER_SEC
+        return _fresh_enough(now)
+
+
+def _fresh_enough(now: float) -> dict[str, Any] | None:
+    if _last_good is None:
+        return None
+    if now - _last_good_at > MAX_STALE_SEC:
+        return None
+    return _last_good
+
+
+def _reset_for_tests() -> None:
+    global _next_attempt, _last_good, _last_good_at
+    _next_attempt = 0.0
+    _last_good = None
+    _last_good_at = 0.0

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ConfirmPayload } from "../../api.js";
+import type { ConfirmPayload, PulsePayload } from "../../api.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { ConfirmCard } from "../chrome/ConfirmCard.js";
 import {
@@ -25,6 +25,7 @@ type Props = {
   briefing?: SessionBriefing | Record<string, unknown> | null;
   messages: ChatMsg[];
   confirm: ConfirmPayload | null;
+  pulse: PulsePayload | null;
   busy: boolean;
   recording: boolean;
   sttOk: boolean;
@@ -37,8 +38,6 @@ type Props = {
   onConfirm: () => void;
   onCancel: () => void;
 };
-
-const WEATHER_STUB = { now: "16°C, overcast", wind: "NW wind 8 km/h" };
 
 const KIND_ICON: Record<string, typeof IconInbox> = {
   inbound: IconInbox,
@@ -63,6 +62,7 @@ export function Cmd({
   briefing,
   messages,
   confirm,
+  pulse,
   busy,
   recording,
   sttOk,
@@ -147,6 +147,20 @@ export function Cmd({
     setWantFocus("apply");
   }
 
+  // Real reading from /v1/pulse, or nothing. The header used to ship a
+  // hardcoded "16°C, overcast" that was wrong everywhere except by accident.
+  const weather = useMemo(() => {
+    const w = pulse?.weather;
+    if (!w || typeof w.temp_c !== "number" || !Number.isFinite(w.temp_c)) return null;
+    const headline = [`${Math.round(w.temp_c)}°C`, w.text?.trim()].filter(Boolean).join(", ");
+    const wind =
+      typeof w.wind_kmh === "number" && Number.isFinite(w.wind_kmh)
+        ? `${w.wind_dir ? `${w.wind_dir} ` : ""}wind ${Math.round(w.wind_kmh)} km/h`
+        : null;
+    const detail = [w.place?.trim(), wind].filter(Boolean).join(" · ");
+    return { headline, detail: detail || "—" };
+  }, [pulse]);
+
   return (
     <div className="ck-cmd">
       <header className="ck-cmd-top">
@@ -167,16 +181,20 @@ export function Cmd({
               <span>{dateStr}</span>
             </div>
           </div>
-          <span className="ck-vdiv" />
-          <div className="ck-widget">
-            <span className="ck-ico">
-              <IconCloud size={18} />
-            </span>
-            <div>
-              <strong>{WEATHER_STUB.now}</strong>
-              <span>{WEATHER_STUB.wind}</span>
-            </div>
-          </div>
+          {weather ? (
+            <>
+              <span className="ck-vdiv" />
+              <div className="ck-widget">
+                <span className="ck-ico">
+                  <IconCloud size={18} />
+                </span>
+                <div>
+                  <strong>{weather.headline}</strong>
+                  <span>{weather.detail}</span>
+                </div>
+              </div>
+            </>
+          ) : null}
           <span className="ck-vdiv" />
           <div className="ck-widget">
             <span className="ck-ico">

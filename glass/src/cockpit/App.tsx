@@ -319,6 +319,7 @@ export function App() {
         briefing={briefing}
         messages={messages}
         confirm={confirm}
+        pulse={pulse}
         live={live}
         memoryFacts={health?.memory_facts ?? 0}
         onRefetchSession={() => {

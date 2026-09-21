@@ -582,18 +582,16 @@ button:disabled {
 
 .ck-stage-systems {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: nowrap;
-  gap: 0.45rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(0.5rem, 1.1cqh, 0.85rem);
   padding-top: 0.1rem;
   min-width: 0;
 }
 
 .ck-conc {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
 }
 
@@ -601,27 +599,29 @@ button:disabled {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.28rem;
+  gap: 0.6rem;
   color: var(--steel);
   min-width: 0;
+  white-space: nowrap;
 }
 
 .ck-sys-txt {
-  text-align: left;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
   line-height: 1.15;
 }
 
 .ck-sys strong {
-  display: block;
   font-weight: 500;
-  font-size: clamp(0.58rem, 0.95cqw, 0.68rem);
-  letter-spacing: 0.1em;
+  font-size: clamp(0.66rem, 1.05cqw, 0.78rem);
+  letter-spacing: 0.12em;
 }
 
 .ck-sys span {
-  font-size: clamp(0.54rem, 0.9cqw, 0.62rem);
-  letter-spacing: 0.08em;
-  opacity: 0.85;
+  font-size: clamp(0.62rem, 1cqw, 0.72rem);
+  letter-spacing: 0.1em;
+  opacity: 0.9;
 }
 
 .ck-sys.is-live {
@@ -641,19 +641,23 @@ button:disabled {
 
 .ck-stage-dossier {
   position: absolute;
-  top: 20%;
-  left: clamp(1rem, 2cqw, 1.6rem);
+  top: 21%;
+  left: clamp(1rem, 2cqw, 1.9rem);
   z-index: 2;
-  width: clamp(14rem, 22cqw, 18rem);
-  padding: 0;
-  background: transparent;
-  border: none;
+  width: clamp(13rem, 17cqw, 15.5rem);
+  padding: 0.85rem 1.05rem 0.95rem;
+  border: 1px solid color-mix(in oklch, var(--ck-accent) 20%, var(--line));
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--bg) 62%, transparent);
+  backdrop-filter: blur(2px);
 }
 
 .ck-panel-title {
-  font-size: clamp(0.72rem, 1.15cqw, 0.85rem);
+  font-size: clamp(0.68rem, 1.05cqw, 0.78rem);
   letter-spacing: 0.18em;
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -666,10 +670,14 @@ button:disabled {
 
 .ck-stage-dossier dl > div {
   display: grid;
-  grid-template-columns: 4rem 0.75rem 1fr;
-  font-size: clamp(0.82rem, 1.35cqw, 0.98rem);
+  grid-template-columns: 3.6rem 0.7rem 1fr;
+  font-size: clamp(0.74rem, 1.1cqw, 0.86rem);
   letter-spacing: 0.06em;
-  line-height: 1.85;
+  line-height: 1.95;
+}
+
+.ck-stage-dossier dl > div dd:last-child {
+  color: var(--ck-accent);
 }
 
 .ck-stage-dossier dt {
@@ -779,15 +787,15 @@ button:disabled {
 
 .ck-stage .ck-cmdbar {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(52rem, 84cqw);
+  left: clamp(0.85rem, 1.8cqw, 1.5rem);
+  right: clamp(0.85rem, 1.8cqw, 1.5rem);
   bottom: clamp(1.1rem, 2.4cqh, 1.5rem);
   z-index: 3;
   border-radius: 2px;
   pointer-events: auto;
-  padding: 0.55rem 0.85rem;
-  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  padding: 0.72rem 1.1rem;
+  background: color-mix(in oklch, var(--bg) 78%, transparent);
+  backdrop-filter: blur(3px);
   border: 1px solid var(--line);
   box-shadow: none;
   backdrop-filter: none;
