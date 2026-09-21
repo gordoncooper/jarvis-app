@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass
 
 from .capabilities import MANIFEST
-from .hands import CATALOG, match_verb
+from .hands import CATALOG, match_verb, parse_confirm_args
 from .memory import parse_memory_candidate, parse_memory_intent
 
 CHAT = "chat"
@@ -102,6 +102,56 @@ def route(text: str) -> Route:
         return Route(UNSUPPORTED)
 
     return Route(CHAT)
+
+
+def combine(text: str, deterministic: Route, verdict: object | None, *,
+            min_confidence: float, min_confidence_write: float) -> Route:
+    """Fold a classifier verdict into the deterministic route (D-0033 slice 3).
+
+    Pure, so the precedence rules are testable without a model. The rules:
+
+    * A deterministic hit always wins. It is exact, free, and survives the
+      talker being down.
+    * No verdict, or an unsure one, changes nothing — a classifier outage
+      degrades to exactly the behaviour of slice 2.
+    * A verdict naming a verb is trusted only because `classify.parse_verdict`
+      already rejected anything outside the manifest.
+    * "capability, but no verb" becomes the honest refusal.
+    * "chat" overrides a deterministic `unsupported`. That is the slice 2
+      stopgap being subsumed: when the model has an opinion, the rule on
+      sentence shape no longer gets a vote.
+    """
+    if deterministic.label not in (CHAT, UNSUPPORTED):
+        return deterministic
+    if verdict is None:
+        return deterministic
+
+    kind = getattr(verdict, "kind", None)
+    verb = getattr(verdict, "verb", None)
+    confidence = float(getattr(verdict, "confidence", 0.0) or 0.0)
+
+    if verb:
+        cap = MANIFEST.get(verb)
+        if cap is None:  # belt and braces; parse_verdict already checked
+            return deterministic
+        floor = min_confidence_write if cap.klass == "confirm" else min_confidence
+        if confidence < floor:
+            return deterministic
+        if cap.backend != "hands":
+            return Route(verb, verb_class=cap.klass)
+        args = None
+        if cap.klass == "confirm":
+            # main.py asks for a target when this comes back empty.
+            args, _err = parse_confirm_args(verb, text)
+        return Route(verb, verb_class=cap.klass, args=args)
+
+    if confidence < min_confidence:
+        return deterministic
+    if kind == "capability":
+        return Route(UNSUPPORTED)
+    if kind == CHAT:
+        return Route(CHAT)
+    return deterministic
 
 
 # --- telling "a capability I lack" apart from small talk -------------------

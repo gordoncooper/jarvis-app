@@ -28,7 +28,9 @@ from .memory import (
     parse_memory_candidate,
 )
 from .capabilities import refusal, spoken_list, talker_note
+from .classify import classify
 from .router import (
+    CHAT,
     META_CAPABILITIES,
     MEMORY_CANDIDATE,
     MEMORY_FORGET,
@@ -38,6 +40,7 @@ from .router import (
     MEMORY_REMEMBER,
     MEMORY_REMEMBER_REF,
     UNSUPPORTED,
+    combine,
     route,
 )
 from .session_store import SessionStore
@@ -169,6 +172,41 @@ def _scrub_for_memory_confirm(reply: str) -> str:
         lines.append(line)
     out = "\n".join(lines).strip()
     return out or "Understood."
+
+
+async def _apply_classifier(text: str, decision: Any) -> Any:
+    """Let the local classifier speak when the deterministic pass had no answer.
+
+    Only ever called on a fall-through, so a turn that matched a verb costs
+    nothing extra. In `shadow` the verdict is logged and discarded, which is
+    how the model gets scored against Gordon's real traffic before it is
+    allowed to change a reply (D-0033).
+    """
+    mode = (settings.router_classifier or "off").strip().lower()
+    if mode not in ("shadow", "on"):
+        return decision
+    if decision.label not in (CHAT, UNSUPPORTED):
+        return decision
+
+    verdict = await classify(text)
+    proposed = combine(
+        text,
+        decision,
+        verdict,
+        min_confidence=settings.classifier_min_confidence,
+        min_confidence_write=settings.classifier_min_confidence_write,
+    )
+    log.info(
+        "router mode=%s deterministic=%s verdict=%s/%s conf=%.2f applied=%s text=%r",
+        mode,
+        decision.label,
+        getattr(verdict, "kind", None),
+        getattr(verdict, "verb", None),
+        float(getattr(verdict, "confidence", 0.0) or 0.0),
+        proposed.label if mode == "on" else decision.label,
+        text[:120],
+    )
+    return proposed if mode == "on" else decision
 
 
 def _temp_unit() -> str:
@@ -472,7 +510,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             confirm=confirm,
         )
 
-    decision = route(text)
+    decision = await _apply_classifier(text, route(text))
 
     if decision.label == MEMORY_LIST:
         facts = mem().active_facts(200)
