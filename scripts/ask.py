@@ -90,7 +90,7 @@ def main() -> int:
     for i, text in enumerate(texts):
         sid = f"{session}-{i}" if args.new else session
         elapsed, d = ask(orch, text, sid, args.timeout)
-        verb = d.get("verb") or ("unsupported" if d.get("unsupported") else "-")
+        verb = d.get("route") or d.get("verb") or "-"
         reply = (d.get("reply_text") or "").strip()
         if not args.full:
             reply = reply.replace("\n", " / ")

@@ -373,6 +373,11 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     sid = session_id or str(uuid.uuid4())
     sess = store.get_or_create(sid)
     store.append(sess.id, "user", text)
+    # Which route the turn resolved to, surfaced on the response so
+    # scripts/ask.py can show it. A hands verb was already visible via
+    # `verb`; memory and local capabilities were not, which made "did that
+    # reach the talker?" unanswerable without pod logs.
+    resolved_label: str | None = None
     accept = request.headers.get("accept", "")
     want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
 
@@ -404,6 +409,8 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             "degraded": False,
             "transcript": text,
         }
+        if resolved_label:
+            payload["route"] = resolved_label
         if verb:
             payload["verb"] = verb
         if confirm:
@@ -421,6 +428,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         return JSONResponse(payload)
 
     deterministic = route(text)
+    resolved_label = deterministic.label
 
     # Resolve pending confirm before memory/verbs (yes/cancel).
     raw_pending = store.get_pending(sess.id)
@@ -537,6 +545,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         )
 
     decision = await _apply_classifier(text, deterministic)
+    resolved_label = decision.label
 
     if decision.label == MEMORY_LIST:
         facts = mem().active_facts(200)
@@ -814,6 +823,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 "reply_text": reply,
                 "degraded": False,
                 "transcript": text,
+                "route": resolved_label,
             }
             if confirm:
                 done["confirm"] = confirm
@@ -837,6 +847,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         "reply_text": reply,
         "degraded": False,
         "transcript": text,
+        "route": resolved_label,
     }
     if confirm:
         payload["confirm"] = confirm
