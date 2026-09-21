@@ -156,6 +156,26 @@ _SELF_ABILITY = re.compile(
     re.I,
 )
 
+# Subjects no capability in the manifest owns. This is the load-bearing half
+# of the rule and the reason it can be trusted: JARVIS refuses only when the
+# request names something he demonstrably has no verb for, rather than
+# whenever a sentence merely *looks* like an instruction.
+#
+# The first version refused on shape alone, and promptly told Gordon "that is
+# not something I can do" in answer to "show me all your saved facts and
+# memories" — while offering, two lines later, to read back everything he had
+# asked it to remember. A refusal that contradicts its own capability list is
+# worse than the hallucination it replaced.
+#
+# When a capability lands for one of these, delete its word from here in the
+# same commit. That is the only maintenance this list should ever get.
+_UNSERVED_SUBJECT = re.compile(
+    r"\b(logs?|backups?|disks?|storage|space|files?|directory|folder|"
+    r"flux|in\s+sync|version|deployed|deploy\s+succeed|certificates?|"
+    r"secrets?|volumes?|ingress|uptime)\b",
+    re.I,
+)
+
 # "what can you do" with no subject attached — answered by meta.capabilities.
 _META_ASK = re.compile(
     r"\b(what\s+(can|could)\s+you\s+(actually\s+)?do"
@@ -166,10 +186,18 @@ _META_ASK = re.compile(
 
 
 def is_house_request(text: str) -> bool:
-    """True when the utterance plainly asks about *this* lab and nothing can serve it."""
+    """True only when the utterance asks this lab for something nothing serves.
+
+    Three conditions, and all must hold. Ordered cheapest-first, but the
+    middle one is the point: never refuse a subject a capability owns, even
+    if the phrasing was one the matchers failed to recognise. A missed
+    capability should fall through and be answered badly by the talker
+    (status quo, and slice 3's job) rather than be denied outright — denying
+    it states something untrue about JARVIS himself.
+    """
     t = " ".join((text or "").strip().split())
     if not t or _CONCEPTUAL.search(t):
         return False
-    if _HOUSE.search(t):
-        return True
-    return bool(_SELF_ABILITY.search(t) and _LAB_NOUN.search(t))
+    if not _UNSERVED_SUBJECT.search(t):
+        return False
+    return bool(_HOUSE.search(t) or (_SELF_ABILITY.search(t) and _LAB_NOUN.search(t)))

@@ -30,6 +30,9 @@ class Capability:
     # One line, spoken aloud. Written to be read back by Piper, so no
     # parentheses, no slashes, no shell.
     summary: str
+    # Two or three words, for listing several in one breath. A refusal that
+    # recites nine full bullets is unusable over voice.
+    short: str = ""
     # How Gordon actually says it. These seed the classifier prompt in slice 3
     # and double as documentation of intended phrasing.
     examples: tuple[str, ...] = ()
@@ -45,6 +48,7 @@ MANIFEST: dict[str, Capability] = {
     # --- Hands: the rack (D-0022 trusted / D-0023 confirm) ---
     "cluster.health": _cap(
         name="cluster.health",
+        short="cluster health",
         klass="trusted",
         backend="hands",
         summary="tell you whether the cluster is healthy, and which pods are not running",
@@ -57,6 +61,7 @@ MANIFEST: dict[str, Capability] = {
     ),
     "cluster.gpus": _cap(
         name="cluster.gpus",
+        short="GPU temperature and memory",
         klass="trusted",
         backend="hands",
         summary="read the GPU temperatures and memory in use",
@@ -65,6 +70,7 @@ MANIFEST: dict[str, Capability] = {
     ),
     "lab.map": _cap(
         name="lab.map",
+        short="the lab map",
         klass="trusted",
         backend="hands",
         summary="give you the lab addresses and the node list",
@@ -73,6 +79,7 @@ MANIFEST: dict[str, Capability] = {
     ),
     "apps.recycle_pod": _cap(
         name="apps.recycle_pod",
+        short="recycling a pod",
         klass="confirm",
         backend="hands",
         summary="delete one named pod so its controller recreates it",
@@ -82,6 +89,7 @@ MANIFEST: dict[str, Capability] = {
     ),
     "apps.restart_deploy": _cap(
         name="apps.restart_deploy",
+        short="restarting a deployment",
         klass="confirm",
         backend="hands",
         summary="restart a deployment",
@@ -92,6 +100,7 @@ MANIFEST: dict[str, Capability] = {
     # --- Memory: promoted sqlite (D-0013 / D-0024 / D-0027 / D-0028) ---
     "memory.list": _cap(
         name="memory.list",
+        short="listing what I remember",
         klass="trusted",
         backend="memory",
         summary="read back everything you have asked me to remember",
@@ -99,6 +108,7 @@ MANIFEST: dict[str, Capability] = {
     ),
     "memory.remember": _cap(
         name="memory.remember",
+        short="remembering a fact",
         klass="trusted",
         backend="memory",
         summary="remember a fact you tell me to keep",
@@ -106,6 +116,7 @@ MANIFEST: dict[str, Capability] = {
     ),
     "memory.forget": _cap(
         name="memory.forget",
+        short="forgetting one",
         klass="confirm",
         backend="memory",
         summary="forget a fact, after checking with you first",
@@ -114,6 +125,7 @@ MANIFEST: dict[str, Capability] = {
     # --- Local ---
     "meta.capabilities": _cap(
         name="meta.capabilities",
+        short="listing what I can do",
         klass="trusted",
         backend="local",
         summary="tell you what I can do",
@@ -146,19 +158,24 @@ def spoken_list() -> str:
 
 
 def refusal(request_hint: str = "") -> str:
-    """Said when an utterance clearly asks for something with no capability.
+    """Said when an utterance names something no capability covers.
 
     Names the gap and what does exist, instead of handing the question to a
     talker with no data — which is how "the last update I recall was from
     yesterday" happened about a cluster it cannot see.
+
+    One breath, not a recital: the first version read all nine bullets aloud.
+    `meta.capabilities` is where the full list belongs.
     """
-    head = "That is not something I can do yet, sir"
+    head = "I have no verb for that, sir"
     if request_hint:
         head += f" — {request_hint}"
+    have = ", ".join(c.short or c.summary for c in MANIFEST.values() if c.backend != "local")
     return (
         head
-        + ". I have no verb for it, and I will not guess at live state.\n"
-        + spoken_list()
+        + ", and I will not guess at live state. What I do have: "
+        + have
+        + ". Ask what I can do for the detail."
     )
 
 

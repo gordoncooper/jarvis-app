@@ -12,7 +12,7 @@ in circulation; D-0033 is the durable record, and the code is the rest.
 | --- | --- |
 | 0 — live bugs | **shipped** 2026-09-21, orchestrator v0.6.27 |
 | 1 — eval fixture + gate | **shipped** 2026-09-21, orchestrator v0.6.28 |
-| 2 — manifest + honest refusal | **shipped** 2026-09-21, orchestrator v0.6.29 |
+| 2 — manifest + honest refusal | **shipped** 2026-09-21, orchestrator v0.6.30 |
 | 3 — local classifier (shadow → on) | next |
 | 4 — conversational referents | |
 
@@ -298,7 +298,10 @@ route to `chat`. A pytest that scores it and asserts two things:
 - **false refusals = 0** — no ordinary question may be met with "I cannot do
   that". Added in slice 2, because that slice decides refusals with a rule
   rather than a model.
-- **capability passes ≥ 40**, as an absolute count, not a rate. Absolute so
+- **requests JARVIS can actually serve, refused = 0**. Distinct from the
+  above: a phrasing the matchers miss must fall through to the talker, not be
+  denied. Denying it states something untrue about JARVIS himself.
+- **capability passes ≥ 39**, as an absolute count, not a rate. Absolute so
   that adding cases can only ever make the gate stricter; a rate over the mixed
   set climbs when you add negatives, which lets a gate rot while looking
   healthier.
@@ -326,6 +329,15 @@ show me how a pod works            → the idea      → talker   (imperative, s
 list all the running pods for me   → this rack     → refusal
 how much disk is left on data-01?  → this rack     → refusal
 ```
+
+The first cut of this rule tested shape alone and shipped briefly as v0.6.29,
+where it refused *show me all your saved facts and memories* while offering to
+read memories back in the same reply. The fix was not a patch but a different
+condition: **refuse only when the request names a subject no capability owns**
+— logs, backups, disk, files, Flux state, image versions. A phrasing the
+matchers merely failed to recognise now falls through to the talker, because a
+refusal asserts something untrue where a miss only repeats the status quo.
+The gate grew a third assertion so this cannot recur.
 
 It is tuned for precision and **it expires at slice 3** — see D-0033, which
 carries the three constraints. Do not extend it with more patterns; record

@@ -6,9 +6,12 @@ Scores `app.router.route` — the real router, not a copy of it — against
   * chat false-positives must be 0. This protects the thing that already
     works. Widening a regex to catch one more phrasing usually steals a
     general question, and that trade is never worth it.
-  * false refusals must be 0 — no ordinary question may be answered with
-    "I cannot do that". Slice 2 decides that with a rule rather than a model,
-    and a rule on English is exactly what needs a guard around it.
+  * false refusals must be 0, and that means two things, not one: no
+    ordinary question may be answered with "I cannot do that", and neither
+    may a request for something JARVIS genuinely can do. The second is the
+    one that bit — the first cut of the slice 2 rule refused "show me all
+    your saved facts and memories" while offering, in the same reply, to
+    read back everything Gordon had asked it to remember.
   * capability passes must not drop below the recorded baseline.
 
 Absolute counts, deliberately, not rates: a rate over the mixed set climbs
@@ -28,9 +31,12 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 # genuinely improves recall; never lower it to make a build pass.
 #
 # History, so the number is auditable rather than folklore:
-#   40  slice 2. The 10 'unsupported' and 2 'meta.capabilities' utterances now
+#   39  slice 2. The 'unsupported' and 'meta.capabilities' utterances now
 #       route correctly instead of reaching the talker, which is the whole
-#       point of the slice — an honest refusal is a right answer.
+#       point of the slice — an honest refusal is a right answer. 39 and not
+#       40 because "list all the running pods for me" was given back to the
+#       talker on purpose: pods are a subject a capability owns, so the
+#       refusal rule must not claim ignorance of them.
 #   26  pre-slice-0, coarse labels — but one was `remember that` "passing"
 #       by storing the word "that", i.e. a bug counted as a pass
 #   25  post-slice-0, same coarse labels
@@ -39,7 +45,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 #       dropping the three chat false-positives. The rest is label precision —
 #       memory.candidate / .forget_all / .remember_ref are distinct outcomes
 #       and the coarse buckets had been scoring them against the wrong name.
-BASELINE_CAPABILITY_PASSES = 40
+BASELINE_CAPABILITY_PASSES = 39
 
 
 
@@ -88,6 +94,22 @@ class RouterGateTest(unittest.TestCase):
             [],
             "ordinary conversation was answered with a refusal:\n"
             + "\n".join(f"  {u!r}" for u in refused),
+        )
+
+    def test_a_capability_request_is_never_refused(self) -> None:
+        # Worse than a miss: a refusal asserts something untrue about JARVIS.
+        # A phrasing the matchers fail to recognise should fall through to the
+        # talker (status quo) rather than be denied outright.
+        denied = [
+            (utt, exp)
+            for exp, got, utt in self.scored
+            if got == UNSUPPORTED and exp not in (CHAT, UNSUPPORTED)
+        ]
+        self.assertEqual(
+            denied,
+            [],
+            "JARVIS refused something he can actually do:\n"
+            + "\n".join(f"  {u!r} (is really {e})" for u, e in denied),
         )
 
     def test_capability_recall_has_not_regressed(self) -> None:

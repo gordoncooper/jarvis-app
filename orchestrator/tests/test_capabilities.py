@@ -57,10 +57,20 @@ class SpokenOutputTest(unittest.TestCase):
 
     def test_refusal_says_what_it_cannot_do_and_what_it_can(self) -> None:
         said = refusal()
-        self.assertIn("not something I can do", said)
+        self.assertIn("no verb for that", said)
         self.assertIn("will not guess", said)
         # A refusal that does not offer the alternative is just a dead end.
-        self.assertIn(MANIFEST["cluster.health"].summary, said)
+        self.assertIn(MANIFEST["cluster.health"].short, said)
+
+    def test_refusal_stays_short_enough_to_speak(self) -> None:
+        # Piper reads this aloud. The first cut recited nine bullets.
+        self.assertLess(len(refusal()), 400)
+        self.assertNotIn("\n", refusal())
+
+    def test_every_capability_has_a_short_form(self) -> None:
+        for cap in MANIFEST.values():
+            with self.subTest(name=cap.name):
+                self.assertTrue(cap.short, "needed for the one-breath refusal")
 
 
 if __name__ == "__main__":
