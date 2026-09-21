@@ -807,33 +807,54 @@ button:disabled {
   flex-shrink: 0;
 }
 
-/* Dialogue over the globe. It grows upward from the cmd bar and older lines
-   run out under a fade at the top, rather than being clamped to one line each.
-   Bottom-anchored with justify-content rather than column-reverse, which would
-   silently invert message order. */
-.ck-stage-toast {
+/* Comms column: dialogue strip stacked on the cmd bar, anchored to the bottom
+   of the stage. Both used to be absolutely positioned against the same edge
+   with hand-tuned offsets, and at a short window the strip's bottom landed
+   under the cmd bar and clipped the newest line. */
+.ck-stage-comms {
   position: absolute;
-  left: 50%;
-  bottom: clamp(4.1rem, 8.4cqh, 5.1rem);
-  translate: -50% 0;
+  left: clamp(0.85rem, 1.8cqw, 1.5rem);
+  right: clamp(0.85rem, 1.8cqw, 1.5rem);
+  bottom: clamp(1.1rem, 2.4cqh, 1.5rem);
   z-index: 3;
-  width: min(52rem, 84cqw);
-  max-height: min(38cqh, 24rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.5rem, 1.2cqh, 1rem);
+  pointer-events: none;
+}
+
+/* Dialogue grows upward out of the cmd bar. Older lines run out under the fade
+   at the top. Bottom-aligned with justify-content rather than column-reverse,
+   which would silently invert message order. */
+.ck-stage-toast {
+  width: 100%;
+  /* Grows with the window but stays a readable measure — ch tracks the font
+     size below, so the block widens as the type scales up. The 560px is the
+     CLUSTER/UPTIME and GPU chip clusters, which are pinned to the stage
+     corners at a fixed ~285px / ~145px whatever the window size; without
+     reserving it the dialogue sat on top of them on a small window. */
+  max-width: min(96ch, max(28ch, 100% - 560px));
+  max-height: min(52cqh, 46rem);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   overflow: hidden;
-  pointer-events: none;
   font-family: var(--type-ui);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 100%);
+  /* Scales with the stage rather than sitting at a fixed rem, which left the
+     text tiny on a 3K window. */
+  /* Root rem is 13px here, so these are calibrated against measured sizes:
+     ~14px at a 1272px stage, ~17px at 1920, ~23px at 3070. */
+  font-size: clamp(0.95rem, 0.59rem + 0.5cqi, 1.85rem);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
 }
 
 .ck-toast-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.34rem;
-  padding-top: 2.5rem;
+  gap: 0.34em;
+  padding-top: 2.5em;
   /* Must not shrink: as a flex item it would compress to fit the box instead
      of overflowing it, so the container never scrolls and nothing ever fades
      out the top. */
@@ -850,7 +871,7 @@ button:disabled {
 
 .ck-toast-user {
   color: var(--steel);
-  font-size: 0.82rem;
+  font-size: 0.86em;
   letter-spacing: 0.02em;
 }
 
@@ -862,12 +883,12 @@ button:disabled {
 
 .ck-toast-asst {
   color: var(--ink);
-  font-size: 0.95rem;
+  font-size: 1em;
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.85);
 }
 
 .ck-toast-asst + .ck-toast-user {
-  margin-top: 0.45rem;
+  margin-top: 0.45em;
 }
 
 @keyframes ck-toast-in {
@@ -883,10 +904,8 @@ button:disabled {
 }
 
 .ck-stage .ck-cmdbar {
-  position: absolute;
-  left: clamp(0.85rem, 1.8cqw, 1.5rem);
-  right: clamp(0.85rem, 1.8cqw, 1.5rem);
-  bottom: clamp(1.1rem, 2.4cqh, 1.5rem);
+  position: static;
+  width: 100%;
   z-index: 3;
   border-radius: 2px;
   pointer-events: auto;
@@ -895,7 +914,6 @@ button:disabled {
   backdrop-filter: blur(3px);
   border: 1px solid var(--line);
   box-shadow: none;
-  backdrop-filter: none;
 }
 
 .ck-stage .ck-cmdbar input {

@@ -172,28 +172,33 @@ export function Stage({
           </div>
         </div>
 
-        {tail.length ? (
-          <div className="ck-stage-toast" aria-live="polite">
-            <div className="ck-toast-stack">
-              {tail.map((m) => (
-                <p key={m.id} className={m.role === "user" ? "ck-toast-user" : "ck-toast-asst"}>
-                  {m.content || (m.role === "assistant" ? "…" : "")}
-                </p>
-              ))}
+        {/* Comms column: the dialogue strip and the cmd bar are one
+            bottom-anchored stack, so the strip can never be positioned under
+            the cmd bar the way a magic `bottom` offset allowed. */}
+        <div className="ck-stage-comms">
+          {tail.length ? (
+            <div className="ck-stage-toast" aria-live="polite">
+              <div className="ck-toast-stack">
+                {tail.map((m) => (
+                  <p key={m.id} className={m.role === "user" ? "ck-toast-user" : "ck-toast-asst"}>
+                    {m.content || (m.role === "assistant" ? "…" : "")}
+                  </p>
+                ))}
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <CmdBar
-          variant="stage"
-          busy={busy}
-          recording={recording}
-          sttOk={sttOk}
-          placeholder="Speak freely…"
-          onSubmit={onSubmit}
-          onPttStart={onPttStart}
-          onPttStop={onPttStop}
-        />
+          <CmdBar
+            variant="stage"
+            busy={busy}
+            recording={recording}
+            sttOk={sttOk}
+            placeholder="Speak freely…"
+            onSubmit={onSubmit}
+            onPttStart={onPttStart}
+            onPttStop={onPttStop}
+          />
+        </div>
       </motion.div>
       {health?.degraded ? (
         <p className="ck-degraded">{health.reason || "Degraded"}</p>

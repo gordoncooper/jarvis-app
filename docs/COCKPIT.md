@@ -148,12 +148,23 @@ session state for the CMD display.
 **Revised 2026-09-20 (operator request), superseding "two-line toast":** the
 strip was clamped to one line per speaker (`-webkit-line-clamp: 1`) and never
 grew. It now grows upward from the cmd bar as the exchange continues, capped at
-`min(38cqh, 24rem)` and the last 12 messages; older lines run out under a
+`min(52cqh, 46rem)` and the last 12 messages; older lines run out under a
 `mask-image` fade at the top. It is bottom-aligned by `justify-content:
 flex-end` and clips — overflow past a flex start edge is not reachable by
 `scrollTop`, so there is no scroll handling and none is needed. The stack must
 be `flex: 0 0 auto` or it compresses to fit instead of overflowing, and nothing
 ever fades.
+
+The strip and the CmdBar are one bottom-anchored flex column
+(`.ck-stage-comms`), not two things positioned against the same edge with
+hand-tuned offsets — at a short window the old offsets put the strip's bottom
+*under* the cmd bar and clipped the newest line.
+
+It scales with the stage rather than sitting at fixed rem: type is
+`clamp(0.95rem, 0.59rem + 0.5cqi, 1.85rem)` (~14px at a 1272px stage, ~17px at
+1920, ~23px at 3070) and the measure is `min(96ch, max(28ch, 100% - 560px))`.
+The 560px reserves the CLUSTER/UPTIME and GPU chip clusters, which stay pinned
+to the stage corners at a fixed ~285px / ~145px however wide the window is.
 
 The full transcript still lives on the CMD display; the globe keeps only the
 tail so returning to the stage does not bury the planet.
