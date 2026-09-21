@@ -22,6 +22,7 @@ It runs on **jarvis.lan**. The selected theme and the image tags live in
 | Build, validate and ship a change | [docs/WORKFLOW.md](./docs/WORKFLOW.md) |
 | Write or modify a theme | [docs/THEMES.md](./docs/THEMES.md) |
 | Know the rules and what outranks what | [AGENTS.md](./AGENTS.md) |
+| Follow the intent-router work | [docs/INTENT-ROUTER.md](./docs/INTENT-ROUTER.md) |
 | Work on the cockpit theme specifically | [glass/themes/cockpit/docs/](./glass/themes/cockpit/docs/) |
 
 ## Layout
