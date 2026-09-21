@@ -4,7 +4,7 @@
 //
 //   node tools/drive.mjs <url> <out.png> '<json actions>'
 //
-// actions: {wait:ms} {click:"sel"} {type:["sel","text"]} {key:"Enter",code:13}
+// actions: {wait:ms} {click:"sel"} {at:[x,y]} {type:["sel","text"]} {key:"Enter",code:13}
 //          {drag:["sel",dx,dy]} {eval:"expr"} {shot:"file.png"}
 //
 // Static screenshots miss interaction bugs. Two real ones were only found this
@@ -145,6 +145,12 @@ for (const a of actions) {
     await send("Input.dispatchKeyEvent", { type: "keyDown", key: a.key, code: a.key, windowsVirtualKeyCode: a.code ?? 39, ...extra });
     await send("Input.dispatchKeyEvent", { type: "keyUp", key: a.key, code: a.key, windowsVirtualKeyCode: a.code ?? 39 });
     await sleep(500);
+  }
+  if (a.at) {
+    const [x, y] = a.at;
+    for (const type of ["mousePressed", "mouseReleased"])
+      await send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1 });
+    await sleep(400);
   }
   if (a.click) {
     const p = await rect(a.click);

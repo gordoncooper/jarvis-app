@@ -117,7 +117,15 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
   wordmark baked in, which was soft at scale.
 - **Revised 2026-09-20 (operator request), superseding "no form fields":** the
   badge is a lid. Click it, or press Enter, and it lifts and shrinks to reveal
-  a login prompt underneath; Authorise (or Enter in the field) sets `deck = 1`.
+  a login prompt underneath.
+- The badge **toggles** — clicking it again lowers the lid and hides the
+  prompt. Escape closes it too.
+- **Only Authorise advances to Earth** (Enter inside the field is the same
+  thing, being a form submit). The badge never navigates, and neither does a
+  stray Enter with nothing focused. The badge's box is ~858x288 with large
+  transparent gaps between the letterforms, so "clicking beside the mark" is
+  usually still a badge click — when that used to advance the deck it read as
+  "clicking anywhere takes me to Earth".
 - The prompt is a presence gate, not authentication. The operator name is fixed
   and the passphrase field is labelled `NOT YET ENFORCED` with the note "no
   credential is checked", because the orchestrator has no auth and the UI must

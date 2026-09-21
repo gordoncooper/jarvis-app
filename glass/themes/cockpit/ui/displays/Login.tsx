@@ -38,12 +38,17 @@ export function Login({ onEnter, active }: Props) {
     // on any Enter anywhere in the deck.
     if (!active) return;
     const onKey = (ev: KeyboardEvent) => {
-      if (ev.key !== "Enter" || ev.defaultPrevented) return;
+      if (ev.defaultPrevented) return;
       const tag = (ev.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return;
-      // Enter means "the next thing": lift the lid, then authorise.
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON";
+      if (ev.key === "Escape" && gate === "open") {
+        setGate("sealed");
+        return;
+      }
+      if (ev.key !== "Enter" || inField) return;
+      // Enter lifts the lid. It does not authorise: only Authorise does, and
+      // Enter inside the field is a form submit, which is the same thing.
       if (gate === "sealed") setGate("open");
-      else onEnter();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -60,9 +65,11 @@ export function Login({ onEnter, active }: Props) {
       <motion.button
         type="button"
         className="ck-login-badge"
-        aria-label={gate === "sealed" ? "Open JARVIS" : "JARVIS"}
+        aria-label={gate === "sealed" ? "Reveal sign-in" : "Hide sign-in"}
         aria-expanded={gate === "open"}
-        onClick={() => (gate === "sealed" ? setGate("open") : onEnter())}
+        // The badge is a lid, so it toggles. It never navigates — reaching
+        // Earth is the Authorise button's job alone.
+        onClick={() => setGate((g) => (g === "sealed" ? "open" : "sealed"))}
         animate={{
           y: gate === "open" ? lift * 92 : 0,
           scale: gate === "open" ? 0.78 : 1,
