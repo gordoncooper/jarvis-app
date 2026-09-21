@@ -4,7 +4,8 @@
   "version": "0.6.0-dev",
   "type": "module",
   "scripts": {
-    "build": "node esbuild.mjs",
+    "build": "npm run typecheck && node esbuild.mjs",
+    "bundle": "node esbuild.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

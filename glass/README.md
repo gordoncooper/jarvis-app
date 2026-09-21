@@ -1,52 +1,72 @@
 # glass
 
-One engine, one theme, chosen at build time. The engine (`src/core/`) is the
-same for every theme; the theme owns the entire UI/UX.
+One engine plus one theme, selected at build time. `glass/` is **not** a theme:
 
-Contract and how to add a theme: [`docs/THEMES.md`](../docs/THEMES.md).
+- **engine** — `src/core/`. Transport, `useJarvis()`, parsers, formatters.
+- **packer** — `esbuild.mjs`, `public/`, `nginx.conf`, `Dockerfile`, plus
+  `devserve.mjs` and `tools/` for the bastion loop.
+- **themes** — `themes/<name>/`, each self-contained.
 
-```
-src/core/        the engine — api, useJarvis(), parsers, formatters
-assets/globe/    shared asset library, served at /globe/*
-themes/<name>/   theme.json + main.tsx + css + ui/
-tools/           bastion-only screenshot and CDP driver
-devserve.mjs     bastion-only static server with /v1 proxy
-```
+How it fits together: [../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md).
+Writing a theme: [../docs/THEMES.md](../docs/THEMES.md).
+Build/validate/ship loop: [../docs/WORKFLOW.md](../docs/WORKFLOW.md).
 
 ## Themes
 
 | Theme | Status |
 | --- | --- |
-| `cockpit` | Product pack (D-0031 / D-0032). Four displays: login, earth, cmd, noc. |
+| `cockpit` | Product pack (D-0031 / D-0032). Four displays: login, earth, cmd, noc. Docs in [`themes/cockpit/docs/`](./themes/cockpit/docs/). |
 
 ## Build
 
-`VERSION` in the repo root is the source of truth for both the theme and the
-image tag; `scripts/install-images.sh` sources it.
+`VERSION` in the repo root selects the theme and the tag;
+`scripts/install-images.sh` sources it.
 
 ```bash
-cd ~/jarvis-app/glass
 export PATH="$HOME/.local/node-v22.14.0-linux-x64/bin:$PATH"
-JARVIS_THEME=cockpit npm run build     # -> dist/
-npm run typecheck                      # covers src/ and themes/
+JARVIS_THEME=cockpit npm run build   # typecheck (src/ + themes/) then bundle
+npm run bundle                       # skip the typecheck while iterating
 ```
 
-The build refuses an unknown theme rather than falling back, and asserts the
-two boundary rules from `docs/THEMES.md` before compiling: core may not import
-a theme, and a theme may not touch the transport.
+The build fails — it does not warn — on any of:
 
-`dist/build.json` records the theme, tag and build time, so a running image can
-say what it is:
+| Check | Why |
+| --- | --- |
+| unknown theme | no silent fallback; a build must ship the theme that was asked for |
+| core imports a theme | deleting a theme would break the engine |
+| a theme touches the transport | `fetch*`, `streamTurn`, `MediaRecorder`, `EventSource`, or a relative import into `src/` |
+| declared asset missing | `theme.json` is the complete list of inputs |
+| declared font not installed | used to skip silently and give you unstyled text |
+| type error anywhere | including inside `themes/` |
 
-```bash
-curl -sk https://jarvis.lan/build.json
-```
+`dist/` is wiped first, so a file deleted from a theme stops shipping and
+building theme B over a theme A `dist` cannot produce an image containing both.
+
+Environment knobs:
+
+| Var | Effect |
+| --- | --- |
+| `JARVIS_THEME` | which theme to build (default `cockpit`) |
+| `JARVIS_APP_TAG` | stamped into `dist/build.json` |
+| `JARVIS_SOURCEMAP=0` | omit the 4.4MB sourcemap; set by `install-images.sh` |
 
 ## Image
 
+`dist/` is built on the bastion first, then the image just serves it:
+
 ```bash
-docker build -t jarvis-glass:dev .          # expects dist/ to exist
+JARVIS_THEME=cockpit npm run build
+docker build -t jarvis-glass:dev .
 ```
 
-Nginx in the image proxies `/health` and `/v1/` to
+Nginx proxies `/health`, `/readyz` and `/v1/` to
 `jarvis-orchestrator.apps.svc.cluster.local:8080`.
+
+`Dockerfile.multistage` builds from source instead — for CI or a machine with
+Docker and network. `install-images.sh` uses the bastion path.
+
+## What shipped
+
+```bash
+curl -sk https://jarvis.lan/build.json    # theme, tag, build time
+```

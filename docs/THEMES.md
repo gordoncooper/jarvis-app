@@ -51,6 +51,34 @@ glass/
 
 Nothing reaches `dist/` that the manifest does not name.
 
+```mermaid
+flowchart LR
+  subgraph TH["themes/&lt;name&gt;/"]
+    MAN["theme.json"]
+    E["entry · main.tsx"]
+    C["css[] · tokens + theme"]
+    S["static/"]
+    A["assets/"]
+  end
+  FS["@fontsource<br/><i>glass/package.json</i>"]
+  subgraph D["dist/"]
+    AJ["app.js"]
+    TC["theme.css<br/><i>concatenated in order</i>"]
+    TS["theme-static/"]
+    AS["globe/ …"]
+    FO["fonts/"]
+    BJ["build.json<br/><i>theme · tag · time</i>"]
+  end
+  MAN -.->|declares| E & C & S & A
+  MAN -.->|declares| FS
+  E -->|esbuild| AJ
+  C --> TC
+  S --> TS
+  A --> AS
+  FS --> FO
+  MAN --> BJ
+```
+
 ```json
 {
   "name": "cockpit",
