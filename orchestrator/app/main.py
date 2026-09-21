@@ -26,7 +26,16 @@ from .memory import (
     gpu_temp_unit,
     new_memory_pending,
     parse_memory_candidate,
-    parse_memory_intent,
+)
+from .router import (
+    MEMORY_CANDIDATE,
+    MEMORY_FORGET,
+    MEMORY_FORGET_ALL,
+    MEMORY_FORGET_REF,
+    MEMORY_LIST,
+    MEMORY_REMEMBER,
+    MEMORY_REMEMBER_REF,
+    route,
 )
 from .session_store import SessionStore
 from .hands import (
@@ -36,7 +45,6 @@ from .hands import (
     health_hands,
     is_affirm,
     is_cancel,
-    match_verb,
     new_pending,
     parse_confirm_args,
     pending_alive,
@@ -461,8 +469,9 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             confirm=confirm,
         )
 
-    intent = parse_memory_intent(text)
-    if intent.kind == "list":
+    decision = route(text)
+
+    if decision.label == MEMORY_LIST:
         facts = mem().active_facts(200)
         return _reply(format_list_reply(facts), extra={"memory": "list"})
 
@@ -470,38 +479,38 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     # referent is in the previous turn, which this orchestrator does not track
     # yet. Say so — the old behaviour stored the word "that" as a fact, and
     # matched it against every stored fact on the way back out.
-    if intent.kind == "remember_ref":
+    if decision.label == MEMORY_REMEMBER_REF:
         return _reply(
             "I am not sure which part you would like me to keep, sir. "
             "Say it again with the fact in it \u2014 "
             "\u201cremember that I take my coffee black\u201d.",
             extra={"memory": "remember"},
         )
-    if intent.kind == "forget_ref":
+    if decision.label == MEMORY_FORGET_REF:
         return _reply(
             "I am not sure which memory you mean, sir. "
             "Say \u201clist memories\u201d and name the one to drop.",
             extra={"memory": "forget"},
         )
 
-    if intent.kind == "remember":
-        if intent.fact and fact_already_known(
-            intent.fact, mem().active_facts(200)
+    if decision.label == MEMORY_REMEMBER:
+        if decision.fact and fact_already_known(
+            decision.fact, mem().active_facts(200)
         ):
             return _reply(
-                f"Already noted: {intent.fact}",
+                f"Already noted: {decision.fact}",
                 extra={"memory": "remember"},
             )
-        if intent.fact:
-            mem().remember(intent.fact, source_turn=sess.id)
-        reply = _memory_reply("remember", intent.fact)
+        if decision.fact:
+            mem().remember(decision.fact, source_turn=sess.id)
+        reply = _memory_reply("remember", decision.fact)
         return _reply(reply, extra={"memory": "remember"})
 
-    if intent.kind in ("forget", "forget_all"):
-        if intent.kind == "forget_all":
+    if decision.label in (MEMORY_FORGET, MEMORY_FORGET_ALL):
+        if decision.label == MEMORY_FORGET_ALL:
             targets = mem().active_facts(500)
         else:
-            targets = mem().matching_facts(intent.fact) if intent.fact else []
+            targets = mem().matching_facts(decision.fact) if decision.fact else []
         if not targets:
             return _reply(
                 "I found nothing matching that to forget.",
@@ -523,11 +532,10 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         }
         return _reply(format_forget_confirm_ask(targets), confirm=confirm)
 
-    # Preference/identity heuristics before Hands so "I prefer GPU temps in F"
-    # is confirm-gated memory, not a live metrics verb. Skip the talker for
-    # heuristic hits — avoids premature "I will remember" and a free LLM round-trip.
-    soft_candidate = parse_memory_candidate(text)
-    if soft_candidate:
+    # Preference/identity heuristic hit. Skip the talker — it avoids a
+    # premature "I will remember" and a free LLM round-trip (D-0024 / D-0026).
+    if decision.label == MEMORY_CANDIDATE:
+        soft_candidate = decision.fact
         if fact_already_known(soft_candidate, mem().active_facts(200)):
             return _reply(
                 f"Already noted: {soft_candidate}",
@@ -547,25 +555,25 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             confirm=confirm,
         )
 
-    hit = match_verb(text)
-    if hit is not None:
-        if hit.klass == "confirm":
-            if not hit.args:
-                _args, err = parse_confirm_args(hit.name, text)
+    if decision.is_verb:
+        name = decision.label
+        if decision.verb_class == "confirm":
+            if not decision.args:
+                _args, err = parse_confirm_args(name, text)
                 return _reply(err or "I need a clearer target for that action.")
             try:
-                prop = await propose_confirm(hit.name, hit.args)
+                prop = await propose_confirm(name, decision.args)
             except Exception as e:  # noqa: BLE001
-                log.exception("propose %s failed", hit.name)
+                log.exception("propose %s failed", name)
                 return _reply(
-                    f"I could not prepare {hit.name} ({type(e).__name__}). "
+                    f"I could not prepare {name} ({type(e).__name__}). "
                     "Check the name and try again."
                 )
             pending_obj = new_pending(prop["verb"], prop["args"], prop["summary"])
             store.set_pending(sess.id, pending_obj)
             audit_verb(
                 settings.memory_db_path,
-                verb=hit.name,
+                verb=name,
                 ok=False,
                 detail="awaiting_confirm:" + prop["summary"][:400],
                 session_id=sess.id,
@@ -577,32 +585,32 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
                 "args": prop["args"],
                 "summary": prop["summary"],
             }
-            return _reply(prop["text"], verb=hit.name, confirm=confirm)
+            return _reply(prop["text"], verb=name, confirm=confirm)
 
         try:
-            body = await execute_verb(hit.name)
-            reply = format_verb_reply(hit.name, body, temp_unit=_temp_unit())
+            body = await execute_verb(name)
+            reply = format_verb_reply(name, body, temp_unit=_temp_unit())
             audit_verb(
                 settings.memory_db_path,
-                verb=hit.name,
+                verb=name,
                 ok=True,
                 detail=(body.get("text") or str(body))[:500],
                 session_id=sess.id,
             )
         except Exception as e:  # noqa: BLE001
-            log.exception("verb %s failed", hit.name)
+            log.exception("verb %s failed", name)
             reply = (
-                f"I could not run {hit.name} just now "
+                f"I could not run {name} just now "
                 f"({type(e).__name__}). Live numbers need Hands — try again shortly."
             )
             audit_verb(
                 settings.memory_db_path,
-                verb=hit.name,
+                verb=name,
                 ok=False,
                 detail=str(e)[:500],
                 session_id=sess.id,
             )
-        return _reply(reply, verb=hit.name)
+        return _reply(reply, verb=name)
 
     messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt()}]
     for m in sess.messages[-settings.max_history :]:

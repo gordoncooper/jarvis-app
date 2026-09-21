@@ -1,0 +1,142 @@
+# Utterance fixture for the intent router (D-0033 slice 1).
+#
+# Format: <expected-label><TAB><utterance>.  A line starting with # is a comment.
+# Labels are the router's own namespace (app/router.py): 'chat', the 'memory.*'
+# labels, the CATALOG verb names, and 'uncovered' for a capability JARVIS has
+# no verb for.
+#
+# The gate in test_router.py uses ABSOLUTE counts, not rates, so adding cases
+# can only ever make it stricter:
+#   * chat false-positives must be 0
+#   * capability passes must be >= the recorded baseline
+#
+# Recorded 2026-09-21 on orchestrator v0.6.28: 0 chat false-positives (was 3),
+# 28 of 52 capability utterances routed. The 12 'uncovered' lines are counted
+# separately — they have no verb behind them, so they are slice 2's honest
+# refusal, not a recall failure.
+#
+# A label here is what JARVIS *should* do, not what it does today. The misses
+# are the roadmap.
+
+# --- chat ----------------------------------------------------------
+# Plain chat. MUST reach the talker. A verb capturing any of these
+# is a regression Gordon feels immediately — he reported "what is a GPU?"
+# as working, and it was not: it returned live temperatures.
+chat	why is the sky blue?
+chat	what is a GPU?
+chat	write me a poem
+chat	what's the capital of France?
+chat	explain kubernetes to me like I'm five
+chat	tell me a joke
+chat	how does a jet engine work?
+chat	what should I cook tonight?
+chat	good morning
+chat	thanks jarvis
+chat	who won the world cup in 1998?
+chat	summarize the plot of Dune
+chat	what does a deployment do in kubernetes?
+chat	is a GPU better than a CPU for inference?
+chat	what temperature should a GPU run at?
+chat	how hot is the sun?
+chat	what is prometheus used for?
+chat	explain what a pod is
+chat	why do nodes go not ready?
+chat	what's the difference between a pod and a deployment?
+chat	should I restart a service or a pod when something hangs?
+chat	how do people usually monitor clusters?
+chat	what's your name?
+chat	are you there?
+chat	tell me about flux
+
+# --- cluster.health ------------------------------------------------
+# Is the house alright? — every phrasing of it.
+cluster.health	hey jarvis, can you check the status of the cluster?
+cluster.health	are there any issues with the cluster today?
+cluster.health	how is the cluster doing?
+cluster.health	anything broken?
+cluster.health	is everything ok in the rack?
+cluster.health	give me a cluster status
+cluster.health	are all the nodes up?
+cluster.health	is the lab healthy?
+cluster.health	any pods crashing?
+cluster.health	what's going on with the house?
+cluster.health	everything green?
+cluster.health	did anything break overnight?
+
+# --- cluster.gpus --------------------------------------------------
+# Live readings from the cards in this rack.
+cluster.gpus	how hot are the GPUs?
+cluster.gpus	what's the GPU temperature
+cluster.gpus	how much vram is in use?
+cluster.gpus	gpu status
+cluster.gpus	are the graphics cards running warm?
+cluster.gpus	how much video memory is free right now?
+
+# --- lab.map -------------------------------------------------------
+# Where do I find X.
+lab.map	what are the lab urls?
+lab.map	where do I find grafana?
+lab.map	show me the lab map
+lab.map	what surfaces do we have?
+lab.map	remind me of the address for gitea
+
+# --- apps.recycle_pod ----------------------------------------------
+# Confirm-class writes.
+apps.recycle_pod	can you restart the piper pod for me?
+apps.recycle_pod	recycle the glass pod
+apps.recycle_pod	kill the whisper pod, it's wedged
+
+# --- apps.restart_deploy -------------------------------------------
+apps.restart_deploy	bounce the orchestrator
+apps.restart_deploy	restart deploy apps/jarvis-glass
+apps.restart_deploy	please restart litellm
+apps.restart_deploy	give open-webui a kick
+
+# --- memory.list ---------------------------------------------------
+# Read back what you have been told.
+memory.list	list my memories
+memory.list	show me all your saved facts and memories
+memory.list	what do you remember about me
+memory.list	what do you remember?
+memory.list	read back my preferences
+memory.list	what have I told you to remember?
+memory.list	list memories
+memory.list	show me your memory
+
+# --- memory.remember -----------------------------------------------
+# Store something.
+memory.remember	remember that green is my favorite color
+memory.remember_ref	remember that
+memory.remember	remember that I like black coffee
+memory.candidate	I really like it when you address me as sir
+memory.remember	from now on call me sir
+memory.remember	keep in mind that I work late
+memory.remember	make a note that my dog is called Bagel
+memory.remember	don't forget I prefer fahrenheit
+
+# --- memory.forget -------------------------------------------------
+# Drop something.
+memory.forget	forget that I like tea
+memory.forget_ref	hey jarvis, delete that last one
+memory.forget_ref	scratch that
+memory.forget	drop the memory about dark mode
+memory.forget_all	forget everything
+memory.forget_ref	that's wrong, remove it
+
+# --- uncovered -----------------------------------------------------
+# Capability-shaped, but no verb covers it. Must be an honest
+# refusal naming what JARVIS *can* do — never a talker guess. These are
+# the hallucinations measured on 2026-09-21; answering them is slice 2's
+# job, so they score as misses until then, on purpose.
+uncovered	list all the running pods for me
+uncovered	what files do you have listed in the directory?
+uncovered	what's the latest backup of the cluster?
+uncovered	take a look at the flux error logs and tell me what's wrong
+uncovered	show me the logs for the orchestrator
+uncovered	is flux in sync?
+uncovered	how much disk is left on data-01?
+uncovered	when did the last backup run?
+uncovered	what version of glass is deployed?
+uncovered	did the last deploy succeed?
+uncovered	what can you actually do for me?
+uncovered	what are your capabilities?

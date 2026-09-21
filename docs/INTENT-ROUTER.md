@@ -11,8 +11,8 @@ in circulation; D-0033 is the durable record, and the code is the rest.
 | Slice | State |
 | --- | --- |
 | 0 — live bugs | **shipped** 2026-09-21, orchestrator v0.6.27 |
-| 1 — eval fixture + gate | next |
-| 2 — manifest + honest refusal | |
+| 1 — eval fixture + gate | **shipped** 2026-09-21, orchestrator v0.6.28 |
+| 2 — manifest + honest refusal | next |
 | 3 — local classifier (shadow → on) | |
 | 4 — conversational referents | |
 
@@ -65,12 +65,25 @@ chat negatives pushes it past 70% with no routing improvement at all. The two
 numbers that mean something are **chat false-positives (absolute count)** and
 **capability recall on the 64 capability utterances**.
 
-**The gate uses 25/64, not 26.** One of those 26 was `remember that` scoring as
-a pass *because of* the bug — it "succeeded" by storing the word "that". Slice 0
-turned it into an honest "which part, sir?", which the scorer counts as a miss
-until slice 4 resolves the referent properly. So the number slice 1 must not
-fall below is **25/64, measured on shipped code**, and chat false-positives
-still **3**. Counting a bug as a pass is exactly how a gate rots.
+**The recorded gate moved twice, both times for honesty.** One of the original
+26 was `remember that` scoring as a pass *because of* the bug — it "succeeded"
+by storing the word "that" — so slice 0 dropped it to 25. Slice 1 then split
+the coarse buckets into the router's real label namespace
+(`memory.candidate` / `.forget_all` / `.remember_ref` are distinct outcomes the
+old scoring had been checking against the wrong name) and narrowed the `gpu`
+regex. Current recorded gate, on shipped code:
+
+| | before slice 1 | after |
+| --- | --- | --- |
+| chat false-positives | 3 | **0** |
+| capability passes | 25 | **28** of 52 |
+
+Of the +3, two are real recall — the narrowed `gpu` rule lets *are the graphics
+cards running warm?* and *how much video memory is free?* route — and the rest
+is label precision. The 12 `uncovered` utterances are tracked separately: they
+have no verb behind them, so they are slice 2's honest refusal rather than a
+recall failure. Counting a bug as a pass is exactly how a gate rots, which is
+why the history is written into `test_router.py` rather than folklore.
 
 **36 of 89 capability requests reach the toolless talker**, which then invents
 an answer. Verbatim from the live host:
@@ -280,9 +293,10 @@ route to `chat`. A pytest that scores it and asserts two things:
 - **chat false-positives = 0**, as an absolute count on the chat subset
   (protects what already works — and note this fails *today* at 3, so slice 1
   starts by narrowing the `gpu` regex)
-- **capability recall ≥ 25/64**, measured on the capability subset only,
-  against shipped code. Never on the mixed 89, which moves when negatives are
-  added.
+- **capability passes ≥ 28**, as an absolute count, not a rate. Absolute so
+  that adding cases can only ever make the gate stricter; a rate over the mixed
+  set climbs when you add negatives, which lets a gate rot while looking
+  healthier.
 
 Gordon sees one table per slice, and the two numbers moving in opposite
 directions is the evidence that the router got better rather than louder.

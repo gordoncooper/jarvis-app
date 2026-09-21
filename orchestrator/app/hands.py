@@ -94,12 +94,22 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
         ),
     ),
     (
+        # A bare "gpu" used to match, so "what is a GPU?" answered with live
+        # temperatures (D-0033). The word alone is not a request for a
+        # reading — it needs a metric beside it, or phrasing that asks about
+        # *these* cards.
         "cluster.gpus",
         re.compile(
             r"\b("
-            r"gpu\s*(temps?|temperature|memory|status|health|usage)?|"
-            r"vram|nvidia|"
-            r"how\s+hot\s+(are\s+)?(the\s+)?gpus?"
+            r"gpus?\s+(temps?|temperature|memory|status|health|usage|"
+            r"utili[sz]ation|load)|"
+            r"(gpu|vram|video\s+memory)\s+(used|free|usage|left)|"
+            r"(temps?|temperature|usage|utili[sz]ation|load)\s+(on|of)\s+"
+            r"(the\s+)?gpus?|"
+            r"vram|video\s+memory|nvidia[\s-]?smi|nvidia\s+(gpus?|cards?)|"
+            r"how\s+hot\s+(is|are)\s+(the\s+)?(gpus?|cards?|"
+            r"graphics\s+cards?)|"
+            r"(graphics\s+cards?|gpus?)\s+(running\s+)?(warm|hot)"
             r")\b",
             re.I,
         ),
