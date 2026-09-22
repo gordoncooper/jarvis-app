@@ -42,8 +42,7 @@ VERSION                  image tags and the selected theme — source of truth
 
 Related repos: metal and law in
 [`jarvis-infra`](https://github.com/gordoncooper/jarvis-infra); Flux YAML in
-`cluster` on Gitea (`git.lan`); frozen prior art in
-[`jarvis-core`](https://github.com/gordoncooper/jarvis-core).
+`cluster` on Gitea (`git.lan`).
 
 ## Quickstart (bastion, as `agent`)
 

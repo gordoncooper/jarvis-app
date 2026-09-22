@@ -51,7 +51,6 @@ _NAME_ALIASES: dict[str, str] = {
 #   for ns in apps inference agents monitoring; do kubectl -n $ns get deploy; done
 SHORT_NAMES: dict[str, tuple[str, str]] = {
     "homepage": ("apps", "deploy"),
-    "jarvis-core": ("apps", "deploy"),
     "jarvis-glass": ("apps", "deploy"),
     "jarvis-noc": ("apps", "deploy"),
     "jarvis-orchestrator": ("apps", "deploy"),

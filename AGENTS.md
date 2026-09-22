@@ -50,7 +50,7 @@ does not explain the system or the process — those are
 - A theme owns its own spec, visual contract and reference frames, under
   `glass/themes/<name>/docs/`. Law stays here and in jarvis-infra
   DECISIONS.md; the engine/theme contract is `docs/THEMES.md`
-- Do not extend `jarvis-core` (D-0003). Do not put Flux manifests in this repo
+- Do not put Flux manifests in this repo
 - Factory apps JARVIS builds later get their **own** repos; do not dump them here
   unless deliberately promoted to product (D-0020)
 - `.claude/settings.json` is deny-rules for Claude Code and Grok CLI (D-0007),

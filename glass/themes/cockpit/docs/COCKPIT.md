@@ -322,7 +322,6 @@ Do not teach glass to scrape noc.lan or home.lan.
 - Do not theme chat.lan / grafana.lan / agent.lan.
 - Do not `kubectl apply` product YAML; Flux owns cluster (edit `~/cluster` on the bastion, push Gitea).
 - Do not dump secrets, SOPS, or `learned.md`.
-- Do not extend `jarvis-core` (D-0003).
 - Do not invent GPU numbers in React.
 - Do not add a model picker.
 

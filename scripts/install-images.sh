@@ -132,4 +132,4 @@ echo "OK  docker.io/library/jarvis-orchestrator:${ORCH_TAG}"
 if [ "${SKIP_GLASS:-}" != "1" ]; then echo "OK  docker.io/library/jarvis-glass:${TAG}"; fi
 echo "Flux: clusters/jarvis/apps/jarvis-orchestrator.yaml + jarvis-glass.yaml"
 echo "Secret (once): kubectl -n apps create secret generic jarvis-orchestrator --from-file=LITELLM_API_KEY=\$HOME/.litellm-master.key"
-echo "Cutover: after Flux is healthy, scale jarvis-core to 0 and delete its Ingress."
+echo "noc.lan image: jarvis-infra apps/jarvis-noc/install-noc.sh (separate build)."
