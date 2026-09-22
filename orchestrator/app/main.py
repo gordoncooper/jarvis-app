@@ -462,6 +462,18 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         return _reply("Nothing pending to confirm or cancel.")
     if pending:
         kind = str(pending.get("kind") or "hands")
+        # Report what the confirm resolves to, not the route of the word
+        # "yes" — which is `chat`, and says the talker answered when the
+        # orchestrator actually wrote a fact or bounced a pod. A diagnostic
+        # field that lies is worse than no field.
+        resolved_label = str(
+            pending.get("verb")
+            or (
+                "memory.forget"
+                if pending.get("action") == "forget"
+                else "memory.remember"
+            )
+        )
         # "remember that" while a remember confirm is open means yes. Without
         # this it fell through to "Still waiting: ... say yes or cancel",
         # which is the exchange that made JARVIS feel obtuse: he had just

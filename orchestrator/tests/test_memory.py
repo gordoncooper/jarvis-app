@@ -55,3 +55,27 @@ class ReferentGuardTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PendingCarriesItsVerbTest(unittest.TestCase):
+    """Both pending shapes must name their verb.
+
+    `main._run_turn` reports that name as the turn's `route` when a confirm is
+    resolved. Without it, answering "yes" logs `chat` — claiming the talker
+    replied when the orchestrator actually wrote a fact or bounced a pod.
+    """
+
+    def test_memory_pendings_name_a_verb(self) -> None:
+        from app.memory import new_memory_pending
+
+        self.assertEqual(new_memory_pending("a fact")["verb"], "memory.remember")
+        self.assertEqual(
+            new_memory_pending("a fact", action="forget", facts=["a fact"])["verb"],
+            "memory.forget",
+        )
+
+    def test_hands_pendings_name_a_verb(self) -> None:
+        from app.hands import new_pending
+
+        p = new_pending("apps.restart_deploy", {"namespace": "apps", "name": "piper"}, "x")
+        self.assertEqual(p["verb"], "apps.restart_deploy")
