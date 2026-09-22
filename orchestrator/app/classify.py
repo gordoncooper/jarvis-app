@@ -77,6 +77,11 @@ def build_prompt() -> str:
         '- "tell me about X" and "what is X" ask for an explanation. They '
         "are chat even when X is flux, a pod or a GPU. Measured: without this "
         'line the model called "tell me about flux" a status request.\n'
+        '- A vague question about whether the lab is well - "anything '
+        'broken?", "everything green?", "all good?" - is cluster.health. Name '
+        "it rather than answering capability with no verb: a verdict with no "
+        "verb cannot be acted on, and the question reaches a talker with no "
+        "data.\n"
         "- confidence is how sure you are. Below 0.6 means unsure.\n"
     )
 

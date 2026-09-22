@@ -175,7 +175,20 @@ def _scrub_for_memory_confirm(reply: str) -> str:
     return out or "Understood."
 
 
-async def _apply_classifier(text: str, decision: Any) -> Any:
+# Set when the classifier was confident the turn is about this lab but named
+# no capability. The talker then gets an extra instruction, because that is
+# precisely when it invents: asked "anything broken?" with a verbless verdict
+# it once replied "the last health check indicated everything was running
+# smoothly", about a cluster it cannot see (D-0038).
+_UNPLACED_LAB_NOTE = (
+    "The router is confident this asks about the live state of Gordon's lab "
+    "but matched no capability. You have no live data and no tools. Say you "
+    "could not check, and offer to be asked a more specific way. Do not "
+    "describe the cluster, and do not refer to an earlier check."
+)
+
+
+async def _apply_classifier(text: str, decision: Any) -> tuple[Any, bool]:
     """Let the local classifier speak when the deterministic pass had no answer.
 
     Only ever called on a fall-through, so a turn that matched a verb costs
@@ -185,11 +198,18 @@ async def _apply_classifier(text: str, decision: Any) -> Any:
     """
     mode = (settings.router_classifier or "off").strip().lower()
     if mode not in ("shadow", "on"):
-        return decision
+        return decision, False
     if decision.label not in (CHAT, UNSUPPORTED):
-        return decision
+        return decision, False
 
     verdict = await classify(text)
+    unplaced = bool(
+        verdict is not None
+        and getattr(verdict, "kind", None) == "capability"
+        and not getattr(verdict, "verb", None)
+        and float(getattr(verdict, "confidence", 0.0) or 0.0)
+        >= settings.classifier_min_confidence
+    )
     proposed = combine(
         text,
         decision,
@@ -207,7 +227,9 @@ async def _apply_classifier(text: str, decision: Any) -> Any:
         proposed.label if mode == "on" else decision.label,
         text[:120],
     )
-    return proposed if mode == "on" else decision
+    if mode != "on":
+        return decision, False
+    return proposed, (unplaced and proposed.label == CHAT)
 
 
 def _temp_unit() -> str:
@@ -545,7 +567,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             confirm=confirm,
         )
 
-    decision = await _apply_classifier(text, deterministic)
+    decision, unplaced_lab = await _apply_classifier(text, deterministic)
     resolved_label = decision.label
 
     if decision.label == MEMORY_LIST:
@@ -777,7 +799,10 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             )
         return _reply(reply, verb=name)
 
-    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt()}]
+    system = system_prompt()
+    if unplaced_lab:
+        system += "\n\n" + _UNPLACED_LAB_NOTE
+    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
     for m in sess.messages[-settings.max_history :]:
         messages.append({"role": m["role"], "content": m["content"]})
 
