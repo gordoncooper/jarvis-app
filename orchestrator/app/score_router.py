@@ -42,8 +42,16 @@ def _load(stream) -> list[tuple[str, str]]:
     return out
 
 
-def _score(rows: list[tuple[str, str, str]], title: str) -> None:
-    """rows: (expected, got, utterance)"""
+def _score(rows: list[tuple[str, str, str]], title: str) -> int:
+    """rows: (expected, got, utterance). Returns the number of gate violations.
+
+    `test_router.py` can only score the deterministic pass — unit tests have
+    no model. So the classifier's half of the same three gates is checked
+    here, and a violation makes this exit non-zero. Run it after any change to
+    the manifest or the classifier prompt; adding a capability gives the model
+    more to over-trigger on, which is how "tell me about flux" started
+    answering with Flux status.
+    """
     stolen = [(u, g) for e, g, u in rows if e == CHAT and g != CHAT]
     refused_chat = [u for e, g, u in rows if e == CHAT and g == UNSUPPORTED]
     denied = [(u, e) for e, g, u in rows if g == UNSUPPORTED and e not in (CHAT, UNSUPPORTED)]
@@ -59,6 +67,7 @@ def _score(rows: list[tuple[str, str, str]], title: str) -> None:
         print(f"    STOLEN   {u!r} -> {g}")
     for u, e in denied:
         print(f"    DENIED   {u!r} (is really {e})")
+    return len(stolen) + len(refused_chat) + len(denied)
 
 
 async def main() -> int:
@@ -100,9 +109,9 @@ async def main() -> int:
                 )
         cls_rows.append((expected, out.label, utt))
 
-    _score(det_rows, "deterministic only")
+    violations = _score(det_rows, "deterministic only")
     if not offline:
-        _score(cls_rows, "with the local classifier")
+        violations += _score(cls_rows, "with the local classifier")
 
     if latencies:
         latencies.sort()
@@ -118,6 +127,10 @@ async def main() -> int:
     if disagree:
         print("\n  where the classifier changed the answer:")
         print("\n".join(disagree))
+    if violations:
+        print(f"\nFAIL: {violations} gate violation(s).")
+        return 1
+    print("\nOK: all gates clear.")
     return 0
 
 

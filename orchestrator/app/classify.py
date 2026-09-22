@@ -74,6 +74,9 @@ def build_prompt() -> str:
         "(cluster.gpus). The words overlap; the intent does not.\n"
         '- "explain what a pod is" is chat. "any pods crashing?" is '
         "capability (cluster.health).\n"
+        '- "tell me about X" and "what is X" ask for an explanation. They '
+        "are chat even when X is flux, a pod or a GPU. Measured: without this "
+        'line the model called "tell me about flux" a status request.\n'
         "- confidence is how sure you are. Below 0.6 means unsure.\n"
     )
 

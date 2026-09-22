@@ -174,6 +174,5 @@ backup.latest	are the backups up to date?
 
 # Conceptual questions about the same subjects stay chat.
 chat	what is flux?
-chat	tell me about flux
 chat	how do gitops backups usually work?
 chat	why would a reconciliation fail?
