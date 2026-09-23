@@ -14,7 +14,7 @@ const R = 1.6;
 
 /** reference/breath.jpg: the disk sits low. The lit limb clears the header
  *  and the southern hemisphere runs off the bottom of the stage. */
-const FRAME_Y = -0.92;
+const FRAME_Y = -0.46;
 
 /** Scope equirectangular, +Z of SphereGeometry is u=0.25. This yaw puts
  *  ~100°E (India left, China center, Australia low) on the camera. */
@@ -127,7 +127,7 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
       <mesh material={cloudMat} scale={1.012}>
         <sphereGeometry args={[R, 96, 96]} />
       </mesh>
-      <mesh material={atmoMat} scale={1.028}>
+      <mesh material={atmoMat} scale={1.05}>
         <sphereGeometry args={[R, 80, 80]} />
       </mesh>
     </group>
@@ -214,7 +214,7 @@ export function EarthGlobe() {
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,
         }}
-        camera={{ position: [0, 0, 7.7], fov: 16, near: 0.1, far: 40 }}
+        camera={{ position: [0, 0, 10.2], fov: 16, near: 0.1, far: 50 }}
       >
         <Scene drag={drag} />
       </Canvas>

@@ -92,7 +92,8 @@ void main() {
 }
 `;
 
-/** Blue limb, bright where the sun rakes the top, thin everywhere else. */
+/** Soft blue limb. The glow dies before the shell's silhouette, so the
+ *  edge feathers into black instead of drawing a hard ring. */
 export const stageAtmoFrag = /* glsl */ `
 uniform vec3 uSunDir;
 varying vec3 vWorldNormal;
@@ -102,12 +103,15 @@ void main() {
   vec3 n = normalize(vWorldNormal);
   vec3 view = normalize(cameraPosition - vWorld);
   vec3 sun = normalize(uSunDir);
-  float fres = pow(1.0 - abs(dot(view, n)), 3.6);
-  float lit = smoothstep(-0.15, 0.65, dot(n, sun));
-  vec3 nightCol = vec3(0.05, 0.12, 0.32);
-  vec3 dayCol = vec3(0.55, 0.78, 1.0);
-  vec3 col = mix(nightCol, dayCol, lit);
-  float a = fres * (0.12 + lit * 1.15);
-  gl_FragColor = vec4(col * (0.45 + fres), a);
+  float f = 1.0 - abs(dot(view, n));
+  // A band just inside the shell, gone before the silhouette.
+  float inner = smoothstep(0.42, 0.68, f);
+  float outer = 1.0 - smoothstep(0.74, 0.97, f);
+  float band = inner * outer;
+  // The reference glow lives on the sunlit crown, not as a ring around the night side.
+  float lit = smoothstep(0.0, 0.8, dot(n, sun));
+  vec3 col = mix(vec3(0.20, 0.36, 0.62), vec3(0.78, 0.90, 1.0), lit);
+  float a = band * (lit * 0.95 + 0.04);
+  gl_FragColor = vec4(col, a);
 }
 `;
