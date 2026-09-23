@@ -119,7 +119,7 @@ clocks tick, pulse changes.
 
 ```mermaid
 flowchart TD
-  V["bump VERSION<br/>GIT_TAG + IMAGE_*_TAG"] --> B["scripts/install-images.sh apps-01"]
+  V["bump VERSION<br/>GIT_TAG + the image you built"] --> B["scripts/install-images.sh apps-01"]
   B --> B1["build dist on bastion<br/><i>theme from VERSION</i>"]
   B1 --> B2["tar → apps-01<br/>docker build"]
   B2 --> B3["k3s ctr images import"]
@@ -141,6 +141,13 @@ Rules that bite if ignored:
   `VERSION`. The only knobs are `SKIP_ORCH`, `SKIP_GLASS` and `SKIP_TESTS`.
 - **One image at a time.** A slice that touches only the orchestrator builds
   with `SKIP_GLASS=1`; rebuilding glass at its existing tag is a retag.
+- **The tag sequences are independent.** On a cut, `GIT_TAG` advances by one.
+  Bump only the image tag you are building. A glass cut moves `IMAGE_GLASS_TAG`
+  and leaves `IMAGE_ORCHESTRATOR_TAG`. The glass image is tagged from
+  `IMAGE_GLASS_TAG`, not from `GIT_TAG`.
+- **`?v=` in `glass/public/index.html` is the glass tag.** esbuild copies that
+  file into the image. On a glass cut, set both query strings to the new
+  `IMAGE_GLASS_TAG`. Left stale, the page keeps asking for the previous tag.
 - **`VERSION` is the source of truth** for both the tag and the theme.
   `install-images.sh` sources it and refuses to build an unknown theme.
 - **Flux does not watch this repo.** The image pin lives in `~/cluster` → Gitea.
