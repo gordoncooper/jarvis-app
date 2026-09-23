@@ -79,3 +79,5 @@ drift; they are the current spec.
 - **2026-09-22** — Breath replies keep their line breaks and lay out as
   projected type: list rows, accent on emphasis, a warm mark for the operator.
   The strip is still not a transcript. The CMD channel is unchanged.
+- **2026-09-23** — Breath replies are softer and a step smaller. The strip
+  follows the last 6 messages and stops short of the header.

@@ -185,6 +185,15 @@ to the stage corners at a fixed ~285px / ~145px however wide the window is.
 The full transcript still lives on the CMD display; the globe keeps only the
 tail so returning to the stage does not bury the planet.
 
+**Revised 2026-09-23 (operator request), superseding the 12-message cap and
+the previous type size:** the strip keeps the last 6 messages, and its top is
+the top of that tail, so a short exchange stays a short column. It stops
+`12rem` short of filling the stage (`max-height: calc(100cqh - 12rem)`), which
+keeps it under the header. Reply colour is ink mixed toward steel, and the
+type is `clamp(0.9rem, 0.55rem + 0.38cqi, 1.42rem)` — about 12px at a 1272px
+stage, 14px at 1920, 18px at 3070. Still bottom-anchored, still faded at the
+top when the cap is hit, still not a transcript. The CMD channel is unchanged.
+
 **Revised 2026-09-22 (operator request):** a JARVIS reply on the strip keeps
 its line breaks and lays out as projected type over the globe. A bullet is a
 row with a diamond, a count is a row with a two-digit index, and emphasis

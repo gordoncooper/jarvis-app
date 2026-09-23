@@ -797,17 +797,18 @@ button:disabled {
      corners at a fixed ~285px / ~145px whatever the window size; without
      reserving it the dialogue sat on top of them on a small window. */
   max-width: min(96ch, max(28ch, 100% - 560px));
-  max-height: min(52cqh, 46rem);
+  /* Height is the tail, so the top follows the messages. 12rem is the header
+     clearance plus the cmd bar, the gap, and the comms inset — past this the
+     top would climb into the header, so it stops. */
+  max-height: calc(100cqh - 12rem);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   overflow: hidden;
   font-family: var(--type-ui);
-  /* Scales with the stage rather than sitting at a fixed rem, which left the
-     text tiny on a 3K window. */
-  /* Root rem is 13px here, so these are calibrated against measured sizes:
-     ~14px at a 1272px stage, ~17px at 1920, ~23px at 3070. */
-  font-size: clamp(0.95rem, 0.59rem + 0.5cqi, 1.85rem);
+  /* Root rem is 13px. Softer than the old clamp, which hit ~17px at 1920 and
+     ~23px at 3070: ~12px at a 1272px stage, ~14px at 1920, ~18px at 3070. */
+  font-size: clamp(0.9rem, 0.55rem + 0.38cqi, 1.42rem);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
 }
@@ -851,9 +852,11 @@ button:disabled {
 .ck-toast-asst {
   position: relative;
   padding-left: 0.9em;
-  color: var(--ink);
+  /* Ink reads as a white block over the night side. Steel takes the edge off
+     without dropping the reply down to the chrome labels. */
+  color: color-mix(in oklch, var(--ink) 64%, var(--steel));
   font-size: 1em;
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.88);
 }
 
 .ck-toast-asst::before {

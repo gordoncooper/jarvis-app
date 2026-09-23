@@ -8,8 +8,9 @@ import { pulseGpuChips } from "../rack.js";
 import { EarthGlobe, earthWebglOk } from "../EarthGlobe.js";
 import { BreathLine } from "./breathReply.js";
 
-/** Lines of dialogue kept over the globe. The rest lives on the CMD display. */
-const TAIL = 12;
+/** Messages kept over the globe. The top of the strip is the top of this
+ * tail; anything older stays on the CMD display. */
+const TAIL = 6;
 
 type Props = {
   health: HealthPayload | null;
@@ -73,11 +74,11 @@ export function Breath({
     return () => window.clearTimeout(id);
   }, [active]);
 
-  // The globe keeps its own short tail rather than the whole session, so
-  // coming back to the stage does not bury the planet under yesterday.
-  // No scroll handling: the strip is bottom-aligned and clips, so the newest
-  // line is always the last one and older lines run out under the top fade.
-  // (Overflow past a flex start edge is not reachable by scrollTop anyway.)
+  // Six messages, not the session. The strip's top is the top of this tail,
+  // and the CSS cap stops that top short of the header. No scroll handling:
+  // the strip is bottom-aligned and clips, so the newest line is the last
+  // one and older lines run out under the top fade. (Overflow past a flex
+  // start edge is not reachable by scrollTop anyway.)
   const tail = useMemo(() => messages.filter((m) => m.content.trim()).slice(-TAIL), [messages]);
 
   return (
