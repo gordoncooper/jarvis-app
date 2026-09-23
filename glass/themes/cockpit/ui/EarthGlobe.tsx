@@ -11,6 +11,8 @@ import {
 } from "./earthGlobeShaders.js";
 
 const R = 1.6;
+/** Outer air, in earth radii. Large enough that the falloff ends before the mesh. */
+const ATMO = 1.38;
 
 /** reference/breath.jpg: the disk sits low. The lit limb clears the header
  *  and the southern hemisphere runs off the bottom of the stage. */
@@ -107,11 +109,12 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
           uSunDir: { value: SUN },
           uCenter: { value: new THREE.Vector3(0, FRAME_Y, 0) },
           uEarthR: { value: R },
-          uAtmoR: { value: R * 1.12 },
+          uAtmoR: { value: R * ATMO },
         },
-        side: THREE.BackSide,
+        side: THREE.FrontSide,
         transparent: true,
         blending: THREE.AdditiveBlending,
+        depthTest: false,
         depthWrite: false,
       }),
     [],
@@ -127,13 +130,13 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
   return (
     <group ref={group} rotation={[TILT_X, ASIA_Y, 0.02]}>
       <mesh material={earthMat}>
+        <sphereGeometry args={[R, 192, 192]} />
+      </mesh>
+      <mesh material={cloudMat} scale={1.008}>
         <sphereGeometry args={[R, 128, 128]} />
       </mesh>
-      <mesh material={cloudMat} scale={1.012}>
-        <sphereGeometry args={[R, 96, 96]} />
-      </mesh>
-      <mesh material={atmoMat} scale={1.12}>
-        <sphereGeometry args={[R, 80, 80]} />
+      <mesh material={atmoMat} scale={ATMO}>
+        <sphereGeometry args={[R, 160, 160]} />
       </mesh>
     </group>
   );

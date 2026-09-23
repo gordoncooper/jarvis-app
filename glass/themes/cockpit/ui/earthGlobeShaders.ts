@@ -50,24 +50,13 @@ void main() {
 
   vec3 col = base + lights;
 
-  // Sun catches only the upper limb. The facing disc stays night.
-  float dayF = smoothstep(0.12, 0.55, ndl);
-  vec3 dayLit = dayC * (0.12 + 1.05 * max(ndl, 0.0));
-  col = mix(col, dayLit, dayF);
+  float dayF = smoothstep(0.05, 0.85, ndl);
+  vec3 dayLit = dayC * (0.08 + 0.45 * max(ndl, 0.0));
+  col = mix(col, dayLit, dayF * 0.22);
 
   vec3 halfV = normalize(sun + view);
   float spec = pow(max(dot(nb, halfV), 0.0), 48.0) * ocean * dayF;
-  col += vec3(0.75, 0.86, 1.0) * spec * 0.35;
-
-  // Air in front of the disc. Wide and soft, so the limb glow continues
-  // inward over the planet instead of sitting outside it as a ring.
-  float ndv = clamp(dot(n, view), 0.0, 1.0);
-  float limb = pow(1.0 - ndv, 0.85);
-  float sunAmt = smoothstep(-0.45, 0.85, dot(n, sun));
-  vec3 rayleigh = vec3(0.28, 0.48, 0.92);
-  vec3 mie = vec3(0.82, 0.90, 1.0);
-  vec3 haze = mix(rayleigh, mie, pow(sunAmt, 1.3));
-  col += haze * limb * (0.08 + 0.8 * sunAmt);
+  col += vec3(0.75, 0.86, 1.0) * spec * 0.18;
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -102,8 +91,9 @@ void main() {
 }
 `;
 
-/** Halo outside the disc. Brightest on the planet's own limb, then an
- *  exponential falloff into space. Not a band on the shell. */
+/** One layer, in front of the planet. Impact parameter x is 0 on the limb,
+ *  negative over the disc, positive out in space. One curve, so the face and
+ *  the tail cannot form two edges. */
 export const stageAtmoFrag = /* glsl */ `
 uniform vec3 uSunDir;
 uniform vec3 uCenter;
@@ -118,15 +108,19 @@ void main() {
   float dist = length(cross(rd, ro));
   float span = max(uAtmoR - uEarthR, 0.001);
   float x = (dist - uEarthR) / span;
-  if (x > 1.02) discard;
+  if (x > 1.0) discard;
 
-  // Peak on the crust, then fall away. A cutoff inside the span opens a dark gap
-  // and the remainder reads as a ring floating off the planet.
-  float glow = exp(-max(x, 0.0) * 4.2);
+  // Inside the limb the curve climbs toward it. Outside it falls the whole
+  // way to the shell edge, so the tail has no last-step cliff.
+  float scatter = x <= 0.0 ? exp(x * 1.05) : exp(-x * 2.1) * pow(max(1.0 - x, 0.0), 1.55);
+
   vec3 closest = ro + rd * dot(-ro, rd);
-  float sunAmt = smoothstep(-0.3, 0.85, dot(normalize(closest), sun));
-  vec3 col = mix(vec3(0.18, 0.34, 0.65), vec3(0.80, 0.91, 1.0), sunAmt);
-  float a = glow * (0.035 + 0.5 * sunAmt);
-  gl_FragColor = vec4(col * a, 1.0);
+  float sunAmt = smoothstep(-0.08, 0.38, dot(normalize(closest), sun));
+  float crown = pow(max(sunAmt, 0.0), 0.4);
+  vec3 col = mix(vec3(0.12, 0.26, 0.55), vec3(0.75, 0.88, 1.0), crown);
+  float a = scatter * (0.018 + 0.58 * crown);
+  float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+  col += (dither - 0.5) * 0.02;
+  gl_FragColor = vec4(max(col * a, 0.0), 1.0);
 }
 `;
