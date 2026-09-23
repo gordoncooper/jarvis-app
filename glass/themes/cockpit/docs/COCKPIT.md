@@ -198,10 +198,15 @@ tail so returning to the stage does not bury the planet.
 the previous type size:** the strip keeps the last 6 messages, and its top is
 the top of that tail, so a short exchange stays a short column. It stops
 `12rem` short of filling the stage (`max-height: calc(100cqh - 12rem)`), which
-keeps it under the header. Reply colour is ink mixed toward steel, and the
-type is `clamp(0.9rem, 0.55rem + 0.38cqi, 1.42rem)` — about 12px at a 1272px
-stage, 14px at 1920, 18px at 3070. Still bottom-anchored, still faded at the
-top when the cap is hit, still not a transcript. The CMD channel is unchanged.
+keeps it under the header. The type is `clamp(0.9rem, 0.55rem + 0.38cqi, 1.42rem)`
+— about 12px at a 1272px stage, 14px at 1920, 18px at 3070. Still bottom-anchored,
+still faded at the top when the cap is hit, still not a transcript.
+
+**Revised 2026-09-23 (operator request), superseding the softened reply and
+the warm operator mark:** Breath uses the CMD channel's type. The operator
+line is IBM Plex Sans in `--ink`. A JARVIS line is IBM Plex Mono in `--ink`.
+The chevron and list marks stay `--accent`, the same role colour as the
+OPERATOR / JARVIS labels. Emphasis stays ink. The CMD channel is unchanged.
 
 **Revised 2026-09-22 (operator request):** a JARVIS reply on the strip keeps
 its line breaks and lays out as projected type over the globe. A bullet is a

@@ -805,9 +805,10 @@ button:disabled {
   flex-direction: column;
   justify-content: flex-end;
   overflow: hidden;
-  font-family: var(--type-ui);
-  /* Root rem is 13px. Softer than the old clamp, which hit ~17px at 1920 and
-     ~23px at 3070: ~12px at a 1272px stage, ~14px at 1920, ~18px at 3070. */
+  /* Operator face. JARVIS sets mono on its own lines, same split as the
+     CMD channel. The stage scale stays larger than CMD so the line still
+     reads over the disc. */
+  font-family: var(--ck-font);
   font-size: clamp(0.9rem, 0.55rem + 0.38cqi, 1.42rem);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
@@ -832,31 +833,32 @@ button:disabled {
   animation: ck-toast-in 260ms ease both;
 }
 
-/* Operator channel: quieter, warm. The chevron is the human mark. */
+/* Operator: IBM Plex Sans in ink, the CMD user bubble. The chevron is the
+   accent role mark, the same teal as the OPERATOR label. */
 .ck-toast-user {
-  color: color-mix(in oklch, var(--steel) 72%, var(--warn));
-  font-size: 0.86em;
-  letter-spacing: 0.03em;
+  color: var(--ck-ink);
+  font-family: var(--ck-font);
+  font-size: 1em;
+  letter-spacing: normal;
   white-space: pre-wrap;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
 }
 
 .ck-toast-user::before {
   content: "› ";
-  color: var(--warn);
-  opacity: 0.9;
+  color: var(--ck-accent);
 }
 
-/* JARVIS channel: projected type. The bright cap is the lit end of the
-   bracket; the rest of the rail stays dim so the accent stays on the ticks
-   and the emphasised words. */
+/* JARVIS: IBM Plex Mono in ink, the CMD assistant bubble. The rail is the
+   same 1px hairline as a CMD bubble border. */
 .ck-toast-asst {
   position: relative;
   padding-left: 0.9em;
-  /* Ink reads as a white block over the night side. Steel takes the edge off
-     without dropping the reply down to the chrome labels. */
-  color: color-mix(in oklch, var(--ink) 64%, var(--steel));
-  font-size: 1em;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.88);
+  color: var(--ck-ink);
+  font-family: var(--ck-mono);
+  font-size: 0.92em;
+  letter-spacing: normal;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
 }
 
 .ck-toast-asst::before {
@@ -866,14 +868,7 @@ button:disabled {
   top: 0.22em;
   bottom: 0.15em;
   width: 1px;
-  background: linear-gradient(
-    to bottom,
-    var(--accent) 0 0.42em,
-    color-mix(in oklch, var(--accent) 48%, transparent) 0.42em,
-    color-mix(in oklch, var(--accent) 32%, transparent) 78%,
-    transparent 100%
-  );
-  box-shadow: 0 0 8px color-mix(in oklch, var(--accent) 45%, transparent);
+  background: var(--line);
 }
 
 .ck-toast-plain {
@@ -892,31 +887,28 @@ button:disabled {
 
 .ck-toast-h {
   font-family: var(--ck-mono);
-  font-size: 0.68em;
+  font-size: 0.78em;
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--ck-ink);
 }
 
 .ck-toast-asst strong {
   font-weight: 500;
-  color: var(--accent);
-  text-shadow:
-    0 1px 12px rgba(0, 0, 0, 0.9),
-    0 0 10px color-mix(in oklch, var(--accent) 40%, transparent);
+  color: inherit;
 }
 
 .ck-toast-asst em {
   font-style: italic;
-  color: color-mix(in oklch, var(--ink) 78%, var(--accent));
+  color: inherit;
 }
 
 .ck-toast-asst code {
   font-family: var(--ck-mono);
-  font-size: 0.84em;
+  font-size: 0.92em;
   letter-spacing: 0;
-  color: color-mix(in oklch, var(--ink) 28%, var(--accent));
+  color: var(--ck-ink);
 }
 
 .ck-toast-pre {
@@ -926,7 +918,7 @@ button:disabled {
   font-size: 0.78em;
   line-height: 1.45;
   white-space: pre-wrap;
-  color: var(--steel);
+  color: var(--ck-ink);
 }
 
 .ck-toast-list,
@@ -965,9 +957,8 @@ button:disabled {
   height: 0.34em;
   margin-top: 0.52em;
   justify-self: center;
-  background: var(--accent);
+  background: var(--ck-accent);
   transform: rotate(45deg);
-  box-shadow: 0 0 7px color-mix(in oklch, var(--accent) 70%, transparent);
 }
 
 .ck-toast-num {
@@ -976,7 +967,7 @@ button:disabled {
   font-weight: 500;
   letter-spacing: 0.08em;
   line-height: 2;
-  color: var(--accent);
+  color: var(--ck-accent);
 }
 
 .ck-toast-asst + .ck-toast-user {

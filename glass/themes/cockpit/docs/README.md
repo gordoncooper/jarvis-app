@@ -81,6 +81,9 @@ drift; they are the current spec.
   The strip is still not a transcript. The CMD channel is unchanged.
 - **2026-09-23** — Breath replies are softer and a step smaller. The strip
   follows the last 6 messages and stops short of the header.
+- **2026-09-23** — Breath dialogue uses the CMD channel's type: operator in
+  IBM Plex Sans and ink, JARVIS in IBM Plex Mono and ink. The CMD channel
+  is unchanged.
 - **2026-09-23** — Breath Earth matches `reference/breath.jpg`: large and low,
   night over Asia, blue limb on top. Maps are Solar System Scope 8K, credited
   in `assets/globe/ATTRIBUTION.txt`.
