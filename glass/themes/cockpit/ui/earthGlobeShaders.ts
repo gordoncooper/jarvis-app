@@ -54,6 +54,15 @@ void main() {
   float fillN = smoothstep(-0.2, 0.8, dot(nb, normalize(uFillDir)));
   col += dayC * fillN * 0.06;
 
+  // The shell only draws outside the disc. This is the same glow, on the
+  // surface, so the crust does not meet the air on a hard edge.
+  float ndv = clamp(dot(n, view), 0.0, 1.0);
+  float limb = pow(1.0 - ndv, 2.6);
+  float crown = pow(max(smoothstep(-0.55, 0.85, ndl), 0.0), 0.85);
+  vec3 atmoCol = mix(vec3(0.16, 0.34, 0.62), vec3(0.55, 0.74, 0.95), crown);
+  atmoCol = mix(atmoCol, vec3(0.20, 0.38, 0.66), fillN * (1.0 - crown));
+  col += atmoCol * limb * (0.12 + 0.42 * crown + 0.1 * fillN);
+
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -104,12 +113,10 @@ void main() {
   float dist = length(cross(rd, ro));
   float span = max(uAtmoR - uEarthR, 0.001);
   float x = (dist - uEarthR) / span;
-  // Stay off the face of the disc. A wide inward term is the pillow.
-  if (x < -0.22 || x > 1.0) discard;
+  // The disc owns the inner half of the glow. Drawing it here too stacks a line.
+  if (x < 0.0 || x > 1.0) discard;
 
-  float inner = smoothstep(-0.4, 0.18, x);
-  float outer = exp(-max(x, 0.0) * 1.6) * pow(max(1.0 - max(x, 0.0), 0.0), 1.2);
-  float scatter = x < 0.0 ? inner : outer;
+  float scatter = exp(-x * 1.7) * pow(max(1.0 - x, 0.0), 1.25);
 
   vec3 closest = ro + rd * dot(-ro, rd);
   vec3 limbN = normalize(closest);
