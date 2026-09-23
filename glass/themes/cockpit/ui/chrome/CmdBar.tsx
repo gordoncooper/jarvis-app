@@ -1,4 +1,13 @@
-import { type FormEvent, type PointerEvent, type MutableRefObject, type Ref, useRef } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+  type MutableRefObject,
+  type Ref,
+  useRef,
+  useState,
+} from "react";
+import { cmdBarEnterSends } from "./cmdEnter.js";
 
 type Props = {
   busy: boolean;
@@ -9,7 +18,7 @@ type Props = {
   prompt?: string;
   placeholder?: string;
   variant?: "stage" | "cmd" | "noc";
-  inputRef?: MutableRefObject<HTMLInputElement | null>;
+  inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
   onSubmit: (text: string) => void;
   onPttStart: () => void;
   onPttStop: () => void;
@@ -32,27 +41,51 @@ export function CmdBar({
 }: Props) {
   // Responding covers both halves: tokens still arriving, or audio still playing.
   const responding = busy || speaking;
-  const local = useRef<HTMLInputElement>(null);
+  const local = useRef<HTMLTextAreaElement>(null);
   const input = inputRef ?? local;
+  const [multiline, setMultiline] = useState(false);
+
+  /** Grow with the text, up to the CSS max-height, then scroll. */
+  const fit = (el: HTMLTextAreaElement) => {
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+    const line = parseFloat(getComputedStyle(el).lineHeight);
+    setMultiline(Number.isFinite(line) && el.scrollHeight > line * 1.6);
+  };
 
   const submit = (ev: FormEvent) => {
     ev.preventDefault();
-    const value = input.current?.value.trim() ?? "";
-    if (!value) return;
-    if (input.current) input.current.value = "";
+    const el = input.current;
+    const value = el?.value.trim() ?? "";
+    if (!value || !el) return;
+    el.value = "";
+    fit(el);
     onSubmit(value);
-    input.current?.focus();
+    el.focus();
+  };
+
+  const onKeyDown = (ev: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!cmdBarEnterSends(ev.key, {
+      shift: ev.shiftKey,
+      alt: ev.altKey,
+      composing: ev.nativeEvent.isComposing,
+    })) return;
+    ev.preventDefault();
+    ev.currentTarget.form?.requestSubmit();
   };
 
   return (
-    <form className={`ck-cmdbar ck-cmdbar-${variant}`} onSubmit={submit}>
+    <form className={`ck-cmdbar ck-cmdbar-${variant}${multiline ? " is-multiline" : ""}`} onSubmit={submit}>
       <span className="ck-cmd-prompt">{prompt}</span>
-      <input
-        ref={input as Ref<HTMLInputElement>}
-        type="text"
+      <textarea
+        ref={input as Ref<HTMLTextAreaElement>}
+        rows={1}
         placeholder={placeholder}
         autoComplete="off"
         spellCheck={false}
+        title="Enter to send. Shift+Enter for a new line."
+        onKeyDown={onKeyDown}
+        onInput={(ev) => fit(ev.currentTarget)}
       />
       {variant === "noc" ? (
         <span className="ck-cmd-block" aria-hidden="true" />

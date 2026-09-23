@@ -340,6 +340,10 @@ Do not teach glass to scrape noc.lan or home.lan.
   does not scroll, and release on window blur or tab hide — a key-up never
   arrives if focus leaves mid-hold, which would otherwise record until the
   operator came back. No latch: press-and-hold only.
+- **Multi-line cmd field.** The bar on breath, cmd, and noc is a textarea.
+  Enter sends. Shift+Enter and Alt+Enter insert a line, and a paste keeps
+  its breaks. The field grows to six lines, then scrolls. One line still
+  looks like the old bar.
 - No page reloads.
 
 ---

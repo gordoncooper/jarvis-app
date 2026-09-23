@@ -60,7 +60,7 @@ export function Noc({
   const [selected, setSelected] = useState<string | null>(null);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const cmdInput = useRef<HTMLInputElement>(null);
+  const cmdInput = useRef<HTMLTextAreaElement>(null);
 
   const nodes = pulse?.nodes ?? [];
   const gpu01 = nodes.find((n) => n.id.trim().toLowerCase() === "gpu-01");

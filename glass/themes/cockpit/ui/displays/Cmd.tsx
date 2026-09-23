@@ -96,7 +96,7 @@ export function Cmd({
   const [wantFocus, setWantFocus] = useState<"ask" | "apply" | null>(null);
   const thread = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
-  const channelInput = useRef<HTMLInputElement>(null);
+  const channelInput = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);

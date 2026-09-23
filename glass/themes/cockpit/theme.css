@@ -247,16 +247,33 @@ input {
   border-radius: 999px;
 }
 
-.ck-cmdbar input {
-  flex: 1;
+.ck-cmdbar.is-multiline {
+  align-items: flex-end;
+}
+
+.ck-cmdbar.is-multiline .ck-cmd-prompt {
+  align-self: flex-start;
+  padding-top: 0.2rem;
+}
+
+.ck-cmdbar textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  resize: none;
   background: transparent;
   border: none;
   color: var(--ck-ink);
   outline: none;
+  font: inherit;
   font-size: 0.88rem;
+  line-height: 1.4;
+  max-height: calc(1.4em * 6);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0;
 }
 
-.ck-cmdbar input::placeholder {
+.ck-cmdbar textarea::placeholder {
   color: color-mix(in oklch, var(--ck-steel) 75%, transparent);
 }
 
@@ -999,7 +1016,7 @@ button:disabled {
   box-shadow: none;
 }
 
-.ck-breath .ck-cmdbar input {
+.ck-breath .ck-cmdbar textarea {
   font-size: 0.95rem;
   color: var(--ink);
 }
