@@ -149,7 +149,8 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
 - **Revised 2026-09-23 (operator request), superseding the full-disk marble:**
   the Earth matches `docs/reference/breath.jpg`. The disk is large and low:
   the lit limb clears the header and the south runs off the bottom. The facing
-  side opens on the US east coast. Day and city lights share a wide twilight.
+  side opens just east of the US east coast, and the country sits a little
+  lower. Day and city lights share a wide twilight.
   The sun is up and to the rear right, with a faint second glow on the rear left.
   The blue air is a thin limb, brighter at the top. The globe turns slowly.
   Drag still spins it.

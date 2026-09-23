@@ -2,9 +2,9 @@ Solar System Scope, CC BY 4.0. Bundled for the LAN. Not fetched at runtime.
 
 https://www.solarsystemscope.com/textures
 
-The bytes are the Ultra 8K pack, via the Wikimedia mirrors of that same pack
-(8192×4096). Normal and specular ship as JPEG because the originals are TIFF
-and a browser cannot decode them. Resolution is unchanged.
+The bytes are the Ultra 8K pack, via the Wikimedia mirrors of that same pack.
+Normal and specular were TIFF, which a browser cannot decode. All five ship
+as JPEG at 4096×2048 so the breath page does not decode five 8K plates.
 
 - night.jpg — Earth Night Map Ultra
 - day.jpg — Earth Day Map Ultra

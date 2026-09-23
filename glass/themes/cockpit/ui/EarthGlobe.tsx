@@ -18,10 +18,10 @@ const ATMO = 1.06;
  *  and the southern hemisphere runs off the bottom of the stage. */
 const FRAME_Y = -0.46;
 
-/** Scope equirectangular, +Z of SphereGeometry is u=0.25. This yaw puts
- *  the US east coast (~76°W) on the camera. */
-const EAST_COAST_Y = -0.244;
-const TILT_X = 0.22;
+/** Scope equirectangular, +Z of SphereGeometry is u=0.25. This yaw opens
+ *  just east of the US east coast (~72°W). */
+const EAST_COAST_Y = -0.32;
+const TILT_X = 0.30;
 
 /** Right, a little higher, and a step farther behind the disc. */
 const SUN = new THREE.Vector3(0.40, 0.50, -0.18).normalize();
