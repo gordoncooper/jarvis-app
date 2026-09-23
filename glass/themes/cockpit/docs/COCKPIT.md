@@ -150,8 +150,8 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   the Earth matches `docs/reference/breath.jpg`. The disk is large and low:
   the lit limb clears the header and the south runs off the bottom. The facing
   side is night over Asia, city lights in gold, both limbs in frame, the south
-  just off the bottom. The blue limb feathers into black. Drag spins it. Not a
-  small centered marble and not a hard ring.
+  just off the bottom. The blue air sits on the sunlit face and feathers out
+  from the limb. Drag spins it. Not a small centered marble and not a ring.
 - DOM HUD pinned to edges:
   - Top-left: hex + JARVIS + LIVE
   - Top-center: LAN, k3s, UTC from `/v1/pulse`

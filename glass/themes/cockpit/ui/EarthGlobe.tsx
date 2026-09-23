@@ -103,7 +103,12 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
       new THREE.ShaderMaterial({
         vertexShader: stageAtmoVert,
         fragmentShader: stageAtmoFrag,
-        uniforms: { uSunDir: { value: SUN } },
+        uniforms: {
+          uSunDir: { value: SUN },
+          uCenter: { value: new THREE.Vector3(0, FRAME_Y, 0) },
+          uEarthR: { value: R },
+          uAtmoR: { value: R * 1.12 },
+        },
         side: THREE.BackSide,
         transparent: true,
         blending: THREE.AdditiveBlending,
@@ -127,7 +132,7 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
       <mesh material={cloudMat} scale={1.012}>
         <sphereGeometry args={[R, 96, 96]} />
       </mesh>
-      <mesh material={atmoMat} scale={1.05}>
+      <mesh material={atmoMat} scale={1.12}>
         <sphereGeometry args={[R, 80, 80]} />
       </mesh>
     </group>

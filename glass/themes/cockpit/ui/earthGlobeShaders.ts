@@ -59,6 +59,16 @@ void main() {
   float spec = pow(max(dot(nb, halfV), 0.0), 48.0) * ocean * dayF;
   col += vec3(0.75, 0.86, 1.0) * spec * 0.35;
 
+  // Air in front of the disc. Wide and soft, so the limb glow continues
+  // inward over the planet instead of sitting outside it as a ring.
+  float ndv = clamp(dot(n, view), 0.0, 1.0);
+  float limb = pow(1.0 - ndv, 0.85);
+  float sunAmt = smoothstep(-0.45, 0.85, dot(n, sun));
+  vec3 rayleigh = vec3(0.28, 0.48, 0.92);
+  vec3 mie = vec3(0.82, 0.90, 1.0);
+  vec3 haze = mix(rayleigh, mie, pow(sunAmt, 1.3));
+  col += haze * limb * (0.08 + 0.8 * sunAmt);
+
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -92,26 +102,31 @@ void main() {
 }
 `;
 
-/** Soft blue limb. The glow dies before the shell's silhouette, so the
- *  edge feathers into black instead of drawing a hard ring. */
+/** Halo outside the disc. Brightest on the planet's own limb, then an
+ *  exponential falloff into space. Not a band on the shell. */
 export const stageAtmoFrag = /* glsl */ `
 uniform vec3 uSunDir;
-varying vec3 vWorldNormal;
+uniform vec3 uCenter;
+uniform float uEarthR;
+uniform float uAtmoR;
 varying vec3 vWorld;
 
 void main() {
-  vec3 n = normalize(vWorldNormal);
-  vec3 view = normalize(cameraPosition - vWorld);
   vec3 sun = normalize(uSunDir);
-  float f = 1.0 - abs(dot(view, n));
-  // A band just inside the shell, gone before the silhouette.
-  float inner = smoothstep(0.42, 0.68, f);
-  float outer = 1.0 - smoothstep(0.74, 0.97, f);
-  float band = inner * outer;
-  // The reference glow lives on the sunlit crown, not as a ring around the night side.
-  float lit = smoothstep(0.0, 0.8, dot(n, sun));
-  vec3 col = mix(vec3(0.20, 0.36, 0.62), vec3(0.78, 0.90, 1.0), lit);
-  float a = band * (lit * 0.95 + 0.04);
-  gl_FragColor = vec4(col, a);
+  vec3 ro = cameraPosition - uCenter;
+  vec3 rd = normalize(vWorld - cameraPosition);
+  float dist = length(cross(rd, ro));
+  float span = max(uAtmoR - uEarthR, 0.001);
+  float x = (dist - uEarthR) / span;
+  if (x > 1.02) discard;
+
+  // Peak on the crust, then fall away. A cutoff inside the span opens a dark gap
+  // and the remainder reads as a ring floating off the planet.
+  float glow = exp(-max(x, 0.0) * 4.2);
+  vec3 closest = ro + rd * dot(-ro, rd);
+  float sunAmt = smoothstep(-0.3, 0.85, dot(normalize(closest), sun));
+  vec3 col = mix(vec3(0.18, 0.34, 0.65), vec3(0.80, 0.91, 1.0), sunAmt);
+  float a = glow * (0.035 + 0.5 * sunAmt);
+  gl_FragColor = vec4(col * a, 1.0);
 }
 `;
