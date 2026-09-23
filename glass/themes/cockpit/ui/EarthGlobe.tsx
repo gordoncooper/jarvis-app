@@ -1,6 +1,5 @@
-import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import {
   stageAtmoFrag,
@@ -11,19 +10,22 @@ import {
   stageEarthVert,
 } from "./earthGlobeShaders.js";
 
-const R = 1;
-const FOV = 32;
-/** Black margin above and below the teal limb, not the crust. */
-const MARGIN = 0.2;
-const LIMB = 1.065;
-const DIST = (R * LIMB) / ((1 - 2 * MARGIN) * Math.tan((FOV * Math.PI) / 180 / 2));
-/** Zoom stays outside the atmosphere. The default is DIST, not a crust dive. */
-const MIN_DIST = 3.8;
-const MAX_DIST = 7.4;
+const R = 1.6;
 
-/** Scope equirectangular: Americas sit just west of u=0.25, which is the
- *  +Z face of SphereGeometry. A few degrees of yaw centers CONUS. */
-const AMERICAS_Y = 0.06;
+/** reference/breath.jpg: the disk sits low. The lit limb clears the header
+ *  and the southern hemisphere runs off the bottom of the stage. */
+const FRAME_Y = -0.92;
+
+/** Scope equirectangular, +Z of SphereGeometry is u=0.25. This yaw puts
+ *  ~100°E (India left, China center, Australia low) on the camera. */
+const ASIA_Y = 2.97;
+const TILT_X = 0.16;
+
+/** Sun above and behind the camera: the facing disc is night, the top limb is day. */
+const SUN = new THREE.Vector3(0.05, 0.62, -0.78).normalize();
+
+const DRAG_GAIN = 0.0042;
+const TILT_LIMIT = 0.55;
 
 function configureMaps(
   color: THREE.Texture[],
@@ -58,39 +60,11 @@ function usePlanetMaps() {
   return { day, night, spec, normal, clouds };
 }
 
-function SparseStars() {
-  const geom = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const pos = new Float32Array(420 * 3);
-    for (let i = 0; i < 420; i++) {
-      const r = 28 + Math.random() * 18;
-      const th = Math.random() * Math.PI * 2;
-      const ph = Math.acos(2 * Math.random() - 1);
-      pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
-      pos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th);
-      pos[i * 3 + 2] = r * Math.cos(ph);
-    }
-    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    return g;
-  }, []);
-  return (
-    <points geometry={geom}>
-      <pointsMaterial
-        color="#c5d0d8"
-        size={0.055}
-        sizeAttenuation
-        depthWrite={false}
-        transparent
-        opacity={0.45}
-      />
-    </points>
-  );
-}
+type Drag = { yaw: number; pitch: number; dragging: boolean };
 
-function NightMarble() {
-  const { camera } = useThree();
+function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
+  const group = useRef<THREE.Group>(null);
   const { day, night, spec, normal, clouds } = usePlanetMaps();
-  const sun = useRef(new THREE.Vector3(0, 0.05, -1));
 
   const earthMat = useMemo(
     () =>
@@ -102,8 +76,8 @@ function NightMarble() {
           tNight: { value: night },
           tSpec: { value: spec },
           tNormal: { value: normal },
-          uSunDir: { value: sun.current.clone() },
-          uLights: { value: 2.0 },
+          uSunDir: { value: SUN },
+          uLights: { value: 2.15 },
         },
       }),
     [day, night, spec, normal],
@@ -116,7 +90,7 @@ function NightMarble() {
         fragmentShader: stageCloudFrag,
         uniforms: {
           tCloud: { value: clouds },
-          uSunDir: { value: sun.current.clone() },
+          uSunDir: { value: SUN },
         },
         transparent: true,
         depthWrite: false,
@@ -129,6 +103,7 @@ function NightMarble() {
       new THREE.ShaderMaterial({
         vertexShader: stageAtmoVert,
         fragmentShader: stageAtmoFrag,
+        uniforms: { uSunDir: { value: SUN } },
         side: THREE.BackSide,
         transparent: true,
         blending: THREE.AdditiveBlending,
@@ -138,57 +113,96 @@ function NightMarble() {
   );
 
   useFrame(() => {
-    // Sun sits behind the planet, a little off-axis, and follows the camera
-    // so orbiting shows another continent still at night.
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-    sun.current.copy(camera.position).normalize().negate();
-    sun.current.addScaledVector(right, 0.22);
-    sun.current.addScaledVector(up, 0.06);
-    sun.current.normalize();
-    earthMat.uniforms.uSunDir.value.copy(sun.current);
-    cloudMat.uniforms.uSunDir.value.copy(sun.current);
+    const d = drag.current;
+    if (!group.current) return;
+    group.current.rotation.y = ASIA_Y + d.yaw;
+    group.current.rotation.x = TILT_X + d.pitch;
   });
 
   return (
-    <group rotation={[0.12, AMERICAS_Y, 0]}>
+    <group ref={group} rotation={[TILT_X, ASIA_Y, 0.02]}>
       <mesh material={earthMat}>
         <sphereGeometry args={[R, 128, 128]} />
       </mesh>
-      <mesh material={cloudMat} scale={1.008}>
+      <mesh material={cloudMat} scale={1.012}>
         <sphereGeometry args={[R, 96, 96]} />
       </mesh>
-      <mesh material={atmoMat} scale={1.065}>
-        <sphereGeometry args={[R, 96, 96]} />
+      <mesh material={atmoMat} scale={1.028}>
+        <sphereGeometry args={[R, 80, 80]} />
       </mesh>
     </group>
   );
 }
 
-function Scene() {
+/** Drag spins the globe. The listener is on the canvas so a sideways drag
+ *  does not also slide the deck. */
+function DragSpin({ drag }: { drag: React.MutableRefObject<Drag> }) {
+  const { gl } = useThree();
+
+  useEffect(() => {
+    const el = gl.domElement;
+    let id: number | null = null;
+    let lastX = 0;
+    let lastY = 0;
+
+    const down = (ev: PointerEvent) => {
+      id = ev.pointerId;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      drag.current.dragging = true;
+      el.setPointerCapture(ev.pointerId);
+      ev.stopPropagation();
+    };
+    const move = (ev: PointerEvent) => {
+      if (id !== ev.pointerId) return;
+      drag.current.yaw += (ev.clientX - lastX) * DRAG_GAIN;
+      drag.current.pitch = Math.max(
+        -TILT_LIMIT,
+        Math.min(TILT_LIMIT, drag.current.pitch + (ev.clientY - lastY) * DRAG_GAIN * 0.55),
+      );
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      ev.stopPropagation();
+    };
+    const up = (ev: PointerEvent) => {
+      if (id !== ev.pointerId) return;
+      id = null;
+      drag.current.dragging = false;
+      if (el.hasPointerCapture(ev.pointerId)) el.releasePointerCapture(ev.pointerId);
+      ev.stopPropagation();
+    };
+
+    el.addEventListener("pointerdown", down);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+    };
+  }, [gl, drag]);
+
+  return null;
+}
+
+function Scene({ drag }: { drag: React.MutableRefObject<Drag> }) {
   return (
     <>
       <color attach="background" args={["#000000"]} />
-      <SparseStars />
-      <Suspense fallback={null}>
-        <NightMarble />
-      </Suspense>
-      <OrbitControls
-        enablePan={false}
-        enableDamping
-        dampingFactor={0.08}
-        rotateSpeed={0.45}
-        zoomSpeed={0.35}
-        minDistance={MIN_DIST}
-        maxDistance={MAX_DIST}
-        minPolarAngle={Math.PI / 2 - 0.65}
-        maxPolarAngle={Math.PI / 2 + 0.45}
-      />
+      <DragSpin drag={drag} />
+      <group position={[0, FRAME_Y, 0]}>
+        <Suspense fallback={null}>
+          <NightEarth drag={drag} />
+        </Suspense>
+      </group>
     </>
   );
 }
 
 export function EarthGlobe() {
+  const drag = useRef<Drag>({ yaw: 0, pitch: 0, dragging: false });
   return (
     <div className="ck-breath-canvas">
       <Canvas
@@ -200,9 +214,9 @@ export function EarthGlobe() {
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,
         }}
-        camera={{ position: [0, 0, DIST], fov: FOV, near: 0.08, far: 80 }}
+        camera={{ position: [0, 0, 7.7], fov: 16, near: 0.1, far: 40 }}
       >
-        <Scene />
+        <Scene drag={drag} />
       </Canvas>
     </div>
   );
