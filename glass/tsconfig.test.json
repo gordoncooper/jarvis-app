@@ -8,7 +8,8 @@
   },
   "include": [
     "src/**/*.test.ts",
-    "src/core/**/*.ts"
+    "src/core/**/*.ts",
+    "themes/**/*.test.ts"
   ],
   "exclude": []
 }

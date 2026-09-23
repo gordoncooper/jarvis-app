@@ -185,6 +185,13 @@ to the stage corners at a fixed ~285px / ~145px however wide the window is.
 The full transcript still lives on the CMD display; the globe keeps only the
 tail so returning to the stage does not bury the planet.
 
+**Revised 2026-09-22 (operator request):** a JARVIS reply on the strip keeps
+its line breaks and lays out as projected type over the globe. A bullet is a
+row with a diamond, a count is a row with a two-digit index, and emphasis
+takes the accent. The operator's line is the warm mark. Markdown sigils are
+not shown. The strip stays bottom-anchored, capped, and faded at the top:
+still not a scrolling transcript and not a modal. The CMD channel is unchanged.
+
 ### CMD (index 2)
 
 Layout:

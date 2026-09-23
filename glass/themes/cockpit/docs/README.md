@@ -76,3 +76,6 @@ drift; they are the current spec.
   scrolling transcript, no modal".
 - **2026-09-21** — The `earth` room was renamed `breath`. The Earth globe is
   unchanged; the room is named for the exchange, not the backdrop.
+- **2026-09-22** — Breath replies keep their line breaks and lay out as
+  projected type: list rows, accent on emphasis, a warm mark for the operator.
+  The strip is still not a transcript. The CMD channel is unchanged.

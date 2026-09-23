@@ -6,6 +6,7 @@ import { ConcRing, LiveDot } from "../chrome/Marks.js";
 import { pulseText, type ChatMsg, type ConfirmPayload, type HealthPayload, type PulsePayload } from "@core";
 import { pulseGpuChips } from "../rack.js";
 import { EarthGlobe, earthWebglOk } from "../EarthGlobe.js";
+import { BreathLine } from "./breathReply.js";
 
 /** Lines of dialogue kept over the globe. The rest lives on the CMD display. */
 const TAIL = 12;
@@ -184,9 +185,7 @@ export function Breath({
             <div className="ck-breath-toast" aria-live="polite">
               <div className="ck-toast-stack">
                 {tail.map((m) => (
-                  <p key={m.id} className={m.role === "user" ? "ck-toast-user" : "ck-toast-asst"}>
-                    {m.content || (m.role === "assistant" ? "…" : "")}
-                  </p>
+                  <BreathLine key={m.id} role={m.role} content={m.content} />
                 ))}
               </div>
             </div>

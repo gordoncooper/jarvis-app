@@ -7,7 +7,7 @@
     "build": "npm run typecheck && npm test && node esbuild.mjs",
     "bundle": "node esbuild.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
-    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\""
+    "test": "node --experimental-strip-types --test \"src/**/*.test.ts\" \"themes/**/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
