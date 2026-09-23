@@ -61,7 +61,7 @@ void main() {
   float crown = pow(max(smoothstep(-0.55, 0.85, ndl), 0.0), 0.85);
   vec3 atmoCol = mix(vec3(0.16, 0.34, 0.62), vec3(0.55, 0.74, 0.95), crown);
   atmoCol = mix(atmoCol, vec3(0.20, 0.38, 0.66), fillN * (1.0 - crown));
-  col += atmoCol * limb * (0.12 + 0.42 * crown + 0.1 * fillN);
+  col += atmoCol * limb * (0.15 + 0.50 * crown + 0.12 * fillN);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -116,7 +116,9 @@ void main() {
   // The disc owns the inner half of the glow. Drawing it here too stacks a line.
   if (x < 0.0 || x > 1.0) discard;
 
-  float scatter = exp(-x * 1.7) * pow(max(1.0 - x, 0.0), 1.25);
+  // Exponent above 2 so the slope is already zero at the shell edge.
+  // The mesh boundary is black, which is what removes the line against space.
+  float scatter = exp(-x * 1.15) * pow(clamp(1.0 - x, 0.0, 1.0), 2.4);
 
   vec3 closest = ro + rd * dot(-ro, rd);
   vec3 limbN = normalize(closest);
@@ -125,9 +127,9 @@ void main() {
   float fillAmt = smoothstep(-0.15, 0.7, dot(limbN, normalize(uFillDir)));
   vec3 col = mix(vec3(0.16, 0.34, 0.62), vec3(0.55, 0.74, 0.95), crown);
   col = mix(col, vec3(0.20, 0.38, 0.66), fillAmt * (1.0 - crown));
-  float a = scatter * (0.05 + 0.55 * crown + 0.22 * fillAmt);
+  float a = scatter * (0.07 + 0.66 * crown + 0.26 * fillAmt);
   float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-  col += (dither - 0.5) * 0.015;
+  col += (dither - 0.5) * 0.02;
   gl_FragColor = vec4(max(col * a, 0.0), 1.0);
 }
 `;
