@@ -23,9 +23,10 @@ const FRAME_Y = -0.46;
 const EAST_COAST_Y = -0.244;
 const TILT_X = 0.22;
 
-/** Off to the right and only a little behind, so the facing disc is split:
- *  day on one side, city lights on the other, twilight across the middle. */
-const SUN = new THREE.Vector3(0.42, 0.36, -0.06).normalize();
+/** Right, a little higher, and a step farther behind the disc. */
+const SUN = new THREE.Vector3(0.40, 0.50, -0.18).normalize();
+/** Rear left. A whisper, so the far limb has a glow without a second day. */
+const FILL = new THREE.Vector3(-0.62, 0.10, -0.58).normalize();
 
 /** rad/s. One turn is about six minutes. */
 const IDLE_SPIN = 0.018;
@@ -83,6 +84,7 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
           tSpec: { value: spec },
           tNormal: { value: normal },
           uSunDir: { value: SUN },
+          uFillDir: { value: FILL },
           uLights: { value: 1.45 },
         },
       }),
@@ -111,6 +113,7 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
         fragmentShader: stageAtmoFrag,
         uniforms: {
           uSunDir: { value: SUN },
+          uFillDir: { value: FILL },
           uCenter: { value: new THREE.Vector3(0, FRAME_Y, 0) },
           uEarthR: { value: R },
           uAtmoR: { value: R * ATMO },

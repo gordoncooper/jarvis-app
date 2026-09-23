@@ -19,6 +19,7 @@ uniform sampler2D tNight;
 uniform sampler2D tSpec;
 uniform sampler2D tNormal;
 uniform vec3 uSunDir;
+uniform vec3 uFillDir;
 uniform float uLights;
 varying vec2 vUv;
 varying vec3 vWorldNormal;
@@ -49,6 +50,9 @@ void main() {
   vec3 halfV = normalize(sun + view);
   float spec = pow(max(dot(nb, halfV), 0.0), 40.0) * ocean * shade;
   col += vec3(0.85, 0.92, 1.0) * spec * 0.35;
+
+  float fillN = smoothstep(-0.2, 0.8, dot(nb, normalize(uFillDir)));
+  col += dayC * fillN * 0.06;
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -87,6 +91,7 @@ void main() {
  *  light dies inside that skin, so it cannot become a dome or a hard ring. */
 export const stageAtmoFrag = /* glsl */ `
 uniform vec3 uSunDir;
+uniform vec3 uFillDir;
 uniform vec3 uCenter;
 uniform float uEarthR;
 uniform float uAtmoR;
@@ -107,10 +112,13 @@ void main() {
   float scatter = x < 0.0 ? inner : outer;
 
   vec3 closest = ro + rd * dot(-ro, rd);
-  float sunAmt = smoothstep(-0.55, 0.85, dot(normalize(closest), sun));
+  vec3 limbN = normalize(closest);
+  float sunAmt = smoothstep(-0.55, 0.85, dot(limbN, sun));
   float crown = pow(max(sunAmt, 0.0), 0.85);
+  float fillAmt = smoothstep(-0.15, 0.7, dot(limbN, normalize(uFillDir)));
   vec3 col = mix(vec3(0.16, 0.34, 0.62), vec3(0.55, 0.74, 0.95), crown);
-  float a = scatter * (0.05 + 0.55 * crown);
+  col = mix(col, vec3(0.20, 0.38, 0.66), fillAmt * (1.0 - crown));
+  float a = scatter * (0.05 + 0.55 * crown + 0.22 * fillAmt);
   float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
   col += (dither - 0.5) * 0.015;
   gl_FragColor = vec4(max(col * a, 0.0), 1.0);
