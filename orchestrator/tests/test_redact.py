@@ -116,10 +116,10 @@ class LogsRouteTest(unittest.TestCase):
         self.assertEqual(hit.label, "logs.tail")
         self.assertEqual(hit.args["namespace"], "flux-system")
 
-    def test_log_files_in_a_directory_stay_unserved(self) -> None:
+    def test_log_files_in_a_directory_are_a_listing(self) -> None:
         self.assertEqual(
             route("show me the log files in the directory").label,
-            "unsupported",
+            "files.list",
         )
 
     def test_a_question_about_logs_in_general_stays_chat(self) -> None:

@@ -75,7 +75,11 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 #       (piper, grafana). The flux-log and orchestrator-log rows were
 #       already passes as 'unsupported'; they are relabeled, not new hits.
 #       Fixture is 80 non-chat utterances.
-BASELINE_CAPABILITY_PASSES = 66
+#
+#   68  D-0042 adds files.list. The old "what files are in the directory?"
+#       row was already a pass as 'unsupported' and is relabeled. Two new
+#       rows pass. Fixture is 82 non-chat utterances.
+BASELINE_CAPABILITY_PASSES = 68
 
 
 

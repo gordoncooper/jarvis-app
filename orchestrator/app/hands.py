@@ -219,8 +219,7 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
     ),
     (
         # "what is a log" stays chat: the word alone is not this rule.
-        # "log files" is files.list's subject, still unserved, so it must
-        # not match here.
+        # "log files" belongs to files.list, so it must not match here.
         "logs.tail",
         re.compile(
             r"\b("
@@ -229,6 +228,21 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
             r"logs?\s+(for|of|from|on)\b|"
             r"(look\s+at|inspect)\s+(the\s+)?(\w+\s+)?(error\s+)?logs?(?!\s+files?)\b|"
             r"what\s+do\s+(the\s+)?[\w.-]+\s+logs?\s+say"
+            r")",
+            re.I,
+        ),
+    ),
+    (
+        # The one folder. "what is a file?" stays chat. No path is parsed:
+        # every match lists the same fixed root.
+        "files.list",
+        re.compile(
+            r"\b("
+            r"(what|which)\s+files?\s+(do\s+you\s+have|are\s+(there|listed|in)|have\s+you)|"
+            r"(list|show)\s+(me\s+)?(all\s+|the\s+|my\s+)*files?\b|"
+            r"files?\s+(do\s+you\s+have|are\s+listed|in\s+the\s+(directory|folder))|"
+            r"(what(?:'s|\s+is|\s+are)\s+(in|inside)\s+(the\s+)?(directory|folder|files))|"
+            r"(list|show)\s+(me\s+)?(the\s+)?(directory|folder)\b"
             r")",
             re.I,
         ),

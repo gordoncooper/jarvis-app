@@ -239,8 +239,7 @@ _SELF_ABILITY = re.compile(
 # When a capability lands for one of these, delete its word from here in the
 # same commit. That is the only maintenance this list should ever get.
 _UNSERVED_SUBJECT = re.compile(
-    r"\b(files?|directory|folder|"
-    r"certificates?|secrets?|volumes?|ingress)\b",
+    r"\b(certificates?|secrets?|volumes?|ingress)\b",
     re.I,
 )
 

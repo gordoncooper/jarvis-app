@@ -136,7 +136,9 @@ memory.forget_ref	that's wrong, remove it
 # This row used to be labelled cluster.health; the classifier disagreed.
 pods.list	any pods crashing?
 pods.list	list all the running pods for me
-unsupported	what files do you have listed in the directory?
+files.list	what files do you have listed in the directory?
+files.list	list my files
+files.list	what's in the folder?
 backup.latest	what's the latest backup of the cluster?
 logs.tail	take a look at the flux error logs and tell me what's wrong
 logs.tail	show me the logs for the orchestrator

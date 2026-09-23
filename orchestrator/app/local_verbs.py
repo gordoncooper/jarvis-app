@@ -25,6 +25,7 @@ import httpx
 from . import __version__
 from . import kube
 from .config import settings
+from .files import list_folder
 from .prom import query_series
 from .redact import summarize_log
 from .weather import get_weather
@@ -371,9 +372,15 @@ async def logs_tail(namespace: str = "", name: str = "") -> tuple[str, dict[str,
     return text, {"pod": pod, "source": source, **counts}
 
 
+async def files_list() -> tuple[str, dict[str, Any]]:
+    """The fixed folder. No path argument reaches list_folder from here."""
+    return list_folder()
+
+
 HANDLERS = {
     "flux.status": flux_status,
     "logs.tail": logs_tail,
+    "files.list": files_list,
     "backup.latest": backup_latest,
     "pods.list": pods_list,
     "storage.free": storage_free,

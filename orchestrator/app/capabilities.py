@@ -188,6 +188,19 @@ MANIFEST: dict[str, Capability] = {
         args=("namespace", "name"),
         desc="Last 80 lines, secret lines dropped, at most four spoken. Not flux-system.",
     ),
+    "files.list": _cap(
+        name="files.list",
+        klass="trusted",
+        backend="local",
+        short="listing your files",
+        summary="tell you the names, sizes, and ages of the files in your folder",
+        examples=(
+            "what files do you have?",
+            "list my files",
+            "what's in the folder?",
+        ),
+        desc="One fixed directory. Names, sizes, ages. Contents are never opened.",
+    ),
     # --- Local ---
     "backup.latest": _cap(
         name="backup.latest",
