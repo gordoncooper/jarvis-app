@@ -12,8 +12,7 @@ void main() {
 }
 `;
 
-/** Night side over the facing disc, daylight only on the upper limb.
- *  The day plate is crushed so continents still read in the dark. */
+/** Day on the sunlit face, city lights only where the sun is down. */
 export const stageEarthFrag = /* glsl */ `
 uniform sampler2D tDay;
 uniform sampler2D tNight;
@@ -28,7 +27,7 @@ varying vec3 vWorld;
 void main() {
   vec3 n = normalize(vWorldNormal);
   vec3 bump = texture2D(tNormal, vUv).xyz * 2.0 - 1.0;
-  vec3 nb = normalize(n + bump * 0.35);
+  vec3 nb = normalize(n + bump * 0.28);
 
   vec3 sun = normalize(uSunDir);
   vec3 view = normalize(cameraPosition - vWorld);
@@ -37,26 +36,19 @@ void main() {
   vec3 dayC = texture2D(tDay, vUv).rgb;
   float ocean = texture2D(tSpec, vUv).r;
 
-  // Dark marble: land a touch lighter than ocean so the coastlines survive.
-  vec3 land = dayC * vec3(0.055, 0.062, 0.07);
-  vec3 sea = dayC * vec3(0.012, 0.02, 0.045);
-  vec3 base = mix(land, sea, smoothstep(0.2, 0.65, ocean));
-  base = min(base, vec3(0.07));
+  float dayF = smoothstep(-0.12, 0.28, ndl);
+  vec3 dayLit = dayC * (0.12 + 1.15 * max(ndl, 0.0));
 
   vec3 nt = texture2D(tNight, vUv).rgb;
-  nt = max(nt - vec3(0.02), 0.0);
-  float nightMask = 1.0 - smoothstep(-0.08, 0.22, ndl);
-  vec3 lights = nt * vec3(1.0, 0.78, 0.42) * uLights * nightMask;
+  nt = max(nt - vec3(0.015), 0.0);
+  float nightMask = 1.0 - smoothstep(-0.18, 0.12, ndl);
+  vec3 lights = nt * vec3(1.0, 0.82, 0.48) * uLights * nightMask;
 
-  vec3 col = base + lights;
-
-  float dayF = smoothstep(0.05, 0.85, ndl);
-  vec3 dayLit = dayC * (0.08 + 0.45 * max(ndl, 0.0));
-  col = mix(col, dayLit, dayF * 0.22);
+  vec3 col = mix(lights, dayLit, dayF);
 
   vec3 halfV = normalize(sun + view);
-  float spec = pow(max(dot(nb, halfV), 0.0), 48.0) * ocean * dayF;
-  col += vec3(0.75, 0.86, 1.0) * spec * 0.18;
+  float spec = pow(max(dot(nb, halfV), 0.0), 40.0) * ocean * dayF;
+  col += vec3(0.85, 0.92, 1.0) * spec * 0.45;
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -91,9 +83,8 @@ void main() {
 }
 `;
 
-/** One layer, in front of the planet. Impact parameter x is 0 on the limb,
- *  negative over the disc, positive out in space. One curve, so the face and
- *  the tail cannot form two edges. */
+/** Thin limb only. The shell is a few percent larger than the earth, and the
+ *  light dies inside that skin, so it cannot become a dome or a hard ring. */
 export const stageAtmoFrag = /* glsl */ `
 uniform vec3 uSunDir;
 uniform vec3 uCenter;
@@ -108,19 +99,20 @@ void main() {
   float dist = length(cross(rd, ro));
   float span = max(uAtmoR - uEarthR, 0.001);
   float x = (dist - uEarthR) / span;
-  if (x > 1.0) discard;
+  // Stay off the face of the disc. A wide inward term is the pillow.
+  if (x < -0.22 || x > 1.0) discard;
 
-  // Inside the limb the curve climbs toward it. Outside it falls the whole
-  // way to the shell edge, so the tail has no last-step cliff.
-  float scatter = x <= 0.0 ? exp(x * 1.05) : exp(-x * 2.1) * pow(max(1.0 - x, 0.0), 1.55);
+  float inner = smoothstep(-0.22, 0.0, x);
+  float outer = exp(-max(x, 0.0) * 1.35) * pow(max(1.0 - max(x, 0.0), 0.0), 1.15);
+  float scatter = x < 0.0 ? inner : outer;
 
   vec3 closest = ro + rd * dot(-ro, rd);
-  float sunAmt = smoothstep(-0.08, 0.38, dot(normalize(closest), sun));
-  float crown = pow(max(sunAmt, 0.0), 0.4);
-  vec3 col = mix(vec3(0.12, 0.26, 0.55), vec3(0.75, 0.88, 1.0), crown);
-  float a = scatter * (0.018 + 0.58 * crown);
+  float sunAmt = smoothstep(-0.05, 0.35, dot(normalize(closest), sun));
+  float crown = pow(max(sunAmt, 0.0), 0.35);
+  vec3 col = mix(vec3(0.15, 0.32, 0.62), vec3(0.78, 0.90, 1.0), crown);
+  float a = scatter * (0.04 + 1.05 * crown);
   float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-  col += (dither - 0.5) * 0.02;
+  col += (dither - 0.5) * 0.015;
   gl_FragColor = vec4(max(col * a, 0.0), 1.0);
 }
 `;

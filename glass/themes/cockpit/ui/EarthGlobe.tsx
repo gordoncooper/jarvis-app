@@ -11,20 +11,24 @@ import {
 } from "./earthGlobeShaders.js";
 
 const R = 1.6;
-/** Outer air, in earth radii. Large enough that the falloff ends before the mesh. */
-const ATMO = 1.38;
+/** Thin skin. A large shell is what turned the limb into a pillow. */
+const ATMO = 1.06;
 
 /** reference/breath.jpg: the disk sits low. The lit limb clears the header
  *  and the southern hemisphere runs off the bottom of the stage. */
 const FRAME_Y = -0.46;
 
 /** Scope equirectangular, +Z of SphereGeometry is u=0.25. This yaw puts
- *  ~100°E (India left, China center, Australia low) on the camera. */
-const ASIA_Y = 2.97;
-const TILT_X = 0.16;
+ *  California (~120°W) on the camera. */
+const CALIFORNIA_Y = 0.52;
+const TILT_X = 0.22;
 
-/** Sun above and behind the camera: the facing disc is night, the top limb is day. */
-const SUN = new THREE.Vector3(0.05, 0.62, -0.78).normalize();
+/** In front of the camera and a little high, so the facing disc is day
+ *  and a crescent falls into night for the city lights. */
+const SUN = new THREE.Vector3(-0.62, 0.42, 0.58).normalize();
+
+/** rad/s. One turn is about six minutes. */
+const IDLE_SPIN = 0.018;
 
 const DRAG_GAIN = 0.0042;
 const TILT_LIMIT = 0.55;
@@ -114,21 +118,20 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
         side: THREE.FrontSide,
         transparent: true,
         blending: THREE.AdditiveBlending,
-        depthTest: false,
         depthWrite: false,
       }),
     [],
   );
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     const d = drag.current;
     if (!group.current) return;
-    group.current.rotation.y = ASIA_Y + d.yaw;
+    group.current.rotation.y = CALIFORNIA_Y + clock.elapsedTime * IDLE_SPIN + d.yaw;
     group.current.rotation.x = TILT_X + d.pitch;
   });
 
   return (
-    <group ref={group} rotation={[TILT_X, ASIA_Y, 0.02]}>
+    <group ref={group} rotation={[TILT_X, CALIFORNIA_Y, 0.02]}>
       <mesh material={earthMat}>
         <sphereGeometry args={[R, 192, 192]} />
       </mesh>
