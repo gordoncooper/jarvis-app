@@ -15,7 +15,7 @@ const frame: StarFrame = {
 test("stars sit in the background, outside the limb", () => {
   const geo = buildStarGeometry(frame);
   const pos = geo.getAttribute("position");
-  assert.equal(pos.count, 88);
+  assert.equal(pos.count, 110);
   const cam = new THREE.Vector3(0, 0, frame.camZ);
   const earth = new THREE.Vector3(0, frame.earthY, 0);
   const toEarth = earth.clone().sub(cam).normalize();

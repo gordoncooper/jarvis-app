@@ -11,7 +11,7 @@ export type StarFrame = {
   far: number;
 };
 
-const COUNT = 88;
+const COUNT = 110;
 /** Wide enough that a wall display still has stars in the side margins. */
 const COVER_ASPECT = 2.2;
 
@@ -65,7 +65,7 @@ export function buildStarGeometry(frame: StarFrame, seed = 0x51a2c): THREE.Buffe
     const roll = rand();
     size[i] = roll > 0.9 ? 1.55 + rand() * 0.4 : 1.05 + rand() * 0.3;
     gain[i] = 0.45 + rand() * 1.15;
-    bright[i] = roll > 0.9 ? 1.15 + rand() * 0.35 : 0.72 + rand() * 0.32;
+    bright[i] = roll > 0.9 ? 1.32 + rand() * 0.28 : 0.96 + rand() * 0.3;
     warm[i] = rand() > 0.88 ? 0.45 + rand() * 0.4 : rand() * 0.06;
     i++;
   }

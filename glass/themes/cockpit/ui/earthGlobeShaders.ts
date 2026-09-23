@@ -150,7 +150,7 @@ varying float vWarm;
 void main() {
   float s1 = sin(uTime * aGain + aPhase);
   float s2 = sin(uTime * aGain * 2.17 + aPhase * 1.7);
-  float tw = 0.74 + 0.20 * s1 + 0.06 * s2;
+  float tw = 0.84 + 0.12 * s1 + 0.04 * s2;
   vTw = tw;
   vBright = aBright;
   vWarm = aWarm;
