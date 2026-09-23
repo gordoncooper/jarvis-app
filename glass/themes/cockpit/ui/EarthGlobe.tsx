@@ -83,7 +83,7 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
           tSpec: { value: spec },
           tNormal: { value: normal },
           uSunDir: { value: SUN },
-          uLights: { value: 2.15 },
+          uLights: { value: 1.45 },
         },
       }),
     [day, night, spec, normal],

@@ -42,7 +42,8 @@ void main() {
   vec3 nt = texture2D(tNight, vUv).rgb;
   nt = max(nt - vec3(0.015), 0.0);
   float nightMask = 1.0 - smoothstep(-0.55, 0.9, ndl);
-  vec3 lights = nt * vec3(1.0, 0.82, 0.48) * uLights * nightMask;
+  nt = pow(nt, vec3(1.2));
+  vec3 lights = nt * vec3(0.92, 0.76, 0.5) * uLights * nightMask;
   vec3 col = dayLit * shade + lights;
 
   vec3 halfV = normalize(sun + view);
@@ -101,15 +102,15 @@ void main() {
   // Stay off the face of the disc. A wide inward term is the pillow.
   if (x < -0.22 || x > 1.0) discard;
 
-  float inner = smoothstep(-0.22, 0.0, x);
-  float outer = exp(-max(x, 0.0) * 1.35) * pow(max(1.0 - max(x, 0.0), 0.0), 1.15);
+  float inner = smoothstep(-0.4, 0.18, x);
+  float outer = exp(-max(x, 0.0) * 1.6) * pow(max(1.0 - max(x, 0.0), 0.0), 1.2);
   float scatter = x < 0.0 ? inner : outer;
 
   vec3 closest = ro + rd * dot(-ro, rd);
-  float sunAmt = smoothstep(-0.55, 0.7, dot(normalize(closest), sun));
-  float crown = pow(max(sunAmt, 0.0), 0.35);
-  vec3 col = mix(vec3(0.15, 0.32, 0.62), vec3(0.78, 0.90, 1.0), crown);
-  float a = scatter * (0.04 + 1.05 * crown);
+  float sunAmt = smoothstep(-0.55, 0.85, dot(normalize(closest), sun));
+  float crown = pow(max(sunAmt, 0.0), 0.85);
+  vec3 col = mix(vec3(0.16, 0.34, 0.62), vec3(0.55, 0.74, 0.95), crown);
+  float a = scatter * (0.05 + 0.55 * crown);
   float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
   col += (dither - 0.5) * 0.015;
   gl_FragColor = vec4(max(col * a, 0.0), 1.0);
