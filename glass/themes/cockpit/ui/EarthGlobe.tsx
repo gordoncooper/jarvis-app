@@ -8,7 +8,10 @@ import {
   stageCloudVert,
   stageEarthFrag,
   stageEarthVert,
+  stageStarFrag,
+  stageStarVert,
 } from "./earthGlobeShaders.js";
+import { buildStarGeometry } from "./starfield.js";
 
 const R = 1.6;
 /** Thin skin. A large shell is what turned the limb into a pillow. */
@@ -28,8 +31,8 @@ const SUN = new THREE.Vector3(0.40, 0.50, -0.18).normalize();
 /** Rear left. A whisper, so the far limb has a glow without a second day. */
 const FILL = new THREE.Vector3(-0.62, 0.10, -0.58).normalize();
 
-/** rad/s. One turn is about six minutes. */
-const IDLE_SPIN = 0.018;
+/** rad/s. One third of the previous turn: about eighteen minutes. */
+const IDLE_SPIN = 0.006;
 
 const DRAG_GAIN = 0.0042;
 const TILT_LIMIT = 0.55;
@@ -201,10 +204,62 @@ function DragSpin({ drag }: { drag: React.MutableRefObject<Drag> }) {
   return null;
 }
 
+/** Fixed in space. The globe turns underneath them. */
+function Starfield() {
+  const reduce = useRef(false);
+  const { gl } = useThree();
+  const geo = useMemo(
+    () =>
+      buildStarGeometry({
+        camZ: 10.2,
+        fovDeg: 16,
+        earthY: FRAME_Y,
+        limbR: R * ATMO,
+        far: 50,
+      }),
+    [],
+  );
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: stageStarVert,
+        fragmentShader: stageStarFrag,
+        uniforms: {
+          uTime: { value: 0 },
+          uPixelRatio: { value: gl.getPixelRatio() },
+        },
+        depthTest: false,
+        depthWrite: false,
+      }),
+    [gl],
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      reduce.current = mq.matches;
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => {
+      mq.removeEventListener("change", apply);
+      geo.dispose();
+      mat.dispose();
+    };
+  }, [geo, mat]);
+
+  useFrame(({ clock }) => {
+    mat.uniforms.uTime.value = reduce.current ? 0 : clock.elapsedTime;
+  });
+
+  return <points geometry={geo} material={mat} frustumCulled={false} renderOrder={-1} />;
+}
+
 function Scene({ drag }: { drag: React.MutableRefObject<Drag> }) {
   return (
     <>
       <color attach="background" args={["#000000"]} />
+      <Starfield />
       <DragSpin drag={drag} />
       <group position={[0, FRAME_Y, 0]}>
         <Suspense fallback={null}>

@@ -133,3 +133,44 @@ void main() {
   gl_FragColor = vec4(max(col * a, 0.0), 1.0);
 }
 `;
+
+/** Pinprick stars. Size is in pixels. Twinkle is a small brightness sway. */
+export const stageStarVert = /* glsl */ `
+attribute float aPhase;
+attribute float aSize;
+attribute float aGain;
+attribute float aBright;
+attribute float aWarm;
+uniform float uTime;
+uniform float uPixelRatio;
+varying float vTw;
+varying float vBright;
+varying float vWarm;
+
+void main() {
+  float s1 = sin(uTime * aGain + aPhase);
+  float s2 = sin(uTime * aGain * 2.17 + aPhase * 1.7);
+  float tw = 0.74 + 0.20 * s1 + 0.06 * s2;
+  vTw = tw;
+  vBright = aBright;
+  vWarm = aWarm;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = max(1.0, aSize * uPixelRatio);
+}
+`;
+
+export const stageStarFrag = /* glsl */ `
+varying float vTw;
+varying float vBright;
+varying float vWarm;
+
+void main() {
+  vec2 p = gl_PointCoord - vec2(0.5);
+  if (dot(p, p) > 0.25) discard;
+  vec3 cool = vec3(0.80, 0.88, 1.0);
+  vec3 warm = vec3(1.0, 0.90, 0.74);
+  vec3 col = mix(cool, warm, vWarm) * vBright * vTw;
+  gl_FragColor = vec4(col, 1.0);
+}
+`;

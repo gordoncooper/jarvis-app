@@ -152,7 +152,8 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   side opens just east of the US east coast, and the country sits a little
   lower. Day and city lights share a wide twilight.
   The sun is up and to the rear right, with a faint second glow on the rear left.
-  The blue air is a thin limb, brighter at the top. The globe turns slowly.
+  The blue air is a thin limb, brighter at the top. The globe turns once in
+  about eighteen minutes. Tiny stars sit in the black and twinkle slightly.
   Drag still spins it.
 - DOM HUD pinned to edges:
   - Top-left: hex + JARVIS + LIVE
