@@ -146,6 +146,9 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
 
 - Full-viewport R3F night Earth (`ui/EarthGlobe.tsx`). Drag to spin.
   Atmosphere limb. City lights.
+- **Revised 2026-09-23 (operator request):** the Earth is a full disk, centered,
+  with black margin around it. Night city lights are the picture. The day map
+  is only a thin limb. Zoom stays outside the crust. Not a close flyover.
 - DOM HUD pinned to edges:
   - Top-left: hex + JARVIS + LIVE
   - Top-center: LAN, k3s, UTC from `/v1/pulse`
