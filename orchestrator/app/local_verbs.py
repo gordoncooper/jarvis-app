@@ -1,8 +1,8 @@
 """Capabilities the orchestrator answers itself (D-0036).
 
-Everything here reads a source the orchestrator already had — Prometheus for
-cluster facts, open-meteo for weather, its own clock and the glass build
-manifest. No OpenClaw round trip, no RBAC change, and nothing new to recycle.
+Everything here is answered by the orchestrator, with no OpenClaw round trip.
+logs.tail is the one that needed a grant: get and list on pods, and get on
+pods/log, in four namespaces (D-0041). The others were already reachable.
 
 That matters beyond convenience: these keep working when Hands is down, which
 is the half of the rack most likely to be sick when Gordon asks.
@@ -26,6 +26,7 @@ from . import __version__
 from . import kube
 from .config import settings
 from .prom import query_series
+from .redact import summarize_log
 from .weather import get_weather
 
 log = logging.getLogger("jarvis.orchestrator.local_verbs")
@@ -321,8 +322,58 @@ async def backup_latest() -> tuple[str, dict[str, Any]]:
     return text, body
 
 
+# --- logs.tail -------------------------------------------------------------
+
+_FLUX_LOG_REFUSAL = (
+    "I do not read Flux controller logs. That namespace is outside my grant. "
+    "I can tell you whether Flux is in sync, or read logs for a workload "
+    "in apps, inference, agents, or monitoring."
+)
+
+
+async def logs_tail(namespace: str = "", name: str = "") -> tuple[str, dict[str, Any]]:
+    """Recent pod logs, already safe to say. Counts only in the data dict."""
+    if namespace == "flux-system":
+        return _FLUX_LOG_REFUSAL, {"refused": "flux-system"}
+    if namespace not in kube.LOG_NS or not name:
+        return (
+            "Name the workload, sir. For example the orchestrator, piper, or grafana.",
+            {},
+        )
+    try:
+        pod = await kube.find_pod(namespace, name)
+    except ValueError:
+        return (
+            "Name the workload, sir. For example the orchestrator, piper, or grafana.",
+            {},
+        )
+    if not pod:
+        return (
+            f"I cannot find a pod for {name} in {namespace}, "
+            "or the API refused the read.",
+            {},
+        )
+    got = await kube.read_pod_log(namespace, pod)
+    if got is None:
+        return (
+            f"I could not read the logs for {name}. The API did not answer.",
+            {},
+        )
+    raw, source = got
+    if source == "ambiguous":
+        return (
+            f"{name} has more than one container, and I will not guess which.",
+            {},
+        )
+    text, counts = summarize_log(raw, workload=name)
+    if source == "previous" and counts["kept"]:
+        text = "The current log is empty, so this is the previous run. " + text
+    return text, {"pod": pod, "source": source, **counts}
+
+
 HANDLERS = {
     "flux.status": flux_status,
+    "logs.tail": logs_tail,
     "backup.latest": backup_latest,
     "pods.list": pods_list,
     "storage.free": storage_free,

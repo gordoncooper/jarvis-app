@@ -731,7 +731,7 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
         handler = LOCAL_VERBS.get(decision.label)
         if handler is not None:
             try:
-                reply, data = await handler()
+                reply, data = await handler(**(decision.args or {}))
                 audit_verb(
                     settings.memory_db_path,
                     verb=decision.label,

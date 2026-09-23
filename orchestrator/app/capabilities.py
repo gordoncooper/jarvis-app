@@ -174,6 +174,20 @@ MANIFEST: dict[str, Capability] = {
         ),
         desc="Kustomization + GitRepository Ready conditions in flux-system.",
     ),
+    "logs.tail": _cap(
+        name="logs.tail",
+        klass="trusted",
+        backend="kube",
+        short="reading recent logs",
+        summary="read the recent logs of one workload and tell you if anything looks wrong",
+        examples=(
+            "show me the logs for the orchestrator",
+            "tail the piper logs",
+            "what do the grafana logs say",
+        ),
+        args=("namespace", "name"),
+        desc="Last 80 lines, secret lines dropped, at most four spoken. Not flux-system.",
+    ),
     # --- Local ---
     "backup.latest": _cap(
         name="backup.latest",

@@ -138,8 +138,10 @@ pods.list	any pods crashing?
 pods.list	list all the running pods for me
 unsupported	what files do you have listed in the directory?
 backup.latest	what's the latest backup of the cluster?
-unsupported	take a look at the flux error logs and tell me what's wrong
-unsupported	show me the logs for the orchestrator
+logs.tail	take a look at the flux error logs and tell me what's wrong
+logs.tail	show me the logs for the orchestrator
+logs.tail	tail the piper logs
+logs.tail	what do the grafana logs say
 flux.status	is flux in sync?
 storage.free	how much disk is left on data-01?
 backup.latest	when did the last backup run?

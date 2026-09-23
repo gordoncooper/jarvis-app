@@ -218,6 +218,22 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
         ),
     ),
     (
+        # "what is a log" stays chat: the word alone is not this rule.
+        # "log files" is files.list's subject, still unserved, so it must
+        # not match here.
+        "logs.tail",
+        re.compile(
+            r"\b("
+            r"(show|read|tail|check|fetch)\s+(me\s+)?(the\s+)?"
+            r"([\w.-]+\s+)?(recent\s+|error\s+|last\s+|latest\s+)?logs?(?!\s+files?)\b|"
+            r"logs?\s+(for|of|from|on)\b|"
+            r"(look\s+at|inspect)\s+(the\s+)?(\w+\s+)?(error\s+)?logs?(?!\s+files?)\b|"
+            r"what\s+do\s+(the\s+)?[\w.-]+\s+logs?\s+say"
+            r")",
+            re.I,
+        ),
+    ),
+    (
         "pods.list",
         re.compile(
             r"\b("
@@ -264,6 +280,8 @@ def match_verb(text: str) -> VerbHit | None:
     for name, pat in _RULES:
         if pat.search(t):
             klass = CATALOG.get(name, {}).get("class", "trusted")
+            if name == "logs.tail":
+                return VerbHit(name=name, klass="trusted", args=logs_args(t))
             if klass == "confirm":
                 args, err = parse_confirm_args(name, t)
                 if err or not args:
@@ -312,6 +330,21 @@ def parse_confirm_args(verb: str, text: str) -> tuple[dict[str, str] | None, str
         "Name the target, sir — e.g. `recycle pod apps/jarvis-glass-…` "
         "or `restart deploy jarvis-glass`."
     )
+
+
+def logs_args(text: str) -> dict[str, str] | None:
+    """Target for logs.tail. None means the utterance named no workload.
+
+    Flux is recognized so the handler can refuse that namespace. It is not
+    a namespace this function is willing to fetch.
+    """
+    t = " ".join((text or "").strip().split())
+    if re.search(r"\bflux\b", t, re.I):
+        return {"namespace": "flux-system", "name": "flux"}
+    args, err = parse_confirm_args("logs.tail", t)
+    if err or not args:
+        return None
+    return args
 
 
 def is_affirm(text: str) -> bool:

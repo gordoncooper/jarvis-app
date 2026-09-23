@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass
 
 from .capabilities import MANIFEST
-from .hands import CATALOG, match_verb, parse_confirm_args
+from .hands import CATALOG, logs_args, match_verb, parse_confirm_args
 from .memory import parse_memory_candidate, parse_memory_intent
 
 CHAT = "chat"
@@ -163,12 +163,13 @@ def combine(text: str, deterministic: Route, verdict: object | None, *,
     if confidence < floor:
         return deterministic
 
-    if cap.backend != "hands":
-        return Route(verb, verb_class=cap.klass)
     args = None
-    if cap.klass == "confirm":
+    if verb == "logs.tail":
+        args = logs_args(text)
+    elif cap.backend == "hands" and cap.klass == "confirm":
         # main.py asks for a target when this comes back empty.
-        args, _err = parse_confirm_args(verb, text)
+        parsed, _err = parse_confirm_args(verb, text)
+        args = parsed or None
     return Route(verb, verb_class=cap.klass, args=args)
 
 
@@ -238,7 +239,7 @@ _SELF_ABILITY = re.compile(
 # When a capability lands for one of these, delete its word from here in the
 # same commit. That is the only maintenance this list should ever get.
 _UNSERVED_SUBJECT = re.compile(
-    r"\b(logs?|files?|directory|folder|"
+    r"\b(files?|directory|folder|"
     r"certificates?|secrets?|volumes?|ingress)\b",
     re.I,
 )

@@ -149,15 +149,15 @@ class SelfServedTest(unittest.TestCase):
 class KubeReadTest(unittest.TestCase):
     """The orchestrator's Kubernetes access is read-only and allowlisted.
 
-    It exists for flux.status alone (D-0037). The ServiceAccount had no RBAC
-    at all before that, so the ClusterRole in
+    The ServiceAccount had no RBAC before D-0037, so
     cluster/clusters/jarvis/apps/jarvis-orchestrator-rbac.yaml is the entire
-    list of what the product brain may see. These assert the client cannot
-    quietly grow past it.
+    list of what the product brain may see. Flux collections are one set.
+    Pod logs are the other, and only in LOG_NS (D-0041). These assert the
+    client cannot quietly grow past either.
     """
 
     def test_only_flux_reads_are_reachable(self) -> None:
-        from app.kube import READ_PATHS
+        from app.kube import LOG_NS, READ_PATHS, pod_log_path
 
         self.assertEqual(
             set(READ_PATHS), {"flux_kustomizations", "flux_gitrepositories"}
@@ -166,6 +166,11 @@ class KubeReadTest(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIn("fluxcd.io", path)
                 self.assertIn("/namespaces/flux-system/", path)
+        self.assertEqual(LOG_NS, {"apps", "inference", "agents", "monitoring"})
+        for banned in ("flux-system", "kube-system", "default", ""):
+            with self.subTest(banned=banned):
+                with self.assertRaises(ValueError):
+                    pod_log_path(banned, "jarvis-orchestrator")
 
     def test_a_caller_cannot_pass_an_arbitrary_path(self) -> None:
         import asyncio

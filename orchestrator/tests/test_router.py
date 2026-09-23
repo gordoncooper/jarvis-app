@@ -70,7 +70,12 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 #       promotable, so they stay with the classifier. With jarvis-local the
 #       same fixture scored 76/78; the two left are "what's going on with
 #       the house?" and "what surfaces do we have?".
-BASELINE_CAPABILITY_PASSES = 64
+#
+#   66  D-0041 adds logs.tail. Two new utterances pass deterministically
+#       (piper, grafana). The flux-log and orchestrator-log rows were
+#       already passes as 'unsupported'; they are relabeled, not new hits.
+#       Fixture is 80 non-chat utterances.
+BASELINE_CAPABILITY_PASSES = 66
 
 
 
