@@ -57,7 +57,6 @@ cluster.health	is everything ok in the rack?
 cluster.health	give me a cluster status
 cluster.health	are all the nodes up?
 cluster.health	is the lab healthy?
-cluster.health	any pods crashing?
 cluster.health	what's going on with the house?
 cluster.health	everything green?
 cluster.health	did anything break overnight?
@@ -132,6 +131,10 @@ memory.forget_ref	that's wrong, remove it
 # caught by the house-shape rule, but any phrasing that is neither imperative
 # nor deictic will still reach the talker until the slice 3 classifier lands.
 # Chasing those with more pattern is the treadmill D-0033 exists to end.
+#
+# Crash loops are pods.list, the verb that names the unhappy pods.
+# This row used to be labelled cluster.health; the classifier disagreed.
+pods.list	any pods crashing?
 pods.list	list all the running pods for me
 unsupported	what files do you have listed in the directory?
 backup.latest	what's the latest backup of the cluster?

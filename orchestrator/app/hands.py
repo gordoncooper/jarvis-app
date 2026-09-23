@@ -84,9 +84,13 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
             r"(restart|bounce|recycle)\s+(the\s+)?(deploy(ment)?|deploy)\b|"
             r"(restart|bounce)\s+(the\s+)?[\w-]+\s+deploy(ment)?\b|"
             r"deploy(ment)?\s+(restart|bounce|recycle)\b|"
+            # A service name followed by the word "pod" is a pod recycle.
+            # Without the lookahead, "restart the piper pod" and "recycle
+            # the glass pod" matched here and offered a Deployment rollout.
             r"(restart|bounce|recycle)\s+(the\s+)?"
             r"(jarvis-)?(orchestrator|glass|noc|home|homepage|open-?webui|"
             r"openclaw|ollama|litellm|piper|whisper|prometheus|grafana)\b"
+            r"(?!\s+pod\b)"
             r")",
             re.I,
         ),
@@ -95,7 +99,7 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
         "apps.recycle_pod",
         re.compile(
             r"\b("
-            r"(recycle|delete|kill|restart)\s+(the\s+)?pod\b|"
+            r"(recycle|delete|kill|restart|bounce)\s+(the\s+)?(?:[\w-]+\s+)?pod\b|"
             r"pod\s+(recycle|delete|kill|restart)\b|"
             r"recycle\s+(the\s+)?[\w-]+(\s+pod)?\b"
             r")",

@@ -23,7 +23,11 @@ _REMEMBER = re.compile(
     + r"(?:"
     r"remember(?:\s+that)?|"
     r"don'?t\s+forget(?:\s+that)?|"
-    r"from\s+now\s+on"
+    r"from\s+now\s+on|"
+    # The classifier may not name memory.remember: it does not extract the
+    # fact (D-0034). These two are closed lead-ins, same capture as remember.
+    r"keep\s+in\s+mind(?:\s+that)?|"
+    r"make\s+a\s+note(?:\s+that)?"
     r")\s*[,:]?\s+(.+?)\s*$",
     re.IGNORECASE | re.DOTALL,
 )
@@ -72,8 +76,11 @@ _LIST = re.compile(
     + r"(?:"
     r"(?:list|show|what\s+are)\s+(?:all\s+|exact\s+|my\s+)?(?:the\s+)?"
     r"(?:promoted\s+)?(?:memories|memory|facts)|"
-    r"what\s+do\s+you\s+remember|"
-    r"(?:list|show)\s+what\s+you\s+remember"
+    r"what\s+do\s+you\s+remember(?:\s+about\s+me)?|"
+    r"(?:list|show)\s+what\s+you\s+remember|"
+    # End-anchored on purpose: "show me your memory of Hastings" is chat.
+    r"show\s+me\s+your\s+memory|"
+    r"read\s+back\s+my\s+preferences"
     r")\s*\??\s*$",
     re.IGNORECASE,
 )

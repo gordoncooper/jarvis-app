@@ -73,7 +73,8 @@ def build_prompt() -> str:
         '- "what is a GPU?" is chat. "how hot are the GPUs?" is capability '
         "(cluster.gpus). The words overlap; the intent does not.\n"
         '- "explain what a pod is" is chat. "any pods crashing?" is '
-        "capability (cluster.health).\n"
+        "capability (pods.list). That verb names the unhappy pods; "
+        "cluster.health is whether the lab is well.\n"
         '- "tell me about X" and "what is X" ask for an explanation. They '
         "are chat even when X is flux, a pod or a GPU. Measured: without this "
         'line the model called "tell me about flux" a status request.\n'

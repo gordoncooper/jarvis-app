@@ -34,6 +34,35 @@ class ConfirmArgsTest(unittest.TestCase):
         self.assertEqual(hit.klass, "confirm")
         self.assertEqual(hit.args, {"namespace": "apps", "name": "jarvis-glass"})
 
+    def test_naming_a_pod_is_a_recycle_not_a_rollout(self) -> None:
+        # The service-name rule used to win, so both of these offered to
+        # restart a Deployment. The word "pod" is the recycle.
+        cases = {
+            "can you restart the piper pod for me?": ("apps", "piper"),
+            "recycle the glass pod": ("apps", "jarvis-glass"),
+            "kill the whisper pod, it's wedged": ("inference", "jarvis-whisper"),
+        }
+        for text, (ns, name) in cases.items():
+            with self.subTest(text=text):
+                hit = match_verb(text)
+                self.assertIsNotNone(hit)
+                assert hit is not None
+                self.assertEqual(hit.name, "apps.recycle_pod")
+                self.assertEqual(hit.args, {"namespace": ns, "name": name})
+
+    def test_a_deployment_named_without_pod_is_still_a_restart(self) -> None:
+        for text, name in (
+            ("bounce the orchestrator", "jarvis-orchestrator"),
+            ("restart deploy apps/jarvis-glass", "jarvis-glass"),
+            ("please restart litellm", "litellm"),
+        ):
+            with self.subTest(text=text):
+                hit = match_verb(text)
+                self.assertIsNotNone(hit)
+                assert hit is not None
+                self.assertEqual(hit.name, "apps.restart_deploy")
+                self.assertEqual(hit.args["name"], name)
+
 
 if __name__ == "__main__":
     unittest.main()

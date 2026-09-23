@@ -57,9 +57,10 @@ MANIFEST: dict[str, Capability] = {
         backend="hands",
         summary="tell you whether the cluster is healthy, and which pods are not running",
         examples=(
-            "how is the cluster doing?",
             "are there any issues today?",
-            "is the lab healthy?",
+            "anything broken?",
+            "everything green?",
+            "how is the cluster doing?",
         ),
         desc="Node Ready / non-Running pods snapshot.",
     ),
@@ -78,7 +79,11 @@ MANIFEST: dict[str, Capability] = {
         klass="trusted",
         backend="hands",
         summary="give you the lab addresses and the node list",
-        examples=("what are the lab urls?", "where do I find grafana?"),
+        examples=(
+            "what are the lab urls?",
+            "where do I find grafana?",
+            "remind me of the address for gitea",
+        ),
         desc="Canonical lab URLs plus live node list.",
     ),
     "apps.recycle_pod": _cap(
@@ -97,7 +102,11 @@ MANIFEST: dict[str, Capability] = {
         klass="confirm",
         backend="hands",
         summary="restart a deployment",
-        examples=("bounce the orchestrator", "restart deploy jarvis-glass"),
+        examples=(
+            "bounce the orchestrator",
+            "restart deploy jarvis-glass",
+            "give open-webui a kick",
+        ),
         args=("namespace", "name"),
         desc="Patch Deployment restartedAt to bounce pods.",
     ),

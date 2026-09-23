@@ -61,7 +61,16 @@ FIXTURE = Path(__file__).parent / "fixtures" / "utterances.tsv"
 #
 #   56  D-0037 adds flux.status and backup.latest, on a fixture of 78
 #       capability utterances and 34 chat negatives.
-BASELINE_CAPABILITY_PASSES = 56
+#
+#   64  Pod-shaped requests stop matching apps.restart_deploy, and the
+#       memory phrasings the classifier is not allowed to save ("keep in
+#       mind that", "make a note that", "what do you remember about me",
+#       "show me your memory", "read back my preferences") match
+#       deterministically. Same 78 utterances. The rest of the misses are
+#       promotable, so they stay with the classifier. With jarvis-local the
+#       same fixture scored 76/78; the two left are "what's going on with
+#       the house?" and "what surfaces do we have?".
+BASELINE_CAPABILITY_PASSES = 64
 
 
 

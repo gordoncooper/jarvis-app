@@ -52,6 +52,41 @@ class ReferentGuardTest(unittest.TestCase):
     def test_list_is_unaffected(self) -> None:
         self.assertEqual(parse_memory_intent("list memories").kind, "list")
 
+    def test_closed_list_phrasings_the_anchor_used_to_drop(self) -> None:
+        for text in (
+            "what do you remember about me",
+            "what do you remember about me?",
+            "show me your memory",
+            "read back my preferences",
+        ):
+            with self.subTest(text=text):
+                hit = parse_memory_intent(text)
+                self.assertEqual(hit.kind, "list")
+                self.assertEqual(hit.fact, "")
+
+    def test_a_longer_memory_question_is_not_a_list(self) -> None:
+        # End-anchored. These are chat, not a dump of promoted memory.
+        for text in (
+            "show me your memory of the battle of Hastings",
+            "what do you remember about kubernetes",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(parse_memory_intent(text).kind, "none")
+
+    def test_keep_in_mind_and_make_a_note_store_the_fact(self) -> None:
+        # memory.remember is not classifier-promotable, so these have to
+        # match here or they reach the talker forever.
+        late = parse_memory_intent("keep in mind that I work late")
+        self.assertEqual(late.kind, "remember")
+        self.assertEqual(late.fact, "I work late")
+        dog = parse_memory_intent("make a note that my dog is called Bagel")
+        self.assertEqual(dog.kind, "remember")
+        self.assertEqual(dog.fact, "my dog is called Bagel")
+
+    def test_a_note_that_is_only_a_pointer_is_a_referent(self) -> None:
+        hit = parse_memory_intent("keep in mind that")
+        self.assertEqual(hit.kind, "remember_ref")
+
 
 if __name__ == "__main__":
     unittest.main()
