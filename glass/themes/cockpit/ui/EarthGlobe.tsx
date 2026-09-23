@@ -19,13 +19,13 @@ const ATMO = 1.06;
 const FRAME_Y = -0.46;
 
 /** Scope equirectangular, +Z of SphereGeometry is u=0.25. This yaw puts
- *  California (~120°W) on the camera. */
-const CALIFORNIA_Y = 0.52;
+ *  the US east coast (~76°W) on the camera. */
+const EAST_COAST_Y = -0.244;
 const TILT_X = 0.22;
 
-/** In front of the camera and a little high, so the facing disc is day
- *  and a crescent falls into night for the city lights. */
-const SUN = new THREE.Vector3(-0.62, 0.42, 0.58).normalize();
+/** Behind the planet and to the right, so the facing disc is night
+ *  and the day limb sits on the rear-right edge. */
+const SUN = new THREE.Vector3(0.55, 0.34, -0.76).normalize();
 
 /** rad/s. One turn is about six minutes. */
 const IDLE_SPIN = 0.018;
@@ -126,12 +126,12 @@ function NightEarth({ drag }: { drag: React.MutableRefObject<Drag> }) {
   useFrame(({ clock }) => {
     const d = drag.current;
     if (!group.current) return;
-    group.current.rotation.y = CALIFORNIA_Y + clock.elapsedTime * IDLE_SPIN + d.yaw;
+    group.current.rotation.y = EAST_COAST_Y + clock.elapsedTime * IDLE_SPIN + d.yaw;
     group.current.rotation.x = TILT_X + d.pitch;
   });
 
   return (
-    <group ref={group} rotation={[TILT_X, CALIFORNIA_Y, 0.02]}>
+    <group ref={group} rotation={[TILT_X, EAST_COAST_Y, 0.02]}>
       <mesh material={earthMat}>
         <sphereGeometry args={[R, 192, 192]} />
       </mesh>
