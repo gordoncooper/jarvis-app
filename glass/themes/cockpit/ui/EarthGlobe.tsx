@@ -23,9 +23,9 @@ const FRAME_Y = -0.46;
 const EAST_COAST_Y = -0.244;
 const TILT_X = 0.22;
 
-/** Behind the planet and to the right, so the facing disc is night
- *  and the day limb sits on the rear-right edge. */
-const SUN = new THREE.Vector3(0.55, 0.34, -0.76).normalize();
+/** Off to the right and only a little behind, so the facing disc is split:
+ *  day on one side, city lights on the other, twilight across the middle. */
+const SUN = new THREE.Vector3(0.42, 0.36, -0.06).normalize();
 
 /** rad/s. One turn is about six minutes. */
 const IDLE_SPIN = 0.018;

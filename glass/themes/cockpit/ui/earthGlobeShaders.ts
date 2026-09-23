@@ -36,19 +36,18 @@ void main() {
   vec3 dayC = texture2D(tDay, vUv).rgb;
   float ocean = texture2D(tSpec, vUv).r;
 
-  float dayF = smoothstep(-0.12, 0.28, ndl);
-  vec3 dayLit = dayC * (0.12 + 1.15 * max(ndl, 0.0));
-
+  // A wide ramp, not a line. Day and city lights overlap through the twilight.
+  float shade = smoothstep(-0.85, 0.75, ndl);
+  vec3 dayLit = dayC * (0.06 + 1.05 * shade);
   vec3 nt = texture2D(tNight, vUv).rgb;
   nt = max(nt - vec3(0.015), 0.0);
-  float nightMask = 1.0 - smoothstep(-0.18, 0.12, ndl);
+  float nightMask = 1.0 - smoothstep(-0.55, 0.9, ndl);
   vec3 lights = nt * vec3(1.0, 0.82, 0.48) * uLights * nightMask;
-
-  vec3 col = mix(lights, dayLit, dayF);
+  vec3 col = dayLit * shade + lights;
 
   vec3 halfV = normalize(sun + view);
-  float spec = pow(max(dot(nb, halfV), 0.0), 40.0) * ocean * dayF;
-  col += vec3(0.85, 0.92, 1.0) * spec * 0.45;
+  float spec = pow(max(dot(nb, halfV), 0.0), 40.0) * ocean * shade;
+  col += vec3(0.85, 0.92, 1.0) * spec * 0.35;
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -64,7 +63,7 @@ varying vec3 vWorldNormal;
 
 void main() {
   float ndl = dot(normalize(vWorldNormal), normalize(uSunDir));
-  float lit = smoothstep(-0.35, 0.45, ndl);
+  float lit = smoothstep(-0.7, 0.75, ndl);
   float c = texture2D(tCloud, vUv).r;
   float alpha = c * mix(0.16, 0.55, lit);
   vec3 col = mix(vec3(0.45, 0.5, 0.58), vec3(0.9, 0.93, 0.97), lit);
@@ -107,7 +106,7 @@ void main() {
   float scatter = x < 0.0 ? inner : outer;
 
   vec3 closest = ro + rd * dot(-ro, rd);
-  float sunAmt = smoothstep(-0.05, 0.35, dot(normalize(closest), sun));
+  float sunAmt = smoothstep(-0.55, 0.7, dot(normalize(closest), sun));
   float crown = pow(max(sunAmt, 0.0), 0.35);
   vec3 col = mix(vec3(0.15, 0.32, 0.62), vec3(0.78, 0.90, 1.0), crown);
   float a = scatter * (0.04 + 1.05 * crown);
