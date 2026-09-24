@@ -145,7 +145,7 @@ export function Breath({
 
         <div className="ck-breath-bottom">
           <div className="ck-chip">
-            CLUSTER <LiveDot on={live} /> <em className={live ? "" : "is-empty"}>{live ? "LIVE" : "WAIT"}</em>
+            CLUSTER <LiveDot on={live} /> <em className={live ? "is-live" : "is-empty"}>{live ? "LIVE" : "WAIT"}</em>
           </div>
           <div className="ck-chip ck-chip-stack">
             <span className="ck-chip-k">UPTIME</span>

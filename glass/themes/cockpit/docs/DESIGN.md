@@ -24,8 +24,11 @@ Locked tokens and rooms come from `COCKPIT-PLAN.md`. Builder steps:
 }
 ```
 
-IBM Plex Sans for chrome, IBM Plex Mono for numbers and cmd. Accent on ≤15%
-of pixels. Same hex, LIVE pip, and 1px `#1c252e` hairline on Breath / CMD / NOC.
+IBM Plex Sans for chrome and body prose. IBM Plex Mono for titles, kickers,
+values, and teal text. The sizes are `--ck-title-size`, `--ck-kicker-size`,
+`--ck-value-size`, and `--ck-body-size` in `tokens.css`. Titles and kickers
+are steel. Values are ink. Teal text is `--ck-accent`. Accent on ≤15% of
+pixels. Same hex, LIVE pip, and 1px `#1c252e` hairline on Breath / CMD / NOC.
 
 ## Four displays
 

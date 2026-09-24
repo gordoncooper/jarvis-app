@@ -26,6 +26,13 @@
   --ck-warm-glow: color-mix(in oklch, var(--warn) 42%, transparent);
   --ck-font: var(--type-ui);
   --ck-mono: var(--type-data);
+  /* One scale for every room. Titles and kickers are mono. Body is sans. */
+  --ck-title-size: 0.72rem;
+  --ck-title-track: 0.14em;
+  --ck-kicker-size: 0.62rem;
+  --ck-kicker-track: 0.14em;
+  --ck-value-size: 0.78rem;
+  --ck-body-size: 0.8rem;
   --ck-radius: var(--radius);
   --ck-pulse: 2.4s;
 }
