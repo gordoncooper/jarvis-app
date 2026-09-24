@@ -758,28 +758,63 @@ button:disabled {
   gap: 0.45rem;
 }
 
-.ck-breath-dossier dl {
-  margin: 0;
-}
-
-.ck-breath-dossier dl > div {
-  display: grid;
-  grid-template-columns: 3.6rem 0.7rem 1fr;
-  font-family: var(--ck-mono);
-  font-size: var(--ck-value-size);
-  letter-spacing: 0.06em;
-  line-height: 1.95;
-}
-
-.ck-breath-dossier dt {
+.ck-breath-dossier-sub {
+  margin: 0.4rem 0 0.15rem;
   color: var(--ck-steel);
+  font-family: var(--ck-mono);
+  font-size: var(--ck-kicker-size);
+  letter-spacing: 0.06em;
+}
+
+.ck-breath-rows {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+}
+
+.ck-breath-rows li {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.38rem 0;
+  border-top: 1px solid color-mix(in oklch, var(--line) 75%, transparent);
+}
+
+.ck-breath-ico {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: grid;
+  place-items: center;
+  color: var(--ck-accent);
+  border: 1px solid color-mix(in oklch, var(--ck-accent) 40%, var(--line));
+  border-radius: 2px;
+}
+
+.ck-breath-k {
+  color: var(--ck-steel);
+  font-family: var(--ck-mono);
   font-size: var(--ck-kicker-size);
   letter-spacing: var(--ck-kicker-track);
 }
 
-.ck-breath-dossier dd {
-  margin: 0;
+.ck-breath-v {
+  font-family: var(--ck-mono);
+  font-size: var(--ck-kicker-size);
+  letter-spacing: 0.08em;
   color: var(--ck-ink);
+}
+
+.ck-breath-v.is-bad {
+  color: var(--bad);
+}
+
+.ck-breath-v.is-accent {
+  color: var(--ck-accent);
+}
+
+.ck-breath-v.is-quiet {
+  color: var(--ck-steel);
 }
 
 .ck-meta-v.is-empty,
@@ -1681,8 +1716,51 @@ button:disabled {
   margin: 0.65rem 0 0.35rem;
 }
 
+.ck-noc-mode {
+  list-style: none;
+  margin: 0 0 0.35rem;
+  padding: 0;
+}
+
+.ck-noc-mode li {
+  display: grid;
+  grid-template-columns: 0.9rem minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.28rem 0 0.28rem 0.4rem;
+  border-left: 2px solid color-mix(in oklch, var(--ck-accent) 45%, var(--line));
+  border-bottom: 1px solid var(--line);
+  font-family: var(--ck-mono);
+  font-size: var(--ck-kicker-size);
+}
+
+.ck-noc-ico {
+  color: var(--ck-accent);
+  display: grid;
+  place-items: center;
+}
+
+.ck-noc-mode span {
+  color: var(--ck-steel);
+  letter-spacing: var(--ck-kicker-track);
+}
+
+.ck-noc-mode em {
+  font-style: normal;
+  color: var(--ck-ink);
+  letter-spacing: 0.06em;
+}
+
+.ck-noc-mode em.is-accent {
+  color: var(--ck-accent);
+}
+
 .ck-noc-dl {
   margin: 0 0 0.35rem;
+  padding: 0.15rem 0.35rem;
+  background: color-mix(in oklch, var(--bg) 55%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 2px;
 }
 
 .ck-noc-dl > div {
@@ -1712,8 +1790,8 @@ button:disabled {
 }
 
 .ck-filters {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.28rem;
   font-family: var(--ck-mono);
   font-size: var(--ck-kicker-size);
@@ -1723,9 +1801,18 @@ button:disabled {
 .ck-filters label {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   cursor: pointer;
-  color: var(--ck-ink);
+  color: var(--ck-steel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 0.22rem 0.35rem;
+  background: color-mix(in oklch, var(--bg) 40%, transparent);
+}
+
+.ck-filters label:has(input:checked) {
+  color: var(--ck-accent);
+  border-color: color-mix(in oklch, var(--ck-accent) 45%, var(--line));
 }
 
 .ck-filters input {

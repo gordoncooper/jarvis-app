@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { StatusStrip } from "../chrome/StatusStrip.js";
-import { ConcRing, LiveDot } from "../chrome/Marks.js";
+import { ConcRing, IconBox, IconChip, IconGear, IconPulse, LiveDot } from "../chrome/Marks.js";
 import { pulseText, type ChatMsg, type ConfirmPayload, type HealthPayload, type PulsePayload } from "@core";
 import { pulseGpuChips } from "../rack.js";
 import { EarthGlobe, earthWebglOk } from "../EarthGlobe.js";
@@ -119,28 +119,25 @@ export function Breath({
           <div className="ck-panel-title">
             DOSSIER <LiveDot on={live} />
           </div>
-          <dl>
-            <div>
-              <dt>TRACK</dt>
-              <dd>:</dd>
-              <dd>GLOBAL</dd>
-            </div>
-            <div>
-              <dt>MODE</dt>
-              <dd>:</dd>
-              <dd>OBSERVE</dd>
-            </div>
-            <div>
-              <dt>HOS</dt>
-              <dd>:</dd>
-              <dd>{unreachable ? "DEGRADED" : "NOMINAL"}</dd>
-            </div>
-            <div>
-              <dt>LOCK</dt>
-              <dd>:</dd>
-              <dd>{confirm ? "TRUE" : "FALSE"}</dd>
-            </div>
-          </dl>
+          <p className="ck-breath-dossier-sub">Global track · observe</p>
+          <ul className="ck-breath-rows">
+            {(
+              [
+                ["TRACK", "GLOBAL", IconPulse, ""],
+                ["MODE", "OBSERVE", IconGear, ""],
+                ["HOS", unreachable ? "DEGRADED" : "NOMINAL", IconChip, unreachable ? "is-bad" : ""],
+                ["LOCK", confirm ? "HELD" : "OPEN", IconBox, confirm ? "is-accent" : "is-quiet"],
+              ] as const
+            ).map(([k, v, Ico, tone]) => (
+              <li key={k}>
+                <span className="ck-breath-ico" aria-hidden="true">
+                  <Ico size={12} />
+                </span>
+                <span className="ck-breath-k">{k}</span>
+                <span className={`ck-breath-v ${tone}`}>{v}</span>
+              </li>
+            ))}
+          </ul>
         </aside>
 
         <div className="ck-breath-bottom">

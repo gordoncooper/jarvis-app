@@ -159,7 +159,7 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   - Top-left: hex + JARVIS + LIVE
   - Top-center: the status strip — weather, date, local time, UTC, LAN, k3s. Same module on CMD and NOC. Local and UTC are the browser clock. Weather, LAN, and k3s come from `/v1/pulse` and stay blank when the pulse has no reading.
   - Top-right: four ring pips TALKER HANDS STT TTS from `/health`
-  - Left: dossier TRACK / MODE / HOS / LOCK
+  - Left: dossier TRACK / MODE / HOS / LOCK, each row an icon, a label, and a reading. HOS goes bad when the link is down. LOCK is HELD only while a confirm is open.
   - Bottom chips: CLUSTER LIVE, UPTIME, GPU-01 °C, GPU-02 °C
   - Bottom: CmdBar `> cmd  Speak freely.` + Send + Hold to talk. Same bar tile as CMD and NOC.
 - **Forbidden:** centered chat modal, greeting card over the globe, purple, glassmorphism.

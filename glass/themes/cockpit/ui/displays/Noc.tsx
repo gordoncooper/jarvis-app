@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
 import { StatusStrip } from "../chrome/StatusStrip.js";
-import { LiveDot } from "../chrome/Marks.js";
+import { IconBox, IconChip, IconGear, IconPulse, LiveDot } from "../chrome/Marks.js";
 import { formatRate, pulseText, steelNum, type ConfirmPayload, type PulsePayload } from "@core";
 import { RACK_IDS, rackFilter, rackRoleLabel, type RackFilter } from "../rack.js";
 import { Ring } from "../viz/Rings.js";
@@ -148,28 +148,24 @@ export function Noc({
       <div className="ck-noc-grid">
         <aside className="ck-panel ck-noc-left">
           <h2>DOSSIER // TRACK MODE</h2>
-          <dl className="ck-noc-dl">
-            <div>
-              <dt>HOS</dt>
-              <dd>STANDBY</dd>
-            </div>
-            <div>
-              <dt>LOCK</dt>
-              <dd className="is-accent">ENGAGED</dd>
-            </div>
-            <div>
-              <dt>MODE</dt>
-              <dd>TRACK</dd>
-            </div>
-            <div>
-              <dt>SCOPE</dt>
-              <dd>CLUSTER</dd>
-            </div>
-            <div>
-              <dt>DEPTH</dt>
-              <dd>INFRA</dd>
-            </div>
-          </dl>
+          <ul className="ck-noc-mode">
+            {(
+              [
+                ["HOS", pulse ? "LIVE" : "STANDBY", IconChip, pulse ? "is-accent" : ""],
+                ["LOCK", confirm ? "HELD" : "OPEN", IconBox, confirm ? "is-accent" : ""],
+                ["MODE", "TRACK", IconPulse, ""],
+                ["SCOPE", "CLUSTER", IconGear, ""],
+              ] as const
+            ).map(([k, v, Ico, tone]) => (
+              <li key={k}>
+                <span className="ck-noc-ico" aria-hidden="true">
+                  <Ico size={12} />
+                </span>
+                <span>{k}</span>
+                <em className={tone}>{v}</em>
+              </li>
+            ))}
+          </ul>
           <h3>FILTERS</h3>
           <div className="ck-filters">
             {(Object.keys(filters) as RackFilter[]).map((k) => (
