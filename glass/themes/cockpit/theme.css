@@ -632,7 +632,8 @@ button:disabled {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 11rem;
+  /* Longest reading is a signed temp plus a WMO line, e.g. "-12°C, thunderstorm, hail". */
+  max-width: 17rem;
 }
 
 .ck-status-v.is-empty {
