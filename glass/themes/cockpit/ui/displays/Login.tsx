@@ -28,7 +28,7 @@ export function Login({ onEnter, active }: Props) {
   // entirely — one keystroke went from sealed straight to Breath.
   useEffect(() => {
     if (gate !== "open") return;
-    const id = window.setTimeout(() => pinRef.current?.focus(), reduceMotion ? 40 : 780);
+    const id = window.setTimeout(() => pinRef.current?.focus(), reduceMotion ? 40 : 400);
     return () => window.clearTimeout(id);
   }, [gate, reduceMotion]);
 
@@ -88,11 +88,16 @@ export function Login({ onEnter, active }: Props) {
         transition={
           reduceMotion
             ? { duration: 0 }
-            : { duration: 0.72, ease: [0.45, 0.02, 0.15, 1] }
+            : { duration: 0.36, ease: [0.45, 0.02, 0.15, 1] }
         }
         style={{ transformOrigin: "50% 0%", transformPerspective: 1200 }}
       >
-        <img src="/theme-static/login-badge.png" alt="JARVIS — home-lab AI cluster command center" />
+        <span className="ck-login-badge-face">
+          <img src="/theme-static/login-badge.png" alt="JARVIS — home-lab AI cluster command center" />
+          <span className="ck-login-sheen" aria-hidden="true">
+            <span className="ck-login-streak" />
+          </span>
+        </span>
       </motion.button>
 
       <AnimatePresence>
@@ -103,7 +108,7 @@ export function Login({ onEnter, active }: Props) {
             initial={reduceMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={reduceMotion ? { duration: 0 } : { duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.28 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.22, 1, 0.36, 1], delay: 0.14 }}
             onSubmit={(ev) => {
               ev.preventDefault();
               onEnter();

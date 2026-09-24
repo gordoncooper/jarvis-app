@@ -121,7 +121,7 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
   the badge is a garage door hinged at the top. Click it, or press Enter, and
   it swings up and disappears. The login prompt is then centred. A click
   anywhere outside that prompt brings the door back down and hides the prompt.
-  While the door is sealed it flashes teal occasionally, then stays quiet.
+  While the door is sealed a reflection streaks across the mark occasionally, then stays quiet.
   Escape still closes it.
 - **Revised 2026-09-20 (operator request), superseding "no form fields":** the
   badge is a lid over a login prompt. The shrink-and-slide motion in this
@@ -158,7 +158,8 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   The sun is up and to the rear right, with a faint second glow on the rear left.
   The blue air is a thin limb, brighter at the top. The globe turns once in
   about eighteen minutes. Tiny stars sit in the black and twinkle slightly.
-  Drag still spins it.
+  Drag still spins it. A window narrower than 16:9 crops the sides of that
+  framing instead of sliding the disc.
 - DOM HUD pinned to edges:
   - Top-left: hex + JARVIS + LIVE
   - Top-center: the status strip — weather, date, local time, UTC, LAN, k3s. Same module on CMD and NOC. Local and UTC are the browser clock. Weather follows the browser's location via `/v1/weather` when a position is available, and otherwise the `/v1/pulse` reading. A weather value with a point opens that forecast in a new tab. LAN and k3s come from `/v1/pulse` and stay blank when the pulse has no reading.
@@ -312,8 +313,8 @@ Do not teach glass to scrape noc.lan or home.lan.
 - Deck: `translateX(-index * 100%)`, 280–400ms ease. ArrowLeft / ArrowRight.
   Hash `#login|#breath|#cmd|#noc`; the retired `#earth` resolves to `#breath`
   and rewrites itself.
-- Login badge: an occasional teal flash while sealed; a top-hinged swing up
-  and out on open, with the prompt centred underneath. A click outside the
+- Login badge: an occasional reflection streak while sealed; a top-hinged swing
+  up and out on open, with the prompt centred underneath. A click outside the
   prompt swings it back. Both respect `prefers-reduced-motion`.
 - Breath HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.

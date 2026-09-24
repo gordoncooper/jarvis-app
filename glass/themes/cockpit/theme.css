@@ -413,12 +413,49 @@ button:disabled {
   filter: drop-shadow(0 0 28px color-mix(in oklch, var(--ck-accent) 18%, transparent));
 }
 
+.ck-login-badge-face {
+  position: relative;
+  display: block;
+}
+
 .ck-login-badge img {
   display: block;
   width: 100%;
   height: auto;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+/* Reflection only on the mark. The mask stays put; the band travels. */
+.ck-login-sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: url("/theme-static/login-badge.png");
+  mask-image: url("/theme-static/login-badge.png");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.ck-login-streak {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in oklch, var(--ck-accent) 15%, transparent) 28%,
+    color-mix(in oklch, #fff 80%, var(--ck-accent)) 50%,
+    color-mix(in oklch, var(--ck-accent) 70%, transparent) 68%,
+    transparent 100%
+  );
+  mix-blend-mode: screen;
+  transform: translateX(-180%);
 }
 
 .ck-login-badge:hover,
@@ -431,23 +468,15 @@ button:disabled {
   pointer-events: none;
 }
 
-/* A short teal bloom, then a long quiet. Not a constant pulse. */
-.ck-login[data-gate="sealed"] .ck-login-badge {
-  animation: ck-badge-flash 14s ease-in-out infinite;
+/* One fast pass across the mark, then a long quiet. */
+.ck-login[data-gate="sealed"] .ck-login-streak {
+  animation: ck-badge-streak 11s linear infinite;
 }
 
-@keyframes ck-badge-flash {
-  0%, 84%, 100% {
-    filter: drop-shadow(0 0 26px color-mix(in oklch, var(--ck-accent) 16%, transparent));
-  }
-  89% {
-    filter:
-      drop-shadow(0 0 18px color-mix(in oklch, var(--ck-accent) 85%, transparent))
-      drop-shadow(0 0 46px color-mix(in oklch, var(--ck-accent) 50%, transparent));
-  }
-  94% {
-    filter: drop-shadow(0 0 26px color-mix(in oklch, var(--ck-accent) 16%, transparent));
-  }
+@keyframes ck-badge-streak {
+  0%, 84% { transform: translateX(-180%); }
+  89% { transform: translateX(420%); }
+  100% { transform: translateX(420%); }
 }
 
 .ck-login-hint {
@@ -473,7 +502,7 @@ button:disabled {
 
 @media (prefers-reduced-motion: reduce) {
   .ck-login-glow,
-  .ck-login[data-gate="sealed"] .ck-login-badge,
+  .ck-login[data-gate="sealed"] .ck-login-streak,
   .ck-login-hint {
     animation: none;
   }
@@ -569,12 +598,20 @@ button:disabled {
   position: absolute;
   inset: 0;
   z-index: 0;
+  overflow: hidden;
 }
 
+/* The camera is tuned for 16:9. A narrower window used to shrink the
+   horizontal view and slide the disc. Render at least 16:9 and crop the
+   sides so the globe stays where it was. */
 .ck-breath-canvas canvas {
   display: block;
-  width: 100% !important;
+  position: absolute;
+  top: 0;
+  left: 50%;
   height: 100% !important;
+  width: max(100%, calc(100cqh * 16 / 9)) !important;
+  transform: translateX(-50%);
 }
 
 .ck-breath-earth-fallback {
