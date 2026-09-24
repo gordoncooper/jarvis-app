@@ -164,7 +164,9 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   - Bottom: CmdBar `> cmd  Speak freely.` + Send + Hold to talk. Same bar tile as CMD and NOC.
 - **Forbidden:** centered chat modal, greeting card over the globe, purple, glassmorphism.
   The dialogue strip below is not a modal: it is bottom-aligned on the cmd bar,
-  non-interactive, and dissolves into the globe at its top edge.
+  non-interactive, and dissolves into the globe at its top edge. A soft dark
+  wash sits behind the lines so they stay readable over the disc, and fades
+  out with that same top edge.
 
 Turns: `streamTurn` / `streamAudioTurn`. Streamed reply → TTS via
 `fetchTtsObjectUrl` + the dialogue strip above CmdBar. Persist messages in

@@ -930,18 +930,44 @@ button:disabled {
 }
 
 .ck-toast-stack {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: 0.55em;
-  padding-top: 2.5em;
+  padding: 2.5em 0.9em 0.55em;
   /* Must not shrink: as a flex item it would compress to fit the box instead
      of overflowing it, so the container never scrolls and nothing ever fades
      out the top. */
   flex: 0 0 auto;
 }
 
+/* Soft dark wash behind the lines only. The top feathers into the disc, and
+   the toast mask still dissolves whatever climbs past the cap. */
+.ck-toast-stack::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  top: 1.55em;
+  bottom: 0;
+  pointer-events: none;
+  background: color-mix(in oklch, var(--ck-bg) 74%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0%, #000 1.5em, #000 100%),
+    linear-gradient(to right, transparent 0%, #000 0.85em, #000 calc(100% - 0.85em), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0%, #000 1.5em, #000 100%),
+    linear-gradient(to right, transparent 0%, #000 0.85em, #000 calc(100% - 0.85em), transparent);
+  mask-composite: intersect;
+}
+
 .ck-toast-user,
 .ck-toast-asst {
+  position: relative;
+  z-index: 1;
   margin: 0;
   line-height: 1.45;
   overflow-wrap: anywhere;
