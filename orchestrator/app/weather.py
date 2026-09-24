@@ -77,7 +77,9 @@ def _bearing(deg: Any) -> str | None:
 
 
 async def _fetch(lat: float | None = None, lon: float | None = None) -> dict[str, Any] | None:
-    if lat is None or lon is None:
+    # A caller-supplied point is not the house, so it must not wear the house name.
+    house = lat is None or lon is None
+    if house:
         lat, lon = settings.weather_lat, settings.weather_lon
     if lat is None or lon is None:
         return None
@@ -116,7 +118,7 @@ async def _fetch(lat: float | None = None, lon: float | None = None) -> dict[str
         "humidity": cur.get("relative_humidity_2m"),
         "wind_kmh": round(float(wind)) if isinstance(wind, (int, float)) else None,
         "wind_dir": heading,
-        "place": settings.weather_place or None,
+        "place": (settings.weather_place or None) if house else None,
         "lat": float(lat),
         "lon": float(lon),
     }
