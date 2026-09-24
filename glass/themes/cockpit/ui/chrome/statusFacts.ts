@@ -50,7 +50,7 @@ function dateLine(now: Date): string {
   });
 }
 
-function weatherLine(pulse: PulsePayload | null): string {
+function weatherLine(pulse: StatusPulse): string {
   const w = pulse?.weather;
   if (!w || typeof w.temp_c !== "number" || !Number.isFinite(w.temp_c)) return EMPTY;
   const text = w.text?.trim();
