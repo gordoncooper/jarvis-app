@@ -964,12 +964,12 @@ button:disabled {
   color: var(--ck-accent);
 }
 
-/* JARVIS: IBM Plex Mono in ink, the CMD assistant bubble. The rail is the
-   same 1px hairline as a CMD bubble border. */
+/* JARVIS: IBM Plex Mono in the cockpit bronze, same as the CMD assistant
+   bubble. The rail is the same 1px hairline as a CMD bubble border. */
 .ck-toast-asst {
   position: relative;
   padding-left: 0.9em;
-  color: var(--ck-ink);
+  color: var(--ck-accent-warm);
   font-family: var(--ck-mono);
   font-size: 0.92em;
   letter-spacing: normal;
@@ -1006,7 +1006,7 @@ button:disabled {
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ck-ink);
+  color: inherit;
 }
 
 .ck-toast-asst strong {
@@ -1023,7 +1023,7 @@ button:disabled {
   font-family: var(--ck-mono);
   font-size: 0.92em;
   letter-spacing: 0;
-  color: var(--ck-ink);
+  color: inherit;
 }
 
 .ck-toast-pre {
@@ -1033,7 +1033,7 @@ button:disabled {
   font-size: 0.78em;
   line-height: 1.45;
   white-space: pre-wrap;
-  color: var(--ck-ink);
+  color: inherit;
 }
 
 .ck-toast-list,
@@ -1435,6 +1435,7 @@ button:disabled {
 .ck-bubble.assistant .ck-bubble-body {
   font-family: var(--ck-mono);
   font-size: 0.74rem;
+  color: var(--ck-accent-warm);
 }
 
 .ck-bubble-body p {
@@ -1461,9 +1462,10 @@ button:disabled {
 
 .ck-confirm-card p {
   margin: 0;
+  font-family: var(--ck-mono);
   font-size: 0.78rem;
   line-height: 1.4;
-  color: var(--ck-ink);
+  color: var(--ck-accent-warm);
   white-space: pre-wrap;
 }
 

@@ -204,9 +204,11 @@ still faded at the top when the cap is hit, still not a transcript.
 
 **Revised 2026-09-23 (operator request), superseding the softened reply and
 the warm operator mark:** Breath uses the CMD channel's type. The operator
-line is IBM Plex Sans in `--ink`. A JARVIS line is IBM Plex Mono in `--ink`.
-The chevron and list marks stay `--accent`, the same role colour as the
-OPERATOR / JARVIS labels. Emphasis stays ink. The CMD channel is unchanged.
+line is IBM Plex Sans in `--ink`. A JARVIS line is IBM Plex Mono in
+`--ck-accent-warm` (`--warn`, `#e8b86d`), the same bronze on the breath strip,
+the CMD assistant bubble, and the confirm card. The chevron and list marks
+stay `--accent`, the same role colour as the OPERATOR / JARVIS labels.
+Emphasis stays the line colour.
 
 **Revised 2026-09-22 (operator request):** a JARVIS reply on the strip keeps
 its line breaks and lays out as projected type over the globe. A bullet is a
