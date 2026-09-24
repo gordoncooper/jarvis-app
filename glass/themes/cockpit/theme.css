@@ -561,7 +561,7 @@ button:disabled {
   animation: ck-login-breathe 7s ease-in-out infinite;
 }
 
-/* The badge is a garage door, hinged on its top edge. */
+/* The mark sits on the wall. Opening shears it apart; see the bands. */
 .ck-login-badge {
   position: absolute;
   left: 50%;
@@ -573,14 +573,72 @@ button:disabled {
   background: transparent;
   cursor: pointer;
   z-index: 3;
-  transform-origin: 50% 0%;
-  transform-style: preserve-3d;
   filter: drop-shadow(0 0 28px color-mix(in oklch, var(--ck-accent) 18%, transparent));
 }
 
 .ck-login-badge-face {
   position: relative;
   display: block;
+}
+
+.ck-login-badge-spacer {
+  visibility: hidden;
+}
+
+.ck-login-band {
+  position: absolute;
+  inset: 0;
+  transition:
+    transform 0.52s cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 0.28s ease 0.26s;
+}
+
+.ck-login[data-gate="open"] .ck-login-band.is-out {
+  transform: translateX(-34%);
+  opacity: 0;
+}
+
+.ck-login[data-gate="open"] .ck-login-band.is-in {
+  transform: translateX(36%);
+  opacity: 0;
+  transition-delay: 0.05s, 0.3s;
+}
+
+.ck-login[data-gate="open"] .ck-login-band.is-late {
+  transition-delay: 0.09s, 0.34s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ck-login-band {
+    transition: none;
+  }
+}
+
+.ck-login-burst {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 46%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, #fff 80%, var(--ck-accent)),
+    transparent
+  );
+  box-shadow: 0 0 12px var(--ck-accent);
+  opacity: 0;
+}
+
+.ck-login[data-gate="open"] .ck-login-burst {
+  animation: ck-badge-burst 0.42s ease-out;
+}
+
+@keyframes ck-badge-burst {
+  0% { opacity: 0; transform: scaleX(0.15); }
+  25% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1.35); }
 }
 
 .ck-login-badge img {
@@ -631,6 +689,11 @@ button:disabled {
 
 .ck-login[data-gate="open"] .ck-login-badge {
   pointer-events: none;
+  filter: none;
+}
+
+.ck-login[data-gate="open"] .ck-login-sheen {
+  opacity: 0;
 }
 
 /* One fast pass across the mark, then a long quiet. */
@@ -672,7 +735,8 @@ button:disabled {
   .ck-login-rack i,
   .ck-login-seam::after,
   .ck-login-scan,
-  .ck-login-floor {
+  .ck-login-floor,
+  .ck-login[data-gate="open"] .ck-login-burst {
     animation: none;
   }
 }

@@ -81,7 +81,7 @@ export function Login({ onEnter, active }: Props) {
   // entirely — one keystroke went from sealed straight to Breath.
   useEffect(() => {
     if (gate !== "open") return;
-    const id = window.setTimeout(() => pinRef.current?.focus(), reduceMotion ? 40 : 400);
+    const id = window.setTimeout(() => pinRef.current?.focus(), reduceMotion ? 40 : 620);
     return () => window.clearTimeout(id);
   }, [gate, reduceMotion]);
 
@@ -123,9 +123,8 @@ export function Login({ onEnter, active }: Props) {
       <div className="ck-login-glow" aria-hidden="true" />
       <LoginLife />
 
-      {/* The badge is a garage door: hinged at the top, it swings up and
-          out of the way. It never navigates — Authorise does that. */}
-      <motion.button
+      {/* The mark shears into three bands and clears. It never navigates. */}
+      <button
         type="button"
         className="ck-login-badge"
         aria-label={gate === "sealed" ? "Reveal sign-in" : "Hide sign-in"}
@@ -133,26 +132,26 @@ export function Login({ onEnter, active }: Props) {
         aria-hidden={gate === "open"}
         tabIndex={gate === "open" ? -1 : 0}
         onClick={() => setGate("open")}
-        initial={false}
-        animate={
-          gate === "open"
-            ? { rotateX: reduceMotion ? 0 : 86, opacity: 0 }
-            : { rotateX: 0, opacity: 1 }
-        }
-        transition={
-          reduceMotion
-            ? { duration: 0 }
-            : { duration: 0.36, ease: [0.45, 0.02, 0.15, 1] }
-        }
-        style={{ transformOrigin: "50% 0%", transformPerspective: 1200 }}
       >
         <span className="ck-login-badge-face">
-          <img src="/theme-static/login-badge.png" alt="JARVIS — home-lab AI cluster command center" />
+          <img className="ck-login-badge-spacer" src="/theme-static/login-badge.png" alt="" />
+          {(
+            [
+              ["inset(0 0 66.8% 0)", "is-out"],
+              ["inset(32.8% 0 33.2% 0)", "is-in"],
+              ["inset(66.4% 0 0 0)", "is-out is-late"],
+            ] as const
+          ).map(([inset, tone]) => (
+            <span key={inset} className={`ck-login-band ${tone}`} style={{ clipPath: inset }}>
+              <img src="/theme-static/login-badge.png" alt="" />
+            </span>
+          ))}
+          <span className="ck-login-burst" aria-hidden="true" />
           <span className="ck-login-sheen" aria-hidden="true">
             <span className="ck-login-streak" />
           </span>
         </span>
-      </motion.button>
+      </button>
 
       <AnimatePresence>
         {gate === "open" ? (
@@ -162,7 +161,7 @@ export function Login({ onEnter, active }: Props) {
             initial={reduceMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.22, 1, 0.36, 1], delay: 0.14 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1], delay: 0.34 }}
             onSubmit={(ev) => {
               ev.preventDefault();
               onEnter();

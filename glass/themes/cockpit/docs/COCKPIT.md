@@ -120,9 +120,9 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
   composited centre-wall so it stays sharp at 4K. It replaced a plate with the
   wordmark baked in, which was soft at scale.
 - **Revised 2026-09-23 (operator request), superseding the shrink-and-slide lid:**
-  the badge is a garage door hinged at the top. Click it, or press Enter, and
-  it swings up and disappears. The login prompt is then centred. A click
-  anywhere outside that prompt brings the door back down and hides the prompt.
+  clicking the badge, or pressing Enter, shears the mark into three bands
+  that slide apart and fade. The login prompt is then centred. A click
+  anywhere outside that prompt brings the bands back together and hides the prompt.
   While the door is sealed a reflection streaks across the mark occasionally, then stays quiet.
   Escape still closes it.
 - **Revised 2026-09-20 (operator request), superseding "no form fields":** the
@@ -315,8 +315,8 @@ Do not teach glass to scrape noc.lan or home.lan.
 - Deck: `translateX(-index * 100%)`, 280–400ms ease. ArrowLeft / ArrowRight.
   Hash `#login|#breath|#cmd|#noc`; the retired `#earth` resolves to `#breath`
   and rewrites itself.
-- Login badge: an occasional reflection streak while sealed; a top-hinged swing
-  up and out on open, with the prompt centred underneath. A click outside the
+- Login badge: an occasional reflection streak while sealed. On open the mark
+  shears into three bands that slide apart, with the prompt centred underneath. A click outside the
   prompt swings it back. Both respect `prefers-reduced-motion`.
 - Breath HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
