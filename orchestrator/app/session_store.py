@@ -227,6 +227,18 @@ class SessionStore:
                     (session_id, json.dumps(merged), time.time()),
                 )
 
+    def discard(self, session_id: str) -> None:
+        """Delete one session. Nothing is copied into memory or another table."""
+        if not session_id:
+            return
+        with self._lock:
+            self._cache.pop(session_id, None)
+            with self._connect() as conn:
+                conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+                conn.execute("DELETE FROM pending WHERE session_id = ?", (session_id,))
+                conn.execute("DELETE FROM referents WHERE session_id = ?", (session_id,))
+                conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+
     def get_referents(self, session_id: str) -> dict[str, Any]:
         with self._lock:
             return dict(self._cache[session_id].referents)

@@ -145,13 +145,20 @@ export type ConfirmPayload = {
   fact?: string;
 };
 
+export type SessionReset = "discard" | "rotate";
+
+function sessionReset(value: unknown): SessionReset | undefined {
+  return value === "discard" || value === "rotate" ? value : undefined;
+}
+
 export type TurnHandlers = {
-  onMeta?: (sessionId: string, transcript?: string) => void;
+  onMeta?: (sessionId: string, transcript?: string, reset?: SessionReset) => void;
   onToken?: (text: string) => void;
   onDone?: (
     reply: string,
     transcript?: string,
     confirm?: ConfirmPayload | null,
+    reset?: SessionReset,
   ) => void;
   onError?: (message: string) => void;
 };
@@ -202,6 +209,7 @@ async function consumeSse(r: Response, handlers: TurnHandlers): Promise<void> {
         handlers.onMeta?.(
           obj.session_id,
           typeof obj.transcript === "string" ? obj.transcript : undefined,
+          sessionReset(obj.session_reset),
         );
       } else if (event === "token" && typeof obj.text === "string") {
         reply += obj.text;
@@ -240,6 +248,7 @@ async function consumeSse(r: Response, handlers: TurnHandlers): Promise<void> {
           full,
           typeof obj.transcript === "string" ? obj.transcript : undefined,
           confirm,
+          sessionReset(obj.session_reset),
         );
       }
     }

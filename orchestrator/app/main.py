@@ -44,6 +44,7 @@ from .router import (
     combine,
     route,
 )
+from .session_intent import parse_session_intent
 from .session_store import SessionStore
 from .hands import (
     audit_verb,
@@ -405,6 +406,32 @@ async def post_turn(request: Request) -> Response:
 
 
 async def _run_turn(*, text: str, session_id: str | None, request: Request) -> Response:
+    # A session command is not a turn. It is handled before the utterance is
+    # written, so the phrase itself is not kept.
+    accept = request.headers.get("accept", "")
+    want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
+    kind = parse_session_intent(text)
+    if kind:
+        if kind == "discard" and session_id:
+            store.discard(session_id)
+        fresh = store.get_or_create(None)
+        payload: dict[str, Any] = {
+            "session_id": fresh.id,
+            "reply_text": "",
+            "degraded": False,
+            "session_reset": kind,
+            "route": f"session.{kind}",
+        }
+
+        if want_sse:
+
+            async def gen() -> AsyncIterator[bytes]:
+                yield _sse("meta", {"session_id": fresh.id, "session_reset": kind})
+                yield _sse("done", payload)
+
+            return StreamingResponse(gen(), media_type="text/event-stream")
+        return JSONResponse(payload)
+
     sid = session_id or str(uuid.uuid4())
     sess = store.get_or_create(sid)
     store.append(sess.id, "user", text)
@@ -413,8 +440,6 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
     # `verb`; memory and local capabilities were not, which made "did that
     # reach the talker?" unanswerable without pod logs.
     resolved_label: str | None = None
-    accept = request.headers.get("accept", "")
-    want_sse = "text/event-stream" in accept or request.query_params.get("stream") == "1"
 
     def _reply(
         reply: str,

@@ -161,7 +161,10 @@ export function useJarvis(): Jarvis {
 
   const loadSession = useCallback(async () => {
     try {
-      const session = await fetchSession(sessionId.current);
+      const requested = sessionId.current;
+      const session = await fetchSession(requested);
+      // A session command may have moved us on while this fetch was in flight.
+      if (sessionId.current !== requested) return;
       sessionId.current = session.session_id;
       localStorage.setItem(SESSION_KEY, session.session_id);
       setGreeting(session.greeting);
@@ -355,6 +358,29 @@ export function useJarvis(): Jarvis {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: update(m.content) } : m)));
   }, []);
 
+  const resetRef = useRef(false);
+  const adoptSession = useCallback((id: string, reset?: "discard" | "rotate") => {
+    sessionId.current = id;
+    localStorage.setItem(SESSION_KEY, id);
+    if (!reset) return;
+    resetRef.current = true;
+    setMessages([]);
+    setConfirm(null);
+    setLastTurn(null);
+  }, []);
+  const finishIfReset = useCallback(
+    (reset?: "discard" | "rotate") => {
+      if (!reset && !resetRef.current) return false;
+      resetRef.current = false;
+      setMessages([]);
+      setConfirm(null);
+      setLastTurn(null);
+      endTurn();
+      return true;
+    },
+    [endTurn],
+  );
+
   const runText = useCallback(
     async (text: string) => {
       if (!text || !sessionId.current) return;
@@ -365,16 +391,17 @@ export function useJarvis(): Jarvis {
       abortRef.current = ctrl;
       try {
       await streamTurn(sessionId.current, text, {
-        onMeta: (id) => {
-          sessionId.current = id;
-          localStorage.setItem(SESSION_KEY, id);
+        onMeta: (id, _transcript, reset) => {
+          adoptSession(id, reset);
         },
         onToken: (t) => {
+          if (resetRef.current) return;
           setLastTurn((prev) => (prev ? { ...prev, assistant: prev.assistant + t } : prev));
           setAsst(asstId, (c) => c + t);
           feedSpeech(t);
         },
-        onDone: (reply, _transcript, nextConfirm) => {
+        onDone: (reply, _transcript, nextConfirm, reset) => {
+          if (finishIfReset(reset)) return;
           if (reply) {
             setLastTurn((prev) => (prev ? { ...prev, assistant: reply } : prev));
             setAsst(asstId, () => reply);
@@ -398,7 +425,7 @@ export function useJarvis(): Jarvis {
         }
       }
     },
-    [beginTurn, endTurn, feedSpeech, interrupt, setAsst],
+    [adoptSession, beginTurn, endTurn, feedSpeech, finishIfReset, interrupt, setAsst],
   );
 
   const startPtt = useCallback(async () => {
@@ -444,17 +471,18 @@ export function useJarvis(): Jarvis {
 
     try {
     await streamAudioTurn(sessionId.current, blob, {
-      onMeta: (id, transcript) => {
-        sessionId.current = id;
-        localStorage.setItem(SESSION_KEY, id);
-        if (transcript) applyTranscript(transcript);
+      onMeta: (id, transcript, reset) => {
+        adoptSession(id, reset);
+        if (!reset && transcript) applyTranscript(transcript);
       },
       onToken: (t) => {
+        if (resetRef.current) return;
         setLastTurn((prev) => (prev ? { ...prev, assistant: prev.assistant + t } : prev));
         setAsst(asstId, (c) => c + t);
         feedSpeech(t);
       },
-      onDone: (reply, transcript, nextConfirm) => {
+      onDone: (reply, transcript, nextConfirm, reset) => {
+        if (finishIfReset(reset)) return;
         if (transcript) applyTranscript(transcript);
         if (reply) {
           setLastTurn((prev) => (prev ? { ...prev, assistant: reply } : prev));
@@ -476,7 +504,7 @@ export function useJarvis(): Jarvis {
         endTurn();
       }
     }
-  }, [beginTurn, endTurn, feedSpeech, interrupt, setAsst]);
+  }, [adoptSession, beginTurn, endTurn, feedSpeech, finishIfReset, interrupt, setAsst]);
 
   return {
     greeting,
