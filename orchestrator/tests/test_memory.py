@@ -49,6 +49,27 @@ class ReferentGuardTest(unittest.TestCase):
     def test_forget_everything_still_wipes(self) -> None:
         self.assertEqual(parse_memory_intent("forget everything").kind, "forget_all")
 
+    def test_a_full_wipe_is_named_and_a_single_fact_is_not(self) -> None:
+        for text in (
+            "wipe all my memories",
+            "delete all facts",
+            "erase all preferences",
+            "clear my memory",
+            "hey jarvis, forget all my preferences",
+            "drop all memory please",
+            "remove all of my facts",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(parse_memory_intent(text).kind, "forget_all")
+        for text in (
+            "forget that I like tea",
+            "delete the memory about dark mode",
+            "wipe this session",
+            "clear this chat",
+        ):
+            with self.subTest(text=text):
+                self.assertNotEqual(parse_memory_intent(text).kind, "forget_all")
+
     def test_list_is_unaffected(self) -> None:
         self.assertEqual(parse_memory_intent("list memories").kind, "list")
 
@@ -108,9 +129,30 @@ class PendingCarriesItsVerbTest(unittest.TestCase):
             new_memory_pending("a fact", action="forget", facts=["a fact"])["verb"],
             "memory.forget",
         )
+        self.assertEqual(
+            new_memory_pending("", action="forget_all")["verb"],
+            "memory.forget_all",
+        )
 
     def test_hands_pendings_name_a_verb(self) -> None:
         from app.hands import new_pending
 
         p = new_pending("apps.restart_deploy", {"namespace": "apps", "name": "piper"}, "x")
         self.assertEqual(p["verb"], "apps.restart_deploy")
+
+
+class ForgetAllStoreTest(unittest.TestCase):
+    def test_yes_would_tombstone_every_active_fact(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from app.memory import PromotedMemory
+
+        with tempfile.TemporaryDirectory() as tmp:
+            mem = PromotedMemory(str(Path(tmp) / "m.db"))
+            mem.remember("coffee is black")
+            mem.remember("prefers GPU temps in F")
+            self.assertEqual(mem.count_active(), 2)
+            removed = mem.forget_all()
+            self.assertEqual(mem.count_active(), 0)
+            self.assertCountEqual(removed, ["coffee is black", "prefers GPU temps in F"])

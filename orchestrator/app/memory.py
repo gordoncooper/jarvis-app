@@ -43,15 +43,20 @@ _FORGET = re.compile(
     r")\s*[,:]?\s+(.+?)\s*$",
     re.IGNORECASE | re.DOTALL,
 )
-# Wipe all promoted facts — always confirm-class (D-0027).
+# Wipe every promoted fact. Always confirm-class (D-0027). The noun has to
+# be the whole store — everything, all, or memories/facts/preferences as a
+# set. "delete the memory about tea" stays a single forget.
 _FORGET_ALL = re.compile(
     _PREFIX
-    + r"(?:"
-    r"forget\s+(?:everything|all(?:\s+(?:of\s+)?(?:my\s+)?(?:memories|facts|that))?)"
-    r"|clear\s+(?:my\s+)?(?:promoted\s+)?memory"
-    r"|wipe\s+(?:my\s+)?(?:promoted\s+)?memory"
-    r"|(?:delete|remove)\s+all\s+(?:my\s+)?(?:memories|facts|preferences)"
-    r")\s*$",
+    + r"(?:forget|wipe|delete|remove|erase|clear|drop)\s+"
+    r"(?:"
+    r"everything|all(?:\s+of\s+it|\s+that)?"
+    r"|all(?:\s+of)?(?:\s+(?:my|the|your))?\s+"
+    r"(?:memories|memory|facts|fact|preferences|preference)"
+    r"|(?:my|the|your)\s+(?:promoted\s+)?"
+    r"(?:memories|memory|facts|preferences)"
+    r")"
+    r"(?:\s*,?\s*please)?\s*[.!?]*\s*$",
     re.IGNORECASE,
 )
 # Pointing at the previous turn without naming it: "scratch that",
@@ -202,7 +207,18 @@ def new_memory_pending(
     ttl_sec: float = 90.0,
 ) -> dict:
     """Pending confirm for remember or forget (D-0024 / D-0027)."""
-    act = action if action in ("remember", "forget") else "remember"
+    act = action if action in ("remember", "forget", "forget_all") else "remember"
+    if act == "forget_all":
+        return {
+            "id": str(uuid.uuid4()),
+            "kind": "memory",
+            "action": "forget_all",
+            "verb": "memory.forget_all",
+            "fact": "",
+            "facts": [f for f in (facts or []) if f],
+            "summary": "forget all memories, facts, and preferences",
+            "expires_at": time.time() + ttl_sec,
+        }
     if act == "forget":
         targets = [f for f in (facts or ([fact] if fact else [])) if f]
         if len(targets) == 1:
@@ -229,6 +245,20 @@ def new_memory_pending(
         "summary": f"remember: {fact}",
         "expires_at": time.time() + ttl_sec,
     }
+
+
+def format_forget_all_ask(count: int, preview: list[str]) -> str:
+    if count <= 0:
+        return "Promoted memory is already empty — nothing to forget."
+    shown = [f for f in preview if f][:3]
+    if not shown:
+        body = f"all {count} memories, facts, and preferences"
+    elif count == 1:
+        body = f"the one thing stored: {shown[0]}"
+    else:
+        extra = f" (+{count - len(shown)} more)" if count > len(shown) else ""
+        body = f"all {count} memories, facts, and preferences: {'; '.join(shown)}{extra}"
+    return f"Shall I forget {body}? Say yes or cancel."
 
 
 def format_forget_confirm_ask(facts: list[str]) -> str:
@@ -439,6 +469,34 @@ class PromotedMemory:
                 (str(uuid.uuid4()), now, "remember", fid, text),
             )
         return fid
+
+    def count_active(self) -> int:
+        with self._lock, self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM facts WHERE tombstoned_at IS NULL"
+            ).fetchone()
+        return int(row["n"]) if row else 0
+
+    def forget_all(self) -> list[str]:
+        """Tombstone every active fact. Returns what was removed."""
+        now = time.time()
+        removed: list[str] = []
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, text FROM facts WHERE tombstoned_at IS NULL"
+            ).fetchall()
+            for row in rows:
+                conn.execute(
+                    "UPDATE facts SET tombstoned_at = ? WHERE id = ?",
+                    (now, row["id"]),
+                )
+                conn.execute(
+                    "INSERT INTO audit (id, ts, action, fact_id, detail) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), now, "forget", row["id"], row["text"]),
+                )
+                removed.append(str(row["text"]))
+        return removed
 
     def forget_texts(self, texts: list[str]) -> list[str]:
         """Tombstone exact active fact texts; return removed texts."""

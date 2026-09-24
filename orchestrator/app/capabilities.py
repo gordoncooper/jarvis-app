@@ -133,7 +133,15 @@ MANIFEST: dict[str, Capability] = {
         klass="confirm",
         backend="memory",
         summary="forget a fact, after checking with you first",
-        examples=("forget that I like tea", "forget everything"),
+        examples=("forget that I like tea",),
+    ),
+    "memory.forget_all": _cap(
+        name="memory.forget_all",
+        short="forgetting everything",
+        klass="confirm",
+        backend="memory",
+        summary="forget every memory, fact, and preference, after checking with you first",
+        examples=("forget everything", "wipe all my memories"),
     ),
     # --- Prometheus, read by the orchestrator (D-0036) ---
     "pods.list": _cap(

@@ -21,6 +21,7 @@ from .memory import (
     PromotedMemory,
     eligible_for_llm_extract,
     fact_already_known,
+    format_forget_all_ask,
     format_forget_confirm_ask,
     format_list_reply,
     gpu_temp_unit,
@@ -154,6 +155,13 @@ def _memory_reply(kind: str, fact: str, forgotten: list[str] | None = None) -> s
         preview = "; ".join(removed[:3])
         extra = f" (+{len(removed) - 3} more)" if len(removed) > 3 else ""
         return f"Forgotten {len(removed)} facts: {preview}{extra}"
+    if kind == "forget_all":
+        removed = forgotten or []
+        if not removed:
+            return "Promoted memory was already empty."
+        return (
+            f"Forgotten. All {len(removed)} memories, facts, and preferences are gone."
+        )
     return ""
 
 
@@ -524,6 +532,13 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             store.set_pending(sess.id, None)
             if kind == "memory":
                 action = str(pending.get("action") or "remember")
+                if action == "forget_all":
+                    removed = mem().forget_all()
+                    return _reply(
+                        _memory_reply("forget_all", "", forgotten=removed),
+                        confirm=None,
+                        extra={"memory": "forget_all"},
+                    )
                 if action == "forget":
                     targets = [
                         str(x)
@@ -582,6 +597,8 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             store.set_pending(sess.id, None)
             if kind == "memory":
                 action = str(pending.get("action") or "remember")
+                if action == "forget_all":
+                    return _reply("Cancelled — I will not wipe your memory.")
                 if action == "forget":
                     return _reply("Cancelled — I will not forget that.")
                 return _reply("Cancelled — I will not store that.")
@@ -701,11 +718,27 @@ async def _run_turn(*, text: str, session_id: str | None, request: Request) -> R
             reply, extra={"memory": "remember"}, fact=decision.fact or None
         )
 
-    if decision.label in (MEMORY_FORGET, MEMORY_FORGET_ALL):
-        if decision.label == MEMORY_FORGET_ALL:
-            targets = mem().active_facts(500)
-        else:
-            targets = mem().matching_facts(decision.fact) if decision.fact else []
+    if decision.label == MEMORY_FORGET_ALL:
+        count = mem().count_active()
+        if count == 0:
+            return _reply(
+                "Promoted memory is already empty — nothing to forget.",
+                extra={"memory": "forget_all"},
+            )
+        preview = mem().active_facts(5)
+        pending_obj = new_memory_pending("", action="forget_all", facts=preview)
+        confirm = {
+            "id": pending_obj["id"],
+            "kind": "memory",
+            "verb": "memory.forget_all",
+            "fact": "",
+            "facts": preview,
+            "summary": pending_obj["summary"],
+        }
+        return _reply(format_forget_all_ask(count, preview), confirm=confirm)
+
+    if decision.label == MEMORY_FORGET:
+        targets = mem().matching_facts(decision.fact) if decision.fact else []
         if not targets:
             return _reply(
                 "I found nothing matching that to forget.",

@@ -119,7 +119,7 @@ def route(text: str) -> Route:
 # classifier does not produce, so naming one would fire a confirm prompt with
 # nothing in it. Explicit phrasings still reach them deterministically.
 CLASSIFIER_PROMOTABLE = frozenset(
-    set(MANIFEST) - {MEMORY_REMEMBER, MEMORY_FORGET}
+    set(MANIFEST) - {MEMORY_REMEMBER, MEMORY_FORGET, MEMORY_FORGET_ALL}
 )
 
 
