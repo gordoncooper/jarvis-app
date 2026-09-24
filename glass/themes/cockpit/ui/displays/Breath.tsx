@@ -198,7 +198,7 @@ export function Breath({
             recording={recording}
             sttOk={sttOk}
             speaking={speaking}
-            placeholder="Speak freely…"
+            placeholder="Speak freely."
             onSubmit={onSubmit}
             onPttStart={onPttStart}
             onPttStop={onPttStop}

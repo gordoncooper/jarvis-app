@@ -237,14 +237,16 @@ input {
   font-weight: 500;
 }
 
+/* One bar, three rooms. Width comes from the parent. The look is the rack bar:
+   flat panel, 1px hairline, square corners. */
 .ck-cmdbar {
   display: flex;
   align-items: center;
   gap: 0.55rem;
   padding: 0.45rem 0.7rem;
-  background: color-mix(in oklch, var(--ck-panel) 88%, transparent);
+  background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 2px;
 }
 
 .ck-cmdbar.is-multiline {
@@ -1007,35 +1009,7 @@ button:disabled {
   position: static;
   width: 100%;
   z-index: 3;
-  border-radius: 2px;
   pointer-events: auto;
-  padding: 0.72rem 1.1rem;
-  background: color-mix(in oklch, var(--bg) 78%, transparent);
-  backdrop-filter: blur(3px);
-  border: 1px solid var(--line);
-  box-shadow: none;
-}
-
-.ck-breath .ck-cmdbar textarea {
-  font-size: 0.95rem;
-  color: var(--ink);
-}
-
-.ck-breath .ck-cmdbar .ck-send,
-.ck-breath .ck-cmdbar .ck-mic {
-  font-size: 0.68rem;
-  padding: 0.28rem 0.45rem;
-  border-radius: 2px;
-  background: transparent;
-  border-color: transparent;
-}
-
-.ck-breath .ck-send-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
 }
 
 .ck-degraded {
@@ -1138,7 +1112,7 @@ button:disabled {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 17.5rem minmax(0, 1fr) 22.5rem;
+  grid-template-columns: 17.5rem minmax(0, 1fr) 45rem;
   gap: 0.7rem;
 }
 
@@ -1380,12 +1354,6 @@ button:disabled {
   line-height: 1.4;
 }
 
-.ck-channel .ck-cmdbar {
-  border-radius: 8px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-}
-
 .ck-confirm-card {
   border: 1px solid color-mix(in oklch, var(--accent) 45%, transparent);
   background: var(--panel-2);
@@ -1430,24 +1398,6 @@ button:disabled {
 .ck-confirm-card-actions button:last-child {
   color: var(--ck-steel);
   border-color: var(--line);
-}
-
-.ck-cmdbar-cmd .ck-send {
-  border: none;
-  background: transparent;
-  padding: 0.25rem;
-  color: var(--ck-accent);
-}
-
-.ck-cmdbar-cmd .ck-mic {
-  border: none;
-  background: transparent;
-  padding: 0.25rem;
-  color: var(--ck-steel);
-}
-
-.ck-cmdbar-cmd .ck-mic.is-rec {
-  color: var(--ck-accent);
 }
 
 .ck-hint {
@@ -2291,9 +2241,6 @@ button:disabled {
 }
 
 .ck-noc .ck-cmdbar {
-  border-radius: 2px;
-  background: var(--panel);
-  border: 1px solid var(--line);
   margin-right: 1.55rem;
 }
 

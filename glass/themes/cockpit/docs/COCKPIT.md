@@ -161,7 +161,7 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   - Top-right: four ring pips TALKER HANDS STT TTS from `/health`
   - Left: dossier TRACK / MODE / HOS / LOCK
   - Bottom chips: CLUSTER LIVE, UPTIME, GPU-01 °C, GPU-02 °C
-  - Bottom: CmdBar `cmd  Speak freely…` + Send + Hold to talk
+  - Bottom: CmdBar `> cmd  Speak freely.` + Send + Hold to talk. Same bar tile as CMD and NOC.
 - **Forbidden:** centered chat modal, greeting card over the globe, purple, glassmorphism.
   The dialogue strip below is not a modal: it is bottom-aligned on the cmd bar,
   non-interactive, and dissolves into the globe at its top edge.
@@ -222,7 +222,7 @@ Layout:
 - Header: Brand + local clock + weather stub + date + `BRIEF | ASK | APPLY`
 - Left ~280px: Dossier + Today icon rows
 - Center: AM BRIEFING sections Overnight / Lab / Agenda from structured session briefing
-- Right ~360px: Channel thread (session.messages + live tokens) + cmd input
+- Right 45rem: Channel thread (session.messages + live tokens) + cmd input. Twice the previous column. The bar itself is the same tile as Breath and NOC; only the column is wider.
 - Bottom pills: Inbox, Calendar, Voice, Apply queue
 
 BRIEF focuses this display and refetches session.

@@ -417,9 +417,7 @@ export function Cmd({
                 ) : null}
               </div>
               <CmdBar
-                variant="cmd"
-                prompt=">_ cmd ·"
-                placeholder="type command or message"
+                variant="stage"
                 busy={busy}
                 recording={recording}
                 sttOk={sttOk}
