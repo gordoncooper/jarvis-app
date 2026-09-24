@@ -230,7 +230,6 @@ export function Noc({
             labelA={`GPU-01 ${t1 == null ? "—" : `${steelNum(t1)}°C`}`}
             labelB={`GPU-02 ${t2 == null ? "—" : `${steelNum(t2)}°C`}`}
           />
-          <div className="ck-noc-foot">
           <h2>RACK THERMALS // LIVE</h2>
           <div className="ck-env">
             <label>
@@ -249,7 +248,7 @@ export function Noc({
               <em>{vram == null ? "—" : `${steelNum(vram)}%`}</em>
             </label>
           </div>
-
+          <div className="ck-noc-foot">
           <h2 className="ck-noc-sub">SERVICE PLANE</h2>
           <ul className="ck-svc">
             {(

@@ -124,12 +124,14 @@ input {
 
 .ck-dots {
   position: fixed;
-  bottom: 0.45rem;
-  right: 0.45rem;
+  top: 50%;
+  right: 0.4rem;
+  bottom: auto;
   left: auto;
-  transform: none;
+  transform: translateY(-50%);
   z-index: 50;
   display: flex;
+  flex-direction: column;
   gap: 0.35rem;
   pointer-events: auto;
 }
@@ -360,6 +362,7 @@ button:disabled {
   inset: 0;
   overflow: hidden;
   background: #04060a;
+  perspective: 1400px;
 }
 
 .ck-login-bg {
@@ -393,8 +396,7 @@ button:disabled {
   50% { opacity: 1; }
 }
 
-/* The badge is the lid. Sealed it is the only control; clicking lifts it and
-   the prompt is revealed underneath. */
+/* The badge is a garage door, hinged on its top edge. */
 .ck-login-badge {
   position: absolute;
   left: 50%;
@@ -406,9 +408,9 @@ button:disabled {
   background: transparent;
   cursor: pointer;
   z-index: 3;
-  transform-origin: 50% 40%;
-  filter: drop-shadow(0 0 34px color-mix(in oklch, var(--ck-accent) 22%, transparent));
-  transition: filter 320ms ease;
+  transform-origin: 50% 0%;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 0 28px color-mix(in oklch, var(--ck-accent) 18%, transparent));
 }
 
 .ck-login-badge img {
@@ -425,13 +427,27 @@ button:disabled {
   outline: none;
 }
 
-.ck-login[data-gate="sealed"] .ck-login-badge {
-  animation: ck-badge-idle 6s ease-in-out infinite;
+.ck-login[data-gate="open"] .ck-login-badge {
+  pointer-events: none;
 }
 
-@keyframes ck-badge-idle {
-  0%, 100% { filter: drop-shadow(0 0 30px color-mix(in oklch, var(--ck-accent) 18%, transparent)); }
-  50% { filter: drop-shadow(0 0 46px color-mix(in oklch, var(--ck-accent) 34%, transparent)); }
+/* A short teal bloom, then a long quiet. Not a constant pulse. */
+.ck-login[data-gate="sealed"] .ck-login-badge {
+  animation: ck-badge-flash 14s ease-in-out infinite;
+}
+
+@keyframes ck-badge-flash {
+  0%, 84%, 100% {
+    filter: drop-shadow(0 0 26px color-mix(in oklch, var(--ck-accent) 16%, transparent));
+  }
+  89% {
+    filter:
+      drop-shadow(0 0 18px color-mix(in oklch, var(--ck-accent) 85%, transparent))
+      drop-shadow(0 0 46px color-mix(in oklch, var(--ck-accent) 50%, transparent));
+  }
+  94% {
+    filter: drop-shadow(0 0 26px color-mix(in oklch, var(--ck-accent) 16%, transparent));
+  }
 }
 
 .ck-login-hint {
@@ -463,11 +479,15 @@ button:disabled {
   }
 }
 
+.ck-login-card:focus-within {
+  border-color: color-mix(in oklch, var(--ck-accent) 55%, transparent);
+}
+
 .ck-login-card {
   position: absolute;
   left: 50%;
-  top: 58%;
-  translate: -50% 0;
+  top: 50%;
+  translate: -50% -50%;
   width: min(23rem, 86vw);
   z-index: 4;
   display: flex;
@@ -639,6 +659,17 @@ button:disabled {
 .ck-status-v.is-empty {
   color: var(--ck-steel);
   opacity: 0.7;
+}
+
+a.ck-status-v {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.ck-status-v:hover,
+a.ck-status-v:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .ck-status .ck-pipe {
@@ -884,6 +915,42 @@ button:disabled {
   flex-shrink: 0;
 }
 
+/* Cluster and uptime are one instrument, not two mismatched chips. */
+.ck-breath-corner {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.9rem;
+  padding: 0.42rem 0.75rem 0.48rem;
+  border: 1px solid var(--ck-hair);
+  border-left: 2px solid var(--ck-accent);
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--ck-panel-2) 92%, transparent);
+  font-family: var(--ck-mono);
+}
+
+.ck-breath-corner > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 4.8rem;
+}
+
+.ck-breath-corner strong {
+  font-weight: 500;
+  font-size: var(--ck-value-size);
+  letter-spacing: 0.04em;
+  color: var(--ck-ink);
+}
+
+.ck-breath-corner strong.is-live {
+  color: var(--ck-accent);
+}
+
+.ck-breath-corner strong.is-empty {
+  color: var(--ck-steel);
+  font-weight: 500;
+}
+
 /* Comms column: dialogue strip stacked on the cmd bar, anchored to the bottom
    of the stage. Both used to be absolutely positioned against the same edge
    with hand-tuned offsets, and at a short window the strip's bottom landed
@@ -925,6 +992,11 @@ button:disabled {
      reads over the disc. */
   font-family: var(--ck-font);
   font-size: clamp(0.9rem, 0.55rem + 0.38cqi, 1.42rem);
+  /* The canvas is behind this strip. Events have to land here or a click
+     spins the earth instead of selecting the line. */
+  pointer-events: auto;
+  user-select: text;
+  cursor: text;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 100%);
 }
@@ -1528,7 +1600,6 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
-  padding-right: 1.6rem;
 }
 
 .ck-pill {
@@ -2413,7 +2484,7 @@ button:disabled {
 }
 
 .ck-noc .ck-cmdbar {
-  margin-right: 1.55rem;
+  margin-right: 0;
 }
 
 .ck-confirm {

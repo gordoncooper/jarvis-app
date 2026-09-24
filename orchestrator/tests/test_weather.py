@@ -56,6 +56,28 @@ class WeatherCacheTest(unittest.TestCase):
         with mock.patch.object(weather, "_fetch", mock.AsyncMock(return_value=None)):
             self.assertIsNone(run(weather.get_weather()))
 
+    def test_a_point_does_not_replace_the_house_reading(self) -> None:
+        house = {"temp_c": 22.2, "text": "overcast"}
+        there = {"temp_c": 40.0, "text": "clear", "lat": 33.96, "lon": -116.5}
+        clock = [1000.0]
+        with mock.patch.object(weather.time, "monotonic", lambda: clock[0]):
+            with mock.patch.object(weather, "_fetch", mock.AsyncMock(return_value=house)):
+                self.assertEqual(run(weather.get_weather()), house)
+            with mock.patch.object(weather, "_fetch", mock.AsyncMock(return_value=there)) as fetch:
+                got = run(weather.get_weather_at(33.961, -116.501))
+                self.assertEqual(got, there)
+                fetch.assert_awaited()
+            # House cache is untouched, and a second point read is served from its own slot.
+            clock[0] += 10
+            with mock.patch.object(weather, "_fetch", mock.AsyncMock(return_value=None)) as fetch:
+                self.assertEqual(run(weather.get_weather()), house)
+                self.assertEqual(run(weather.get_weather_at(33.961, -116.501)), there)
+                fetch.assert_not_awaited()
+
+    def test_a_point_outside_the_globe_is_refused(self) -> None:
+        self.assertIsNone(run(weather.get_weather_at(120, 0)))
+        self.assertIsNone(run(weather.get_weather_at(0, 200)))
+
 
 class WmoTest(unittest.TestCase):
     def test_bearing_buckets(self) -> None:

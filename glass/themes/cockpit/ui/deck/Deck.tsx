@@ -52,7 +52,7 @@ export function Deck({ index, onIndex, children }: Props) {
 
   const down = (ev: ReactPointerEvent) => {
     const t = ev.target as HTMLElement;
-    if (t.closest("input,button,textarea,a,label,.ck-cmdbar,.ck-login-card,.ck-login-badge,.ck-brand-lockup,.ck-breath-canvas")) {
+    if (t.closest("input,button,textarea,a,label,.ck-cmdbar,.ck-login-card,.ck-login-badge,.ck-brand-lockup,.ck-breath-canvas,.ck-breath-toast")) {
       startX.current = null;
       return;
     }

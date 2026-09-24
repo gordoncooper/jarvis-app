@@ -117,11 +117,15 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
   `themes/cockpit/static/login-badge.png` (wordmark + subline + triangle),
   composited centre-wall so it stays sharp at 4K. It replaced a plate with the
   wordmark baked in, which was soft at scale.
+- **Revised 2026-09-23 (operator request), superseding the shrink-and-slide lid:**
+  the badge is a garage door hinged at the top. Click it, or press Enter, and
+  it swings up and disappears. The login prompt is then centred. A click
+  anywhere outside that prompt brings the door back down and hides the prompt.
+  While the door is sealed it flashes teal occasionally, then stays quiet.
+  Escape still closes it.
 - **Revised 2026-09-20 (operator request), superseding "no form fields":** the
-  badge is a lid. Click it, or press Enter, and it lifts and shrinks to reveal
-  a login prompt underneath.
-- The badge **toggles** — clicking it again lowers the lid and hides the
-  prompt. Escape closes it too.
+  badge is a lid over a login prompt. The shrink-and-slide motion in this
+  note was replaced by the garage door above.
 - **Only Authorise advances to Breath** (Enter inside the field is the same
   thing, being a form submit). The badge never navigates, and neither does a
   stray Enter with nothing focused. The badge's box is ~858x288 with large
@@ -157,10 +161,10 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   Drag still spins it.
 - DOM HUD pinned to edges:
   - Top-left: hex + JARVIS + LIVE
-  - Top-center: the status strip — weather, date, local time, UTC, LAN, k3s. Same module on CMD and NOC. Local and UTC are the browser clock. Weather, LAN, and k3s come from `/v1/pulse` and stay blank when the pulse has no reading.
+  - Top-center: the status strip — weather, date, local time, UTC, LAN, k3s. Same module on CMD and NOC. Local and UTC are the browser clock. Weather follows the browser's location via `/v1/weather` when a position is available, and otherwise the `/v1/pulse` reading. A weather value with a point opens that forecast in a new tab. LAN and k3s come from `/v1/pulse` and stay blank when the pulse has no reading.
   - Top-right: four ring pips TALKER HANDS STT TTS from `/health`
   - Left: dossier TRACK / MODE / HOS / LOCK, each row an icon, a label, and a reading. HOS goes bad when the link is down. LOCK is HELD only while a confirm is open.
-  - Bottom chips: CLUSTER LIVE, UPTIME, GPU-01 °C, GPU-02 °C
+  - Bottom-left: CLUSTER and UPTIME share one plate. GPU-01 and GPU-02 stay separate chips on the right.
   - Bottom: CmdBar `> cmd  Speak freely.` + Send + Hold to talk. Same bar tile as CMD and NOC.
 - **Forbidden:** centered chat modal, greeting card over the globe, purple, glassmorphism.
   The dialogue strip below is not a modal: it is bottom-aligned on the cmd bar,
@@ -308,8 +312,9 @@ Do not teach glass to scrape noc.lan or home.lan.
 - Deck: `translateX(-index * 100%)`, 280–400ms ease. ArrowLeft / ArrowRight.
   Hash `#login|#breath|#cmd|#noc`; the retired `#earth` resolves to `#breath`
   and rewrites itself.
-- Login badge: slow glow while sealed; spring lift + scale on open, with the
-  prompt revealed by a clip-path wipe. Both respect `prefers-reduced-motion`.
+- Login badge: an occasional teal flash while sealed; a top-hinged swing up
+  and out on open, with the prompt centred underneath. A click outside the
+  prompt swings it back. Both respect `prefers-reduced-motion`.
 - Breath HUD: fade in 200ms after globe first frame.
 - PTT: pointer-down start MediaRecorder, pointer-up `streamAudioTurn`.
 - **Streamed speech**, added 2026-09-21. TTS used to fire once on `done` with

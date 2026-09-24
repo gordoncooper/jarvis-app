@@ -61,6 +61,7 @@ from . import __version__
 from .briefing_map import assemble_briefing
 from .overnight import build_cluster_briefing
 from .pulse import get_pulse
+from .weather import get_weather_at
 from .stt import health_whisper, transcribe
 from .tts import health_piper, synthesize
 
@@ -276,6 +277,17 @@ async def health() -> dict[str, Any]:
 async def pulse() -> dict[str, Any]:
     """Rack snapshot for the breath chips + NOC. Unknown fields are null."""
     return await get_pulse()
+
+
+@app.get("/v1/weather")
+async def weather_at(lat: float, lon: float) -> dict[str, Any]:
+    """Weather for the caller's point. The house reading on /v1/pulse is unchanged."""
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+        raise HTTPException(status_code=400, detail="lat/lon out of range")
+    body = await get_weather_at(lat, lon)
+    if body is None:
+        raise HTTPException(status_code=502, detail="weather unavailable")
+    return body
 
 
 @app.get("/v1/session")

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 
 type Props = { onEnter: () => void; active: boolean };
 
@@ -22,15 +22,15 @@ export function Login({ onEnter, active }: Props) {
     }
   }, [active]);
 
-  // Focus only once the lid has finished lifting. Focusing synchronously meant
+  // Focus only once the door has swung clear. Focusing synchronously meant
   // the *same* Enter that opened the gate produced a keypress on the freshly
   // focused input, which implicitly submitted the form and skipped the prompt
   // entirely — one keystroke went from sealed straight to Breath.
   useEffect(() => {
     if (gate !== "open") return;
-    const id = window.setTimeout(() => pinRef.current?.focus(), 520);
+    const id = window.setTimeout(() => pinRef.current?.focus(), reduceMotion ? 40 : 780);
     return () => window.clearTimeout(id);
-  }, [gate]);
+  }, [gate, reduceMotion]);
 
   useEffect(() => {
     // Only while the gate is the visible slide, and never steal Enter from a
@@ -54,31 +54,43 @@ export function Login({ onEnter, active }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onEnter, active, gate]);
 
-  const lift = reduceMotion ? 0 : -1;
+  // A click on the plate, outside the prompt, lowers the door again.
+  // The opening click itself still sees gate === "sealed" in this render,
+  // so it cannot immediately close what it just opened.
+  const onPlate = (ev: ReactPointerEvent) => {
+    if (gate !== "open") return;
+    const t = ev.target as HTMLElement | null;
+    if (t?.closest(".ck-login-card")) return;
+    setGate("sealed");
+  };
 
   return (
-    <div className="ck-login" data-gate={gate}>
+    <div className="ck-login" data-gate={gate} onPointerDown={onPlate}>
       <img className="ck-login-bg" src="/theme-static/login-plate.jpg" alt="" />
       <div className="ck-login-glow" aria-hidden="true" />
 
-      {/* The badge is the lid: it lifts and the prompt is underneath. */}
+      {/* The badge is a garage door: hinged at the top, it swings up and
+          out of the way. It never navigates — Authorise does that. */}
       <motion.button
         type="button"
         className="ck-login-badge"
         aria-label={gate === "sealed" ? "Reveal sign-in" : "Hide sign-in"}
         aria-expanded={gate === "open"}
-        // The badge is a lid, so it toggles. It never navigates — reaching
-        // Breath is the Authorise button's job alone.
-        onClick={() => setGate((g) => (g === "sealed" ? "open" : "sealed"))}
-        animate={{
-          y: gate === "open" ? lift * 92 : 0,
-          scale: gate === "open" ? 0.78 : 1,
-        }}
+        aria-hidden={gate === "open"}
+        tabIndex={gate === "open" ? -1 : 0}
+        onClick={() => setGate("open")}
+        initial={false}
+        animate={
+          gate === "open"
+            ? { rotateX: reduceMotion ? 0 : -86, opacity: 0 }
+            : { rotateX: 0, opacity: 1 }
+        }
         transition={
           reduceMotion
             ? { duration: 0 }
-            : { type: "spring", stiffness: 140, damping: 20, mass: 0.9 }
+            : { duration: 0.72, ease: [0.45, 0.02, 0.15, 1] }
         }
+        style={{ transformOrigin: "50% 0%", transformPerspective: 1200 }}
       >
         <img src="/theme-static/login-badge.png" alt="JARVIS — home-lab AI cluster command center" />
       </motion.button>
@@ -88,10 +100,10 @@ export function Login({ onEnter, active }: Props) {
           <motion.form
             key="prompt"
             className="ck-login-card"
-            initial={reduceMotion ? false : { opacity: 0, y: 26, clipPath: "inset(0 0 100% 0)" }}
-            animate={{ opacity: 1, y: 0, clipPath: "inset(0 0 0% 0)" }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, clipPath: "inset(0 0 100% 0)" }}
-            transition={reduceMotion ? { duration: 0 } : { duration: 0.42, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.28 }}
             onSubmit={(ev) => {
               ev.preventDefault();
               onEnter();

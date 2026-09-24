@@ -77,6 +77,8 @@ export type PulseWeather = {
   wind_kmh?: number | null;
   wind_dir?: string | null;
   place?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 };
 
 export type PulseEvent = {
@@ -102,6 +104,18 @@ export type PulsePayload = {
   stt?: boolean | null;
   tts?: boolean | null;
 };
+
+/** Weather at a point the browser reported. Null when the service has no reading. */
+export async function fetchWeather(lat: number, lon: number): Promise<PulseWeather | null> {
+  try {
+    const q = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+    const r = await fetch(`/v1/weather?${q}`, { headers: jsonHeaders });
+    if (!r.ok) return null;
+    return (await r.json()) as PulseWeather;
+  } catch {
+    return null;
+  }
+}
 
 /** Missing route or transport → null. Never synthesize cluster numbers. */
 export async function fetchPulse(): Promise<PulsePayload | null> {

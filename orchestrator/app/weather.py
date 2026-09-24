@@ -76,9 +76,12 @@ def _bearing(deg: Any) -> str | None:
     return _COMPASS[int((value % 360) / 22.5 + 0.5) % 16]
 
 
-async def _fetch() -> dict[str, Any] | None:
-    lat, lon = settings.weather_lat, settings.weather_lon
+async def _fetch(lat: float | None = None, lon: float | None = None) -> dict[str, Any] | None:
     if lat is None or lon is None:
+        lat, lon = settings.weather_lat, settings.weather_lon
+    if lat is None or lon is None:
+        return None
+    if not (-90.0 <= float(lat) <= 90.0 and -180.0 <= float(lon) <= 180.0):
         return None
     params = {
         "latitude": lat,
@@ -114,6 +117,8 @@ async def _fetch() -> dict[str, Any] | None:
         "wind_kmh": round(float(wind)) if isinstance(wind, (int, float)) else None,
         "wind_dir": heading,
         "place": settings.weather_place or None,
+        "lat": float(lat),
+        "lon": float(lon),
     }
 
 
@@ -147,8 +152,51 @@ def _fresh_enough(now: float) -> dict[str, Any] | None:
     return _last_good
 
 
+# Point readings stay off the house cache. A browser location must not
+# replace the configured reading that pulse and weather.now already use.
+_at: dict[tuple[float, float], tuple[float, dict[str, Any] | None, float]] = {}
+
+
+def _point(lat: float, lon: float) -> tuple[float, float] | None:
+    try:
+        lat_f = float(lat)
+        lon_f = float(lon)
+    except (TypeError, ValueError):
+        return None
+    if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lon_f <= 180.0):
+        return None
+    return (round(lat_f, 2), round(lon_f, 2))
+
+
+async def get_weather_at(lat: float, lon: float) -> dict[str, Any] | None:
+    """Weather for a caller-supplied point. None when the point or the service fails."""
+    key = _point(lat, lon)
+    if key is None:
+        return None
+    now = time.monotonic()
+    slot = _at.get(key)
+    if slot and now < slot[0] and slot[1] is not None and now - slot[2] <= MAX_STALE_SEC:
+        return slot[1]
+    async with _lock:
+        now = time.monotonic()
+        slot = _at.get(key)
+        if slot and now < slot[0] and slot[1] is not None and now - slot[2] <= MAX_STALE_SEC:
+            return slot[1]
+        body = await _fetch(key[0], key[1])
+        now = time.monotonic()
+        if body is not None:
+            _at[key] = (now + CACHE_TTL_SEC, body, now)
+            return body
+        if slot and slot[1] is not None and now - slot[2] <= MAX_STALE_SEC:
+            _at[key] = (now + RETRY_AFTER_SEC, slot[1], slot[2])
+            return slot[1]
+        _at[key] = (now + RETRY_AFTER_SEC, None, now)
+        return None
+
+
 def _reset_for_tests() -> None:
     global _next_attempt, _last_good, _last_good_at
     _next_attempt = 0.0
     _last_good = None
     _last_good_at = 0.0
+    _at.clear()

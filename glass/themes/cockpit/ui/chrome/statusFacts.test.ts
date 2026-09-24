@@ -30,3 +30,14 @@ test("weather, LAN, and k3s come from the pulse", () => {
   assert.equal(facts.lan, "192.168.8.0/24");
   assert.equal(facts.k3s, "6/6");
 });
+
+test("weather opens the forecast for its point and stays plain without one", () => {
+  const bare = statusFacts({ weather: { temp_c: 18, text: "clear" } }, now).find((f) => f.id === "weather");
+  assert.equal(bare?.href, undefined);
+  const placed = statusFacts(
+    { weather: { temp_c: 41.2, text: "clear", lat: 33.9614, lon: -116.5019 } },
+    now,
+  ).find((f) => f.id === "weather");
+  assert.equal(placed?.value, "41°C, clear");
+  assert.match(placed?.href ?? "", /forecast\.weather\.gov\/MapClick\.php\?lat=33\.9614&lon=-116\.5019/);
+});

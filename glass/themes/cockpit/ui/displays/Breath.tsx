@@ -141,12 +141,17 @@ export function Breath({
         </aside>
 
         <div className="ck-breath-bottom">
-          <div className="ck-chip">
-            CLUSTER <LiveDot on={live} /> <em className={live ? "is-live" : "is-empty"}>{live ? "LIVE" : "WAIT"}</em>
-          </div>
-          <div className="ck-chip ck-chip-stack">
-            <span className="ck-chip-k">UPTIME</span>
-            <em className={uptime ? "" : "is-empty"}>{uptime ?? "—"}</em>
+          <div className="ck-breath-corner">
+            <div>
+              <span className="ck-chip-k">
+                CLUSTER <LiveDot on={live} />
+              </span>
+              <strong className={live ? "is-live" : "is-empty"}>{live ? "LIVE" : "WAIT"}</strong>
+            </div>
+            <div>
+              <span className="ck-chip-k">UPTIME</span>
+              <strong className={uptime ? "" : "is-empty"}>{uptime ?? "—"}</strong>
+            </div>
           </div>
           <div className="ck-chip-row">
             {gpus.map((g) => (

@@ -2,13 +2,15 @@ export type StatusFact = {
   id: "weather" | "date" | "local" | "utc" | "lan" | "k3s";
   label: string;
   value: string;
+  /** Present only for a weather reading that has a real point. */
+  href?: string;
 };
 
 /** The pulse fields this strip reads. A full pulse object is fine. */
 export type StatusPulse = {
   lan?: string | null;
   k3s?: string | null;
-  weather?: { temp_c?: number | null; text?: string | null } | null;
+  weather?: { temp_c?: number | null; text?: string | null; lat?: number | null; lon?: number | null } | null;
 } | null;
 
 const EMPTY = "—";
@@ -23,7 +25,7 @@ function shown(value: string | null | undefined): string {
  *  stay empty when the pulse has no reading. */
 export function statusFacts(pulse: StatusPulse, now: Date): StatusFact[] {
   return [
-    { id: "weather", label: "WEATHER", value: weatherLine(pulse) },
+    { id: "weather", label: "WEATHER", value: weatherLine(pulse), href: weatherHref(pulse) },
     { id: "date", label: "DATE", value: dateLine(now) },
     { id: "local", label: "LOCAL", value: clock(now, false) },
     { id: "utc", label: "UTC", value: clock(now, true) },
@@ -48,6 +50,17 @@ function dateLine(now: Date): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/** National Weather Service point forecast. Absent when the reading has no point. */
+export function weatherHref(pulse: StatusPulse): string | undefined {
+  const lat = pulse?.weather?.lat;
+  const lon = pulse?.weather?.lon;
+  if (typeof lat !== "number" || typeof lon !== "number") return undefined;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return undefined;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return undefined;
+  const q = new URLSearchParams({ lat: lat.toFixed(4), lon: lon.toFixed(4) });
+  return `https://forecast.weather.gov/MapClick.php?${q}`;
 }
 
 function weatherLine(pulse: StatusPulse): string {
