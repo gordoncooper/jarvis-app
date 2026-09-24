@@ -8,6 +8,59 @@ type Gate = "sealed" | "open";
 
 const OPERATOR = "GORDON";
 
+/** Deterministic rack lamps. Delays are staggered so they never blink as one. */
+const RACK_LEDS = Array.from({ length: 42 }, (_, i) => {
+  const row = Math.floor(i / 6);
+  const col = i % 6;
+  return {
+    x: 8 + col * 15,
+    y: 3 + row * 13.4,
+    delay: ((i * 0.47) % 5.8).toFixed(2),
+    dur: (1.15 + (i % 7) * 0.38).toFixed(2),
+    warn: i % 13 === 0,
+    soft: i % 5 === 0,
+  };
+});
+
+const WALL_SEAMS = [
+  { y: "14%", delay: "0s" },
+  { y: "31%", delay: "3.4s" },
+  { y: "63%", delay: "7.1s" },
+  { y: "81%", delay: "1.8s" },
+];
+
+function LoginLife() {
+  return (
+    <div className="ck-login-life" aria-hidden="true">
+      {(["l", "r"] as const).map((side) => (
+        <div key={side} className={`ck-login-rack is-${side}`}>
+          {RACK_LEDS.map((led, i) => (
+            <i
+              key={i}
+              className={led.warn ? "is-warn" : led.soft ? "is-soft" : undefined}
+              style={{
+                left: `${led.x}%`,
+                top: `${led.y}%`,
+                animationDelay: `${led.delay}s`,
+                animationDuration: `${led.dur}s`,
+              }}
+            />
+          ))}
+        </div>
+      ))}
+      <div className="ck-login-wall">
+        {WALL_SEAMS.map((seam) => (
+          <span key={seam.y} className="ck-login-seam" style={{ top: seam.y, animationDelay: seam.delay }} />
+        ))}
+        <span className="ck-login-seam is-v" style={{ left: "11%", animationDelay: "2.2s" }} />
+        <span className="ck-login-seam is-v" style={{ left: "86%", animationDelay: "6.4s" }} />
+        <span className="ck-login-scan" />
+      </div>
+      <div className="ck-login-floor" />
+    </div>
+  );
+}
+
 export function Login({ onEnter, active }: Props) {
   const [gate, setGate] = useState<Gate>("sealed");
   const [pin, setPin] = useState("");
@@ -68,6 +121,7 @@ export function Login({ onEnter, active }: Props) {
     <div className="ck-login" data-gate={gate} onPointerDown={onPlate}>
       <img className="ck-login-bg" src="/theme-static/login-plate.jpg" alt="" />
       <div className="ck-login-glow" aria-hidden="true" />
+      <LoginLife />
 
       {/* The badge is a garage door: hinged at the top, it swings up and
           out of the way. It never navigates — Authorise does that. */}

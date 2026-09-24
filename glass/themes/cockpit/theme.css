@@ -396,6 +396,171 @@ button:disabled {
   50% { opacity: 1; }
 }
 
+/* Rack lamps, steel-line reflections, and a rare scan. Behind the badge. */
+.ck-login-life {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ck-login-rack {
+  position: absolute;
+  top: 7%;
+  bottom: 19%;
+  width: 15%;
+}
+
+.ck-login-rack.is-l { left: 1.6%; }
+.ck-login-rack.is-r { right: 1.6%; }
+
+.ck-login-rack i {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--ck-accent);
+  box-shadow: 0 0 5px var(--ck-accent);
+  opacity: 0.22;
+  animation-name: ck-led;
+  animation-timing-function: steps(2, end);
+  animation-iteration-count: infinite;
+}
+
+.ck-login-rack i.is-soft {
+  animation-name: ck-led-soft;
+  animation-timing-function: ease-in-out;
+}
+
+.ck-login-rack i.is-warn {
+  background: var(--ck-accent-warm);
+  box-shadow: 0 0 5px var(--ck-accent-warm);
+}
+
+@keyframes ck-led {
+  0%, 62% { opacity: 0.18; }
+  63%, 100% { opacity: 1; }
+}
+
+@keyframes ck-led-soft {
+  0%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
+}
+
+.ck-login-wall {
+  position: absolute;
+  left: 19%;
+  right: 19%;
+  top: 9%;
+  bottom: 23%;
+}
+
+.ck-login-seam {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 1px;
+  overflow: hidden;
+}
+
+.ck-login-seam.is-v {
+  left: auto;
+  right: auto;
+  top: 8%;
+  bottom: 8%;
+  width: 1px;
+  height: auto;
+}
+
+.ck-login-seam::after {
+  content: "";
+  position: absolute;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, #fff 75%, var(--ck-accent)),
+    color-mix(in oklch, var(--ck-accent) 80%, transparent),
+    transparent
+  );
+  opacity: 0;
+  animation: ck-seam 13s linear infinite;
+  animation-delay: inherit;
+}
+
+.ck-login-seam:not(.is-v)::after {
+  top: -1px;
+  height: 3px;
+  width: 22%;
+  transform: translateX(-160%);
+}
+
+.ck-login-seam.is-v::after {
+  left: -1px;
+  width: 3px;
+  height: 18%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklch, #fff 75%, var(--ck-accent)),
+    transparent
+  );
+  animation-name: ck-seam-v;
+  transform: translateY(-160%);
+}
+
+@keyframes ck-seam {
+  0%, 86% { transform: translateX(-160%); opacity: 0; }
+  87% { opacity: 0.9; }
+  92% { transform: translateX(520%); opacity: 0.9; }
+  93%, 100% { transform: translateX(520%); opacity: 0; }
+}
+
+@keyframes ck-seam-v {
+  0%, 88% { transform: translateY(-160%); opacity: 0; }
+  89% { opacity: 0.75; }
+  94% { transform: translateY(620%); opacity: 0.55; }
+  95%, 100% { transform: translateY(620%); opacity: 0; }
+}
+
+.ck-login-scan {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  top: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--ck-accent) 75%, #fff),
+    transparent
+  );
+  box-shadow: 0 0 10px color-mix(in oklch, var(--ck-accent) 70%, transparent);
+  opacity: 0;
+  animation: ck-scan 17s linear infinite;
+}
+
+@keyframes ck-scan {
+  0%, 74% { top: 2%; opacity: 0; }
+  76% { opacity: 0.65; }
+  86% { top: 96%; opacity: 0.2; }
+  88%, 100% { top: 96%; opacity: 0; }
+}
+
+.ck-login-floor {
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  bottom: 3%;
+  height: 12%;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    color-mix(in oklch, var(--ck-accent) 28%, transparent),
+    transparent 68%
+  );
+  opacity: 0.45;
+  animation: ck-login-breathe 7s ease-in-out infinite;
+}
+
 /* The badge is a garage door, hinged on its top edge. */
 .ck-login-badge {
   position: absolute;
@@ -503,7 +668,11 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .ck-login-glow,
   .ck-login[data-gate="sealed"] .ck-login-streak,
-  .ck-login-hint {
+  .ck-login-hint,
+  .ck-login-rack i,
+  .ck-login-seam::after,
+  .ck-login-scan,
+  .ck-login-floor {
     animation: none;
   }
 }

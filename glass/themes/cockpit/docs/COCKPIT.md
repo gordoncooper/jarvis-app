@@ -111,8 +111,10 @@ Wire `esbuild.mjs` / theme `cockpit` so this pack is what nginx serves.
 
 ### Login (index 0)
 
-- Full-bleed still of the empty server-room wall,
+- Full-bleed plate of the empty server-room wall,
   `themes/cockpit/static/login-plate.jpg`. The wall carries no lettering.
+  Rack lamps blink over the photograph, and thin reflections run the steel
+  grid. Both stay behind the badge.
 - The JARVIS badge is a separate transparent PNG,
   `themes/cockpit/static/login-badge.png` (wordmark + subline + triangle),
   composited centre-wall so it stays sharp at 4K. It replaced a plate with the
