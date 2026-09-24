@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CmdBar } from "../chrome/CmdBar.js";
+import { StatusStrip } from "../chrome/StatusStrip.js";
 import { ConfirmCard } from "../chrome/ConfirmCard.js";
 import {
   HexMark,
@@ -7,7 +8,6 @@ import {
   IconCal,
   IconChip,
   IconClock,
-  IconCloud,
   IconDoc,
   IconGear,
   IconInbox,
@@ -18,7 +18,6 @@ import {
 import {
   capCopy,
   capLines,
-  dayOfYear,
   parseBriefing,
   sessionPollLabel,
   type ChatMsg,
@@ -90,18 +89,12 @@ export function Cmd({
   onConfirm,
   onCancel,
 }: Props) {
-  const [now, setNow] = useState(() => new Date());
   const [mode, setMode] = useState<"brief" | "ask" | "apply">("brief");
   const [collapsed, setCollapsed] = useState(false);
   const [wantFocus, setWantFocus] = useState<"ask" | "apply" | null>(null);
   const thread = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
   const channelInput = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   useEffect(() => {
     const el = thread.current;
@@ -132,18 +125,6 @@ export function Cmd({
   const calendarLabel =
     agenda[0]?.label ?? today.find((row) => /cal|meet|agenda|schedule/i.test(row.kind))?.label ?? null;
   const applyCount = confirm ? 1 : 0;
-
-  const local = now.toLocaleTimeString("en-GB", { hour12: false });
-  const dateStr = now.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const weekday = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 
   function onBrief() {
     setMode("brief");
@@ -183,20 +164,6 @@ export function Cmd({
       }));
   }, [pulse]);
 
-  // Real reading from /v1/pulse, or nothing. The header used to ship a
-  // hardcoded "16°C, overcast" that was wrong everywhere except by accident.
-  const weather = useMemo(() => {
-    const w = pulse?.weather;
-    if (!w || typeof w.temp_c !== "number" || !Number.isFinite(w.temp_c)) return null;
-    const headline = [`${Math.round(w.temp_c)}°C`, w.text?.trim()].filter(Boolean).join(", ");
-    const wind =
-      typeof w.wind_kmh === "number" && Number.isFinite(w.wind_kmh)
-        ? `${w.wind_dir ? `${w.wind_dir} ` : ""}wind ${Math.round(w.wind_kmh)} km/h`
-        : null;
-    const detail = [w.place?.trim(), wind].filter(Boolean).join(" · ");
-    return { headline, detail: detail || "—" };
-  }, [pulse]);
-
   return (
     <div className="ck-cmd">
       <header className="ck-cmd-top">
@@ -208,39 +175,7 @@ export function Cmd({
           </span>
         </div>
         <div className="ck-cmd-widgets">
-          <div className="ck-widget">
-            <span className="ck-ico">
-              <IconClock size={18} />
-            </span>
-            <div>
-              <strong>{local} LOCAL</strong>
-              <span>{dateStr}</span>
-            </div>
-          </div>
-          {weather ? (
-            <>
-              <span className="ck-vdiv" />
-              <div className="ck-widget">
-                <span className="ck-ico">
-                  <IconCloud size={18} />
-                </span>
-                <div>
-                  <strong>{weather.headline}</strong>
-                  <span>{weather.detail}</span>
-                </div>
-              </div>
-            </>
-          ) : null}
-          <span className="ck-vdiv" />
-          <div className="ck-widget">
-            <span className="ck-ico">
-              <IconCal size={18} />
-            </span>
-            <div>
-              <strong>{weekday}</strong>
-              <span>Day {dayOfYear(now)} of 365</span>
-            </div>
-          </div>
+          <StatusStrip pulse={pulse} />
         </div>
         <nav className="ck-cmd-nav">
           <button type="button" className={mode === "brief" ? "is-active" : ""} onClick={onBrief}>

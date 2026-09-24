@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
+import { StatusStrip } from "../chrome/StatusStrip.js";
 import { ConcRing, LiveDot } from "../chrome/Marks.js";
 import { pulseText, type ChatMsg, type ConfirmPayload, type HealthPayload, type PulsePayload } from "@core";
 import { pulseGpuChips } from "../rack.js";
@@ -57,9 +58,6 @@ export function Breath({
   const hands = !unreachable && health?.hands === true;
   const stt = !unreachable && health?.stt === true;
   const tts = !unreachable && health?.tts === true;
-  const lan = pulseText(pulse?.lan);
-  const k3s = pulseText(pulse?.k3s);
-  const utc = pulseText(pulse?.utc);
   const uptime = pulseText(pulse?.uptime);
   const gpus = pulseGpuChips(pulse);
 
@@ -95,20 +93,7 @@ export function Breath({
         <header className="ck-breath-top">
           <Brand live={live} size={22} />
           <div className="ck-breath-meta">
-            <div className="ck-meta-cell">
-              <span className="ck-meta-k">LAN</span>
-              <Steel value={lan} />
-            </div>
-            <span className="ck-pipe" />
-            <div className="ck-meta-cell">
-              <span className="ck-meta-k">k3s</span>
-              <Steel value={k3s} />
-            </div>
-            <span className="ck-pipe" />
-            <div className="ck-meta-cell">
-              <span className="ck-meta-k">UTC</span>
-              <Steel value={utc} />
-            </div>
+            <StatusStrip pulse={pulse} />
           </div>
           <div className="ck-breath-systems">
             {(

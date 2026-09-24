@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Brand } from "../chrome/Brand.js";
 import { CmdBar } from "../chrome/CmdBar.js";
+import { StatusStrip } from "../chrome/StatusStrip.js";
 import { LiveDot } from "../chrome/Marks.js";
 import { formatRate, pulseText, steelNum, type ConfirmPayload, type PulsePayload } from "@core";
 import { RACK_IDS, rackFilter, rackRoleLabel, type RackFilter } from "../rack.js";
@@ -105,9 +106,7 @@ export function Noc({
   }, [pulse, selected]);
 
   const tableIds = RACK_IDS.filter((id) => filters[rackFilter(id)]);
-  const lan = pulseText(pulse?.lan);
   const k3s = pulseText(pulse?.k3s);
-  const utc = pulseText(pulse?.utc);
   const syncAge = syncedAt == null ? "—" : Math.max(0, (now - syncedAt) / 1000).toFixed(3);
   const cpuC = pulse?.env?.cpu_c;
   const fan = pulse?.env?.fan;
@@ -131,13 +130,8 @@ export function Noc({
       <header className="ck-noc-top">
         <div className="ck-panel-brand">
           <Brand live={live} size={18} />
-          <span className="ck-noc-meta">
-            LAN {lan ?? "—"}
-            <span className="ck-pipe" />
-            k3s {k3s ?? "—"}
-          </span>
         </div>
-        <span className="ck-noc-utc">UTC {utc ?? "—"}</span>
+        <StatusStrip pulse={pulse} />
         <div className="ck-noc-actions">
           <button type="button" onClick={onApply}>
             APPLY

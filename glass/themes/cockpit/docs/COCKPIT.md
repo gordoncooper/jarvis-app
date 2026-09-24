@@ -157,7 +157,7 @@ Renamed from `earth` on 2026-09-21; `#earth` still resolves here.
   Drag still spins it.
 - DOM HUD pinned to edges:
   - Top-left: hex + JARVIS + LIVE
-  - Top-center: LAN, k3s, UTC from `/v1/pulse`
+  - Top-center: the status strip — weather, date, local time, UTC, LAN, k3s. Same module on CMD and NOC. Local and UTC are the browser clock. Weather, LAN, and k3s come from `/v1/pulse` and stay blank when the pulse has no reading.
   - Top-right: four ring pips TALKER HANDS STT TTS from `/health`
   - Left: dossier TRACK / MODE / HOS / LOCK
   - Bottom chips: CLUSTER LIVE, UPTIME, GPU-01 °C, GPU-02 °C
@@ -219,7 +219,7 @@ still not a scrolling transcript and not a modal. The CMD channel is unchanged.
 
 Layout:
 
-- Header: Brand + local clock + weather stub + date + `BRIEF | ASK | APPLY`
+- Header: Brand + the status strip + `BRIEF | ASK | APPLY`
 - Left ~280px: Dossier + Today icon rows
 - Center: AM BRIEFING sections Overnight / Lab / Agenda from structured session briefing
 - Right 45rem: Channel thread (session.messages + live tokens) + cmd input. Twice the previous column. The bar itself is the same tile as Breath and NOC; only the column is wider.
@@ -233,6 +233,7 @@ ConfirmCard renders inside Channel when `session.confirm` is set. Yes/cancel are
 
 ### NOC (index 3)
 
+- Top: Brand, the same status strip, APPLY / PULSE / STATUS
 - Left rail: filters CTRL GPU DATA APPS + dossier track/mode
 - Center: SVG 2×3 tiles labeled ctrl-01, gpu-01, gpu-02, data-01, data-02, apps-01 with teal traces
 - Right: four ring meters (cpu/mem/net/io), voice waveform, GPU temp sparks, env bars

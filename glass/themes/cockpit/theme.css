@@ -586,8 +586,62 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.95rem;
+  min-width: 0;
   padding-top: 0.15rem;
+}
+
+.ck-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ck-status-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.ck-status-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ck-status-k {
+  color: var(--ck-steel);
+  font-family: var(--ck-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+}
+
+.ck-status-v {
+  color: var(--ck-ink);
+  font-family: var(--ck-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 11rem;
+}
+
+.ck-status-v.is-empty {
+  color: var(--ck-steel);
+  opacity: 0.7;
+}
+
+.ck-status .ck-pipe {
+  height: 1.25rem;
+}
+
+.ck-cmd-widgets .ck-status,
+.ck-noc-top .ck-status {
+  flex: 1;
 }
 
 .ck-meta-cell {
