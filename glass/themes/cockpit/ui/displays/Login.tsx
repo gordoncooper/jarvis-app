@@ -82,7 +82,7 @@ export function Login({ onEnter, active }: Props) {
         initial={false}
         animate={
           gate === "open"
-            ? { rotateX: reduceMotion ? 0 : -86, opacity: 0 }
+            ? { rotateX: reduceMotion ? 0 : 86, opacity: 0 }
             : { rotateX: 0, opacity: 1 }
         }
         transition={
